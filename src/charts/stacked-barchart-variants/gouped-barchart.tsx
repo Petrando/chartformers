@@ -28,6 +28,7 @@ export function GroupedBarChart({ data }: StackedBarChartProps) {
     useEffect(() => {
         setPlotted("all")
         setDataJustChanged(true)
+        setIsSorted(false)
     }, [stackData])    
     
     const animDuration = 750;

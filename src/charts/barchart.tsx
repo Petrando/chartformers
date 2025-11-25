@@ -18,7 +18,7 @@ export function BarChart({data, colorIdx = 9}:BarchartProps) {
     const { width, height } = parentSize;
 
     const [isSorted, setIsSorted] = useState<boolean>(false);
-    const uiControls = document.getElementById("UI-controls");
+    const uiControls = document?.getElementById("UI-controls");
 
     // Define the controls element (checkbox)
     const controls = (

@@ -29,7 +29,7 @@ export function StackedBarChart({ data, focusOnPlot = false }: StackedBarChartPr
     const [justPlotted, setJustPlotted] = useState<boolean>(false)
     const [hovered, setHovered] = useState<string>("")   
     const [isSorted, setIsSorted] = useState<boolean>(false);
-    const uiControls = document.getElementById("UI-controls"); 
+    const uiControls = document?.getElementById("UI-controls"); 
     
     const stackData = data
         

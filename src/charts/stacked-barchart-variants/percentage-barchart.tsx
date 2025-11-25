@@ -19,9 +19,8 @@ export function PercentageBarChart({ data }: StackedBarChartProps) {
     const [dataJustChanged, setDataJustChanged] = useState<boolean>(false)
     const [controlsRef, controlsSize] = useContainerSize<HTMLDivElement>();
     const { height: controlsHeight } = controlsSize;        
-    const [plotted, setPlotted] = useState<string>("all");    
-    const [isSorted, setIsSorted] = useState<boolean>(false);
-    const uiControls = document.getElementById("UI-controls");
+    const [plotted, setPlotted] = useState<string>("all");  
+    const uiControls = document?.getElementById("UI-controls");
     
     const stackData = data
     useEffect(() => {
@@ -435,7 +434,7 @@ export function PercentageBarChart({ data }: StackedBarChartProps) {
                     tooltip.style("opacity", 0);
                 })
 
-    }, [ ...renderDeps, isSorted, chartData, keys, isPercentage, hovered, dataJustChanged ]);
+    }, [ ...renderDeps, chartData, keys, isPercentage, hovered, dataJustChanged ]);
     
     return (
         <div 

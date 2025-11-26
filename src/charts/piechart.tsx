@@ -53,6 +53,7 @@ export function PieChart({data, innerRadius = 0, sortWithLegends = false}:Piecha
                             return indexColor(layersRef.current.findIndex(l => l === d));
                         })
                     divs.append("span")
+                        .attr("class", pieStyles["legend-label"])
                         .style("color", (d)=>{
                             //if(!focusOnPlot && plotted.includes(d)){
                                 //return "#d1d5db"

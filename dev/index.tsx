@@ -6,7 +6,7 @@ import { englishFreq, germanFreq, categoryDataV1, categoryDataV2, categoryDataV3
 import controlStyles from './controls.module.css'
 
 const App = () => {
-  const [selectedData, setSelectedData] = useState<string>("english");
+  const [selectedData, setSelectedData] = useState<string>("stack1");
 
   const handleChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     setSelectedData(e.target.value);
@@ -29,22 +29,23 @@ const App = () => {
       <Button onClick={() => {}}>Click Me!!!</Button>
       <h2>Testing BarChart Component</h2>
       <div style={{
+        width: '100%',
         height: '450px', display:"flex", flexDirection:"column", overflow:'hidden', 
         marginTop: '20px', /*border: '2px solid red'*/}}>      
         <div id="parent" className={`${controlStyles.parent}`}>
           <div id="select-optional" className={`${controlStyles["select-optional"]}`}>
             <label htmlFor="choose-data">Choose data:</label>
             <select id="choose-data" value={selectedData} onChange={handleChange}>
-              <option value="english">English</option>
+              {/*<option value="english">English</option>
               <option value="german">German</option>
               <option value={"category1"}>Category 1</option>
               <option value={"category2"}>Category 2</option>
-              <option value={"category3"}>Category 3</option>
-             {/*
+              <option value={"category3"}>Category 3</option>*/}
+             {
                 ["stack1", "stack2", "stack3", "stack4", "stack5"].map(s => (
                   <option key={s} value={s}>{s}</option>
                 ))
-              */}
+              }
             </select>
           </div>
           <div className={`${controlStyles["UI-controls"]}`}>
@@ -75,7 +76,7 @@ const App = () => {
           <GroupedBarChart data={selectedStackedData} />
         </div>
       </div>
-      <div style={{width: "80vw", height: "400px", position: "relative" }}>       
+      <div style={{width: "80vw", maxWidth:"384px", height: "192px", position: "relative" }}>       
           <PieChart data={pointData}  />
           {/*<StackedBarChart data={selectedStackedData} />   */}       
         </div>

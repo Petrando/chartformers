@@ -75,7 +75,7 @@ const App = () => {
           <GroupedBarChart data={selectedStackedData} />
         </div>
       </div>
-      <div style={{width: "80vw", height: "200px", position: "relative" }}>       
+      <div style={{width: "80vw", height: "400px", position: "relative" }}>       
           <PieChart data={pointData}  />
           {/*<StackedBarChart data={selectedStackedData} />   */}       
         </div>

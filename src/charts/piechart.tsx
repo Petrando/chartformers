@@ -348,7 +348,7 @@ export function PieChart({data, innerRadius = 0, sortWithLegends = false}:Piecha
             <div
                 style={{
                     width: isWide ? width > 480?'180px':`${0.3 * width}px` : '100%',
-                    height: isWide ? '100%' : '180px',
+                    height: isWide ? '100%' : height > 400?'180px':`${0.3 * height}px`,
                     flexShrink: 0,
                     overflowY: 'auto',
                     background: 'rgba(0,0,0,0.03)',

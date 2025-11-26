@@ -313,12 +313,8 @@ export function PieChart({data, innerRadius = 0, sortWithLegends = false}:Piecha
 
     }, [data, innerRadius, pieWidth, pieHeight, isSorted, hovered]);
 
-    // Determine legend position
-    console.log("width,height:", width, height);
-    console.log("width <= 480:", width <= 480);
-    const isWide = width > height;
-    //width <= 480 ? false:
-    console.log("isWide:", isWide);
+    // Determine legend position    
+    const isWide = width > height;    
         
     return (
         <div 

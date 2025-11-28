@@ -4,7 +4,7 @@ import { useD3 } from '../hooks/useD3';
 import { useParentSize } from '../hooks/useParentSize';
 import { useContainerSize } from '../hooks/useContainerSize';
 import { useLayerIndex } from '../hooks/useLayerIndex';
-import { cloneObj, indexColor } from '../utils';
+import { cloneObj, indexSelectedColor } from '../utils';
 import styles from './global.module.css';
 import pieStyles from './piechart.module.css'
 import { pointData } from '../types';
@@ -13,9 +13,10 @@ type PiechartProps = {
     data: pointData[];
     innerRadius?: number;
     sortWithLegends?: boolean;
+    colorIdx?: number;
 }
 
-export function PieChart({data, innerRadius = 0, sortWithLegends = false}:PiechartProps) {
+export function PieChart({data, innerRadius = 0, sortWithLegends = false, colorIdx = 0}:PiechartProps) {
     const [ref, parentSize] = useParentSize<HTMLDivElement>();
     const { width, height } = parentSize;
     const [ graphRef, size] = useContainerSize<HTMLDivElement>()
@@ -50,7 +51,7 @@ export function PieChart({data, innerRadius = 0, sortWithLegends = false}:Piecha
                     divs.append("div")
                         .attr("class", `rect ${pieStyles["legend-rect"]}`)
                         .style("background-color", (d) => {                           
-                            return indexColor(layersRef.current.findIndex(l => l === d));
+                            return indexSelectedColor(layersRef.current.findIndex(l => l === d) + colorIdx);
                         })
                     divs.append("span")
                         .attr("class", pieStyles["legend-label"])
@@ -85,7 +86,7 @@ export function PieChart({data, innerRadius = 0, sortWithLegends = false}:Piecha
                             //if(!focusOnPlot && plotted.includes(d)){
                                 //return "#d1d5db"
                             //}       
-                            return indexColor(layersRef.current.findIndex(l => l === d));
+                            return indexSelectedColor(layersRef.current.findIndex(l => l === d) + colorIdx);
                         });
 
                     // also update label text in case of rename or dynamic change
@@ -114,7 +115,7 @@ export function PieChart({data, innerRadius = 0, sortWithLegends = false}:Piecha
             })
             .on("mouseout", () => {setHovered("")})
                         
-    }, [data, pieWidth, pieHeight, hovered, isSorted, sortWithLegends]);
+    }, [data, colorIdx, pieWidth, pieHeight, hovered, isSorted, sortWithLegends]);
    
     const chartRef = useD3<SVGSVGElement>((svg) => {
         if (pieWidth === 0 || pieHeight === 0) return;
@@ -195,8 +196,8 @@ export function PieChart({data, innerRadius = 0, sortWithLegends = false}:Piecha
                         const slices = enter.append('path')
                             .attr("class", pieStyles.pieSlice)
                             .attr('fill', function(_){ 
-                                const layerIndex = layersRef.current.findIndex(l => l ===_.data.label)                                                                
-                                return indexColor(layerIndex) 
+                                const layerIndex = layersRef.current.findIndex(l => l ===_.data.label) + colorIdx                                                                
+                                return indexSelectedColor(layerIndex) 
                             })                            
 
                         slices//.merge(slices)                                                                        
@@ -227,8 +228,8 @@ export function PieChart({data, innerRadius = 0, sortWithLegends = false}:Piecha
                         update//.merge(slices)
                                 .transition().duration(animDuration)//.delay(exitDelay)
                             .attr('fill', function(_, i){                                 
-                                const layerIndex = layersRef.current.findIndex(l => l ===_.data.label)                                                                                                                                                         
-                                return indexColor(layerIndex)
+                                const layerIndex = layersRef.current.findIndex(l => l ===_.data.label) + colorIdx                                                                                                                                                         
+                                return indexSelectedColor(layerIndex)
                              })                        
                             //.attr('d', arc)                            
                             .attrTween('d', function(this: SVGPathElement, d){
@@ -312,7 +313,7 @@ export function PieChart({data, innerRadius = 0, sortWithLegends = false}:Piecha
             )
         
 
-    }, [data, innerRadius, pieWidth, pieHeight, isSorted, hovered]);
+    }, [data, colorIdx, innerRadius, pieWidth, pieHeight, isSorted, hovered]);
 
     // Determine legend position    
     const isWide = width > height;    
@@ -365,9 +366,7 @@ export function PieChart({data, innerRadius = 0, sortWithLegends = false}:Piecha
                         boxSizing: 'border-box',
                         position: 'relative',                        
                     }}
-                >
-                    
-                </div>
+                />
             </div>
             <label 
                 className={styles["controls-label"]}

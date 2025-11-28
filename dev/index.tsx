@@ -70,12 +70,12 @@ const App = () => {
           
         </div>
         <div style={{ flex:1, width: "100%", height: "100%", overflow:"hidden" }}>       
-          <BarChart data={pointData} color={{idx: 9, type: 'colorful'}} />
+          <PieChart data={pointData} />
           {/*<GroupedBarChart data={selectedStackedData} />*/}
         </div>
       </div>
       <div style={{width: "80vw", maxWidth:"384px", height: "192px", position: "relative" }}>       
-          <BarChart data={pointData} color={{idx: 12, type: 'fixed'}} />
+          <PieChart data={pointData} colorIdx={10} />
           {/*<StackedBarChart data={selectedStackedData} />   */}       
         </div>
     </div>

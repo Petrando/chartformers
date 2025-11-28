@@ -1,0 +1,9 @@
+.rotatedAxisText {
+    text-anchor: start;
+    transform: rotate(25deg);
+}
+
+.axisText {
+    text-anchor: middle;
+    transform: rotate(0deg);
+}

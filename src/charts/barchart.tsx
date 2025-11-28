@@ -7,6 +7,7 @@ import { useUIControls } from '../hooks/useUIControls';
 import { Tooltip, getTooltip, moveTooltip } from '../components/tooltip';
 import { cloneObj, indexSelectedColor } from '../utils';
 import styles from './global.module.css';
+import barchartStyles from './barchart.module.css';
 import { pointData } from '../types';
 import { useLayerIndex } from '../hooks/useLayerIndex';
 
@@ -67,6 +68,10 @@ export function BarChart({data, color: {
         const tooltip = getTooltip(container as any)
             .style("opacity", 0);
 
+        const isMediumScreen = width > 1024;
+        const xAxisTextClass = !isMediumScreen?barchartStyles.rotatedAxisText:
+                    barchartStyles.axisText;
+
         const x = d3
             .scaleBand()
             .domain(barchartData.map(d => d.label))
@@ -81,7 +86,9 @@ export function BarChart({data, color: {
 
         canvas.select<SVGGElement>(".x-axis")
             .attr("transform", `translate(0, ${height - margin.bottom})`)
-            .transition().duration(animDuration).call(xAxis);
+            .transition().duration(animDuration).call(xAxis)
+            .selectAll("text")
+            .attr("class", xAxisTextClass);
 
         const y1 = d3
             .scaleLinear()

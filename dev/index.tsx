@@ -70,7 +70,7 @@ const App = () => {
           
         </div>
         <div style={{ flex:1, width: "100%", height: "100%", overflow:"hidden" }}>       
-          <PieChart data={pointData} />
+          <PieChart data={pointData} innerRadius={0.9} />
           {/*<GroupedBarChart data={selectedStackedData} />*/}
         </div>
       </div>

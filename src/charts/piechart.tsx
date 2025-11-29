@@ -169,10 +169,10 @@ export function PieChart({data, innerRadius = 0, sortWithLegends = false, colorI
 
         const padding = 12
         const arc = d3.arc<d3.PieArcDatum<pointData>>()
-            .innerRadius(innerRadius)
+            .innerRadius(innerRadius * radius)
             .outerRadius(radius - padding);
         const fullArc = d3.arc<d3.PieArcDatum<pointData>>()
-            .innerRadius(innerRadius)
+            .innerRadius(innerRadius * radius)
             .outerRadius(radius);
 
         const angleInterpolation = (d: d3.PieArcDatum<pointData>, direction: string) => {

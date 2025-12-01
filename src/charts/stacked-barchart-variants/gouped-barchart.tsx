@@ -7,6 +7,7 @@ import { useContainerSize } from '../../hooks/useContainerSize';
 import { useLayerIndex } from '../../hooks/useLayerIndex';
 import { Tooltip, getTooltip, moveTooltip } from '../../components/tooltip';
 import { cloneObj, indexColor, basicFormat } from '../../utils';
+import { inactiveColor } from '../../data/constants';
 import styles from '../global.module.css';
 import stackedBarStyles from './stacked-barchart.module.css';
 import { LayeredData, ExtendedSeriesPoint, ExtendedSeries, StackedBarChartProps } from './types';
@@ -401,10 +402,20 @@ export function GroupedBarChart({ data, color:{idx = 0} = {idx: 0} }: StackedBar
                 },
                 undefined,                
                 exit=>exit
-                    .transition().duration(animDuration)
+                    .transition().duration(animDuration * 0.25)
+                    .attr("y", function(d){ 
+                        return graphHeight - ((y(d[0]) - y(d[1])) * 0.75)
+                    })
+                    .attr("height", function(d){                                                                
+                        const rectHeight = y(d[0]) - y(d[1]);
+                        return (isNaN(rectHeight)?0:rectHeight<0?0:rectHeight) * 0.75;
+                    })
+                    .attr("opacity", 0.75)
+                    .attr("fill", inactiveColor)
+                    .transition().duration(animDuration * 0.75)
                     .attr("opacity", 0)
                     .attr("height", 0)                        
-                    .attr("y", graphHeight).remove()
+                    .attr("y", graphHeight + margin.bottom).remove()
             )
             .attr("class", updateRectClass)
             .transition().duration(animDuration)//.delay(animDelay)

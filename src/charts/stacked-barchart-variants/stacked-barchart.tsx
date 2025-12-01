@@ -7,6 +7,7 @@ import { useContainerSize } from '../../hooks/useContainerSize';
 import { useLayerIndex } from '../../hooks/useLayerIndex';
 import { Tooltip, getTooltip, moveTooltip } from '../../components/tooltip';
 import { cloneObj, indexColor, basicFormat } from '../../utils';
+import { inactiveColor } from '../../data/constants';
 import styles from '../global.module.css';
 import stackedBarStyles from './stacked-barchart.module.css';
 import { LayeredData, ExtendedSeries, ExtendedSeriesPoint, StackedBarChartProps } from './types';
@@ -17,7 +18,7 @@ type StackedBarChartPropsExtended =
         focusOnPlot?: boolean;
 };
 
-export const inactiveColor = "#d1d5db"
+
 
 export function StackedBarChart({ data, focusOnPlot = false, color:{idx = 0} = {idx: 0} }: StackedBarChartPropsExtended) {
     const [ref, parentSize] = useParentSize<HTMLDivElement>();

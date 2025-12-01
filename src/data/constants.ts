@@ -1,3 +1,5 @@
+export const inactiveColor = "#d1d5db"
+
 export const englishFreq = [
     { label: "A", value: 8167 },
     { label: "B", value: 1492 },

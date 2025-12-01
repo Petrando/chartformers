@@ -13,9 +13,10 @@ export const cloneObj = (arr:any) => {
 }
 
 const selectedColors = [    
+    "#34D399", /* non - tailwind */
+    "#6ee7b7", "#34d399", "#10b981", 
     "#bef264", "#a3e635", "#84cc16",
-    "#86efac", "#4ade80", "#22c55e", 
-    "#6ee7b7", "#34d399", "#10b981", /* non - tailwind */"#34D399",
+    "#86efac", "#4ade80", "#22c55e",     
     "#5eead4", "#2dd4bf", "#14b8a6",
     "#67e8f9", "#22d3ee", "#06b6d4",
     "#7dd3fc", "#38bdf8", "#0ea5e9",

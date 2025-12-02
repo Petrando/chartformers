@@ -402,17 +402,8 @@ export function GroupedBarChart({ data, color:{idx = 0} = {idx: 0} }: StackedBar
                 },
                 undefined,                
                 exit=>exit
-                    .transition().duration(animDuration * 0.25)
-                    .attr("y", function(d){ 
-                        return graphHeight - ((y(d[0]) - y(d[1])) * 0.75)
-                    })
-                    .attr("height", function(d){                                                                
-                        const rectHeight = y(d[0]) - y(d[1]);
-                        return (isNaN(rectHeight)?0:rectHeight<0?0:rectHeight) * 0.75;
-                    })
-                    .attr("opacity", 0.75)
                     .attr("fill", inactiveColor)
-                    .transition().duration(animDuration * 0.75)
+                    .transition().duration(animDuration)
                     .attr("opacity", 0)
                     .attr("height", 0)                        
                     .attr("y", graphHeight + margin.bottom).remove()

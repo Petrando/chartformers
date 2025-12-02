@@ -7,6 +7,7 @@ import { useContainerSize } from '../../hooks/useContainerSize';
 import { useLayerIndex } from '../../hooks/useLayerIndex';
 import { Tooltip, getTooltip, moveTooltip } from '../../components/tooltip';
 import { cloneObj, indexColor, basicFormat } from '../../utils';
+import { inactiveColor } from '../../data/constants';
 import styles from '../global.module.css';
 import stackedBarStyles from './stacked-barchart.module.css';
 import { LayeredData, ExtendedSeries, ExtendedSeriesPoint, StackedBarChartProps } from './types';
@@ -316,12 +317,11 @@ export function PercentageBarChart({ data, color:{idx = 0} = {idx: 0} }: Stacked
                     return g;
                 },
                 exit=>exit.transition().duration(animDuration)
-                    .style("opacity", 0).attr("fill", "grey")
+                    .style("opacity", 0).attr("fill", inactiveColor)
                     .selectAll<SVGRectElement, ExtendedSeriesPoint>("rect")
                     .attr("y", graphHeight)
                     .attr("height", 0)
-                    .remove()
-                    .remove()
+                    .remove()                    
             )
             
         serie.selectAll<SVGRectElement, ExtendedSeriesPoint>("rect")

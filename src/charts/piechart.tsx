@@ -5,6 +5,7 @@ import { useParentSize } from '../hooks/useParentSize';
 import { useContainerSize } from '../hooks/useContainerSize';
 import { useLayerIndex } from '../hooks/useLayerIndex';
 import { cloneObj, indexSelectedColor } from '../utils';
+import { inactiveColor } from '../data/constants';
 import styles from './global.module.css';
 import pieStyles from './piechart.module.css'
 import { pointData } from '../types';
@@ -252,7 +253,8 @@ export function PieChart({data, innerRadius = 0, sortWithLegends = false, colorI
                     },
                     exit=>exit
                         .attr("class", pieStyles.pieSliceExit)
-                        .transition().duration(animDuration)                        
+                        .transition().duration(animDuration)
+                        .attr('fill', inactiveColor)                        
                         .attrTween('d', function(this: SVGPathElement, d){
                             return angleInterpolation(d, "exit")
                         })

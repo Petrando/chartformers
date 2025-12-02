@@ -25,6 +25,7 @@ export function StackedBarChart({ data, focusOnPlot = false, color:{idx = 0} = {
     const { width, height } = parentSize;
     const [controlsRef, controlsSize] = useContainerSize<HTMLDivElement>();
     const { height: controlsHeight } = controlsSize;    
+    const [prevData, setPrevData] = useState<LayeredData[] | null>(null);
         
     const [dataJustChanged, setDataJustChanged] = useState(false)
     const [plotted, setPlotted] = useState<string[]>(["all"]);
@@ -37,8 +38,8 @@ export function StackedBarChart({ data, focusOnPlot = false, color:{idx = 0} = {
     const stackData = data        
     useEffect(() => {
         setPlotted(["all"])
-        setDataJustChanged(true)
-    }, [stackData])
+        setDataJustChanged(true)        
+    }, [stackData])    
 
     useEffect(() => {setPlotted(["all"])}, [focusOnPlot])
 
@@ -145,6 +146,7 @@ export function StackedBarChart({ data, focusOnPlot = false, color:{idx = 0} = {
                     return update;
                 },
                 exit => exit
+                    .style("color", inactiveColor)
                     .transition().duration(animDuration)
                     .style("opacity", 0)
                     .style("top", "53px")
@@ -264,6 +266,12 @@ export function StackedBarChart({ data, focusOnPlot = false, color:{idx = 0} = {
         const tooltip = getTooltip(container as any)
             .style("opacity", 0);
 
+        let isFirstRender = false;
+        if(prevData === null){
+            isFirstRender = true;
+            setPrevData(cloneObj(chartData));
+        }                       
+
         const xAxisTextClass = !isMediumScreen?stackedBarStyles.rotatedAxisText:
             stackedBarStyles.axisText;
 
@@ -303,11 +311,11 @@ export function StackedBarChart({ data, focusOnPlot = false, color:{idx = 0} = {
         y.domain([0, yMax ?? 0]);        
 
         const yAxis = d3.axisLeft(y).ticks(null, "s");            
-                                
+                                        
         canvas.select<SVGGElement>(".y-axis")  
             .attr("transform", `translate(0,0)`)
             .style("color", "steelblue")          
-                .transition().duration(animDuration)
+                .transition().duration(isFirstRender?0:animDuration)
             .call(yAxis)
 
         const dataLayers: d3.Series<LayeredData, string>[] =
@@ -414,10 +422,10 @@ export function StackedBarChart({ data, focusOnPlot = false, color:{idx = 0} = {
 
                     return g;
                 },
-                exit => exit
+                exit => exit                                        
                     .transition().duration(animDuration)
-                    .style("opacity", 0)
-                    .attr("fill", "grey")
+                    .attr("fill", inactiveColor)
+                    .style("opacity", 0)                    
                     .selectAll<SVGRectElement, d3.SeriesPoint<LayeredData>>("rect")
                     .attr("y", graphHeight)
                     .attr("height", 0)
@@ -455,6 +463,7 @@ export function StackedBarChart({ data, focusOnPlot = false, color:{idx = 0} = {
             return `rect ${stackedBarStyles.rect}`
         }
 
+        console.log('isFirstRender', isFirstRender);
         serie
             .selectAll<SVGRectElement, ExtendedSeriesPoint>("rect")
             .data(
@@ -480,7 +489,10 @@ export function StackedBarChart({ data, focusOnPlot = false, color:{idx = 0} = {
 
                             const rectHeight = y(d[0]) - y(d[1]);
                             const height = isNaN(rectHeight) ? 0 : rectHeight < 0 ? 0 : rectHeight;
-                            return yFinal + height;
+                            const yPos = yFinal + height;
+
+                            if(isFirstRender) return 0// graphHeight - (margin.bottom + margin.top);
+                            return yPos;
                         })
                         .attr("height", 0)
                         .attr("stroke-dasharray", strokeDasharray)
@@ -494,6 +506,7 @@ export function StackedBarChart({ data, focusOnPlot = false, color:{idx = 0} = {
                                 return isNaN(rectHeight) ? 0 : rectHeight < 0 ? 0 : rectHeight;
                         })
                         .attr("y", (d) => {
+                            if(isFirstRender) return 0
                             return plotted[0] === "all"
                                 ? y(d[1])
                                 : /*d.key.startsWith(plotted)
@@ -506,8 +519,7 @@ export function StackedBarChart({ data, focusOnPlot = false, color:{idx = 0} = {
                 undefined, // no custom update handler
                 exit =>
                     exit
-                        .transition()
-                        .duration(animDuration)
+                        .transition().duration(animDuration)
                         .attr("opacity", 0)                        
                         .attr("y", graphHeight)
                         .attr("height", 0)
@@ -524,6 +536,7 @@ export function StackedBarChart({ data, focusOnPlot = false, color:{idx = 0} = {
                         return isNaN(rectHeight) ? 0 : rectHeight < 0 ? 0 : rectHeight;
                 })
                 .attr("y", (d) => {
+                    if(isFirstRender) return 0
                     return plotted[0] === "all"
                         ? y(d[1])
                         : /*d.key.startsWith(plotted)

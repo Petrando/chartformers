@@ -18,6 +18,7 @@ export function GroupedBarChart({ data, color:{idx = 0} = {idx: 0} }: StackedBar
     const { width, height } = parentSize;
     const [controlsRef, controlsSize] = useContainerSize<HTMLDivElement>();
     const { height: controlsHeight } = controlsSize;
+    const [prevData, setPrevData] = useState<LayeredData[] | null>(null);
     
     const [dataJustChanged, setDataJustChanged] = useState(false)
     const [plotted, setPlotted] = useState<string>("all");
@@ -203,6 +204,12 @@ export function GroupedBarChart({ data, color:{idx = 0} = {idx: 0} }: StackedBar
         const tooltip = getTooltip(container as any)
             .style("opacity", 0);
 
+        let isFirstRender = false;
+        if(prevData === null){
+            isFirstRender = true;
+            setPrevData(cloneObj(chartData));
+        }
+
         const xAxisTextClass = !isMediumScreen?stackedBarStyles.rotatedAxisText:
             stackedBarStyles.axisText;    
 
@@ -212,9 +219,7 @@ export function GroupedBarChart({ data, color:{idx = 0} = {idx: 0} }: StackedBar
             .align(0.2)
             
         const xLabels = sortedData.map(function(d: LayeredData) { return d.label; });
-        x.domain(xLabels);
-
-        const prevXLabels: string[] = [];
+        x.domain(xLabels);        
         
         const xAxis = d3.axisBottom(x)
             .tickValues(x.domain())
@@ -375,9 +380,12 @@ export function GroupedBarChart({ data, color:{idx = 0} = {idx: 0} }: StackedBar
                             return plotted === "all"?
                                 x.bandwidth()/keys.length:x.bandwidth()
                         }) 
-                        .attr("y", graphHeight)
+                        .attr("y", function(d){ 
+                            if(isFirstRender)return graphHeight - (margin.bottom + margin.top);
+                            return graphHeight;
+                        })
                         .attr("height", 0)
-                            .transition().duration(animDuration)//.delay(animDelay)
+                            .transition().duration(animDuration)//.delay(animDuration)
                             .attr("x", function(d){                                                        
                                 const xPos = x(d.data.label + "") ?? 0;
                                 if(plotted === "all"){                                    
@@ -409,7 +417,7 @@ export function GroupedBarChart({ data, color:{idx = 0} = {idx: 0} }: StackedBar
                     .attr("y", graphHeight + margin.bottom).remove()
             )
             .attr("class", updateRectClass)
-            .transition().duration(animDuration)//.delay(animDelay)
+            .transition().duration(animDuration)//.delay(isFirstRender?animDuration:0)
                 .attr("x", function(d){                                                        
                     const xPos = x(d.data.label + "") ?? 0;
                     if(plotted === "all"){

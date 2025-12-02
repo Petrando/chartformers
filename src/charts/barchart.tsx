@@ -6,6 +6,7 @@ import { useParentSize } from '../hooks/useParentSize';
 import { useUIControls } from '../hooks/useUIControls';
 import { Tooltip, getTooltip, moveTooltip } from '../components/tooltip';
 import { cloneObj, indexSelectedColor } from '../utils';
+import { inactiveColor } from '../data/constants';
 import styles from './global.module.css';
 import barchartStyles from './barchart.module.css';
 import { pointData } from '../types';
@@ -145,7 +146,7 @@ export function BarChart({data, color: {
                 },
                 exit=>exit                  
                     .transition().duration(animDuration)
-                .attr("fill", "#94a3b8")
+                .attr("fill", inactiveColor)
                 .attr("height", 0).attr("y", height).style("opacity", 0)            
                     .remove()
             )

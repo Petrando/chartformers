@@ -459,8 +459,7 @@ export function StackedBarChart({ data, focusOnPlot = false, colorIdx = 0 }: Sta
             }
             return `rect ${stackedBarStyles.rect}`
         }
-
-        console.log('isFirstRender', isFirstRender);
+        
         serie
             .selectAll<SVGRectElement, ExtendedSeriesPoint>("rect")
             .data(

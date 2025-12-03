@@ -15,4 +15,16 @@ It is designed to simplify chart creation in modern React apps while retaining t
 
 ```bash
 npm install flowvis@latest
+```   
+
+To use a bar chart component import these:  
+```bash
+import { BarChart } from 'flowvis';
+import 'flowvis/dist/flowvis.css';
+```
+Render the chart inside a container with explicit width and height:
+```bash
+<div className="w-full h-60 md:h-96">
+  <BarChart data={[]} />
+</div>
 ```

@@ -1,6 +1,6 @@
 {
   "name": "flowvis",
-  "version": "1.0.26",
+  "version": "1.0.27",
   "description": "",
   "author": "Petrando Richard",
   "main": "dist/flowvis.umd.js",

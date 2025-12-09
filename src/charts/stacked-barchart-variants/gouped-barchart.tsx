@@ -13,7 +13,7 @@ import stackedBarStyles from './stacked-barchart.module.css';
 import { LayeredData, ExtendedSeriesPoint, ExtendedSeries, StackedBarChartProps } from './types';
 import { useUIControls } from '../../hooks/useUIControls';
 
-export function GroupedBarChart({ data, colorIdx = 0 }: StackedBarChartProps) {
+export function GroupedBarChart({ data, colorIdx = 0, orientation = 'horizontal' }: StackedBarChartProps) {
     const [ref, parentSize] = useParentSize<HTMLDivElement>();
     const { width, height } = parentSize;
     const [controlsRef, controlsSize] = useContainerSize<HTMLDivElement>();
@@ -211,20 +211,50 @@ export function GroupedBarChart({ data, colorIdx = 0 }: StackedBarChartProps) {
         }
 
         const xAxisTextClass = !isMediumScreen?stackedBarStyles.rotatedAxisText:
-            stackedBarStyles.axisText;    
+            stackedBarStyles.axisText;
+            
+        const labels = sortedData.map(function(d: LayeredData) { return d.label; });        
+        
+        const labelScale: d3.ScaleBand<string> = d3.scaleBand<string>()
+            .domain(labels)
+            .rangeRound(orientation === 'horizontal'?[0, graphWidth]:[graphHeight, 0])
+            .paddingInner(0.1)
+            .align(0.2) 
 
+        /*const yMax = plotted === "all"?
+                d3.max(chartData, d => d3.max(
+                    Object.entries(d)
+                    .filter(d => d[0]!=="total" && d[0]!=="label"), d => (d as any)[1])):
+                        d3.max(chartData, d=>(d[plotted] as number));*/ 
+        const valueMax =
+            plotted === "all"
+                ? d3.max(chartData, d =>
+                    d3.max(
+                    Object.entries(d)
+                        .filter(([key]) => key !== "total" && key !== "label")
+                        .map(([, value]) => value as number)     // value is number | string | undefined
+                    )
+                )
+                : d3.max(chartData, d => d[plotted] as number);
+        const valueScale = d3.scaleLinear()
+            .domain(orientation === 'horizontal'?[0, valueMax ?? 0]:[0, valueMax ?? 0])
+            .range(orientation === 'horizontal'?[graphHeight, 0]:[0, graphWidth]);
+
+        const xLabels = sortedData.map(function(d: LayeredData) { return d.label; });        
+        
         const x: d3.ScaleBand<string> = d3.scaleBand<string>()
+            .domain(xLabels)
             .rangeRound([0, graphWidth])
             .paddingInner(0.1)
-            .align(0.2)
-            
-        const xLabels = sortedData.map(function(d: LayeredData) { return d.label; });
-        x.domain(xLabels);        
+            .align(0.2)                            
         
-        const xAxis = d3.axisBottom(x)
-            .tickValues(x.domain())
-            .scale(x)
-            .tickSizeOuter(0);
+        const xAxis = orientation === 'horizontal' 
+                    ?d3.axisBottom(labelScale)
+                        .tickValues(labelScale.domain())
+                        .tickSizeOuter(0):
+                     d3.axisBottom(valueScale)
+                        .tickValues(valueScale.domain())
+                        .tickSizeOuter(0);
 
         canvas.select<SVGGElement>(".x-axis")
             .attr("transform", `translate(0,${graphHeight})`)
@@ -234,13 +264,7 @@ export function GroupedBarChart({ data, colorIdx = 0 }: StackedBarChartProps) {
             .style("cursor", "pointer")
             .attr("dy", !isMediumScreen ? ".20em" : "1em")
             .attr("dx", !isMediumScreen ? "-.8em" : "0em")
-            .attr("class", xAxisTextClass);
-
-        /*const yMax = plotted === "all"?
-                d3.max(chartData, d => d3.max(
-                    Object.entries(d)
-                    .filter(d => d[0]!=="total" && d[0]!=="label"), d => (d as any)[1])):
-                        d3.max(chartData, d=>(d[plotted] as number));*/ 
+            .attr("class", xAxisTextClass);        
 
         const yMax =
             plotted === "all"
@@ -256,7 +280,10 @@ export function GroupedBarChart({ data, colorIdx = 0 }: StackedBarChartProps) {
             .domain([0, yMax ?? 0])
             .range([graphHeight, 0]);
                                                                                                 
-        const yAxis = d3.axisLeft(y).ticks(null, "s");            
+        const yAxis = orientation === 'horizontal'
+            ? d3.axisLeft(valueScale)
+                .ticks(null, "s")
+            : d3.axisLeft(labelScale).tickSizeOuter(0);            
                                 
         canvas.select<SVGGElement>(".y-axis")  
             .attr("transform", `translate(0,0)`)                     
@@ -357,6 +384,49 @@ export function GroupedBarChart({ data, colorIdx = 0 }: StackedBarChartProps) {
                     .remove()
             )
             
+        const labelScalePos = (d: ExtendedSeriesPoint) => {
+            const labelPos = labelScale(d.data.label + "") ?? 0;
+            if(plotted === "all"){                                    
+                const idx = keys.indexOf(d.barKey) || 0
+                return labelPos + (idx * (labelScale.bandwidth()/keys.length))
+            }                            
+            return labelPos
+        }
+
+        const labelScaleBandWidth = () => {
+            return plotted === "all"?
+                labelScale.bandwidth()/keys.length:labelScale.bandwidth()
+        }
+
+        const valueScalePos = (d: ExtendedSeriesPoint) => {
+            return orientation === 'horizontal'?
+                graphHeight - (valueScale(d[0]) - valueScale(d[1])):
+                    valueScale(0)
+        }
+
+        const valueScaleDimension = (d: ExtendedSeriesPoint) => {
+            const rectDimension = orientation === 'horizontal'?
+                valueScale(d[0]) - valueScale(d[1]):
+                    valueScale(d[1]) - valueScale(d[0]);
+            return isNaN(rectDimension)?0:rectDimension<0?0:rectDimension;
+        }
+
+        const rectXPos = (d: ExtendedSeriesPoint) => {            
+            return orientation === 'horizontal' ? labelScalePos(d) : valueScalePos(d)
+        }
+
+        const rectWidth = (d: ExtendedSeriesPoint) => {            
+            return orientation === 'horizontal' ? labelScaleBandWidth() : valueScaleDimension(d)
+        }
+
+        const rectYPos = (d: ExtendedSeriesPoint) => {            
+            return orientation === 'horizontal' ? valueScalePos(d) : labelScalePos(d)
+        }
+
+        const rectHeight = (d: ExtendedSeriesPoint) => {            
+            return orientation === 'horizontal' ? valueScaleDimension(d) : labelScaleBandWidth()
+        }
+        
         serie.selectAll<SVGRectElement, ExtendedSeriesPoint>("rect")
             .data(
                 (d) => d,
@@ -369,40 +439,45 @@ export function GroupedBarChart({ data, colorIdx = 0 }: StackedBarChartProps) {
                     theBars = enter
                         .append("rect")
                         .attr("class", updateRectClass)
-                        .attr("x", function(d) {
-                            const idx = keys.indexOf(d.barKey)
-                            const xPos = x(d.data.label + "") ?? 0
-                            return xPos + (idx * (x.bandwidth()/keys.length)); 
+                        .attr("x", function(d){
+                            if(orientation === 'horizontal'){
+                                return rectXPos(d)
+                            }else{
+                                //if(isFirstRender)return graphWidth - (margin.left + margin.right);
+                                return 0//graphWidth;
+                            }
                         })
                         .attr("width", function(d){
-                            return plotted === "all"?
-                                x.bandwidth()/keys.length:x.bandwidth()
-                        }) 
-                        .attr("y", function(d){ 
-                            if(isFirstRender)return graphHeight - (margin.bottom + margin.top);
-                            return graphHeight;
-                        })
-                        .attr("height", 0)
-                            .transition().duration(animDuration)//.delay(animDuration)
-                            .attr("x", function(d){                                                        
-                                const xPos = x(d.data.label + "") ?? 0;
-                                if(plotted === "all"){                                    
-                                    const idx = keys.indexOf(d.barKey) || 0
-                                    return xPos + (idx * (x.bandwidth()/keys.length))
-                                }                            
-                                return xPos
-                            })
-                            .attr("width", function(d){
+                            if(orientation === 'horizontal'){
                                 return plotted === "all"?
-                                    x.bandwidth()/keys.length:x.bandwidth()
-                            })                        
-                            .attr("height", function(d){                                                                
-                                const rectHeight = y(d[0]) - y(d[1]);
-                                return isNaN(rectHeight)?0:rectHeight<0?0:rectHeight;
-                            })
-                            .attr("y", function(d){ 
-                                return graphHeight - (y(d[0]) - y(d[1]))
-                            })
+                                labelScale.bandwidth()/keys.length:labelScale.bandwidth()
+                            }else{
+                                return 0
+                            }
+                            
+                        }) 
+                        .attr("y", function(d){
+                            if(orientation === 'horizontal'){
+                                if(isFirstRender)return graphHeight - (margin.bottom + margin.top);
+                                return graphHeight;
+                            }else{
+                                return rectYPos(d)
+                            }
+                            
+                        })
+                        .attr("height", function(d){
+                            if(orientation === 'horizontal'){
+                                return 0
+                            }else{
+                                return plotted === "all"?
+                                labelScale.bandwidth()/keys.length:labelScale.bandwidth()
+                            }
+                        })
+                            .transition().duration(animDuration)//.delay(animDuration)
+                            .attr("x", rectXPos)
+                            .attr("width", rectWidth)                        
+                            .attr("height", rectHeight)
+                            .attr("y", rectYPos)
                                             
                     return theBars
                 },
@@ -416,33 +491,18 @@ export function GroupedBarChart({ data, colorIdx = 0 }: StackedBarChartProps) {
             )
             .attr("class", updateRectClass)
             .transition().duration(animDuration)//.delay(isFirstRender?animDuration:0)
-                .attr("x", function(d){                                                        
-                    const xPos = x(d.data.label + "") ?? 0;
-                    if(plotted === "all"){
-                        const idx = keys.indexOf(d.barKey) || 0
-                        return xPos + (idx * (x.bandwidth()/keys.length))
-                    }                            
-                    return xPos
-                })
-                .attr("width", function(d){
-                    return plotted === "all"?
-                        x.bandwidth()/keys.length:x.bandwidth()
-                })                        
-                .attr("height", function(d){                                                                
-                    const rectHeight = y(d[0]) - y(d[1]);
-                    return isNaN(rectHeight)?0:rectHeight<0?0:rectHeight;
-                })
-                .attr("y", function(d){ 
-                    return graphHeight - (y(d[0]) - y(d[1]))
-                });
+                .attr("x", rectXPos)
+                .attr("width", rectWidth)                        
+                .attr("height", rectHeight)
+                .attr("y", rectYPos);
 
         serie
             .selectAll<SVGRectElement, ExtendedSeriesPoint>("rect")
                 .on("mouseover", function(e, d){
                     //unhoverLegend()
                     
-                    d3.select(".x-axis").selectAll("text")
-                        .filter(dText=>dText === d.data.label).attr("class", xAxisTextClass + " " + stackedBarStyles.hoveredAxisText)
+                    d3.select(orientation === "horizontal"?".x-axis":".y-axis").selectAll("text")
+                        .filter(dText=>dText === d.data.label).attr("class", (orientation === "horizontal"?xAxisTextClass:"") + " " + stackedBarStyles.hoveredAxisText)
 
                     tooltip.style("opacity", 1)
                         .select("p.title").text(d.data.label)
@@ -465,15 +525,16 @@ export function GroupedBarChart({ data, colorIdx = 0 }: StackedBarChartProps) {
                     moveTooltip(tooltip, {e, svg:svgNode as SVGSVGElement, yScale: y})
                 })
                 .on("mouseout", function(e, d){
-                    d3.select(".x-axis").selectAll("text")
-                        .filter(dText=>dText === d.data.label).attr("class", xAxisTextClass)
+                    d3.select(orientation === "horizontal"?".x-axis":".y-axis").selectAll("text")
+                        .filter(dText=>dText === d.data.label)
+                        .attr("class", orientation === "horizontal"?xAxisTextClass:"")
 
                     tooltip.style("opacity", 0);
                 })
             
                          
 
-    }, [ ...renderDeps, isSorted, chartData, keys, hovered, justPlotted, dataJustChanged ]);
+    }, [ ...renderDeps, isSorted, chartData, keys, hovered, justPlotted, orientation, dataJustChanged ]);
     
     return (
         <div 

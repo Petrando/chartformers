@@ -289,9 +289,7 @@ export function StackedBarChart({ data, focusOnPlot = false, colorIdx = 0, orien
             
         const xAxisTextClass = !isMediumScreen?stackedBarStyles.rotatedAxisText:
             stackedBarStyles.axisText;
-        
-        const x = orientation === 'horizontal' ? labelScale : valueScale;
-                            
+                                            
         const prevXLabels: string[] = [];
         
         const xAxis = orientation === 'horizontal' 
@@ -310,11 +308,7 @@ export function StackedBarChart({ data, focusOnPlot = false, colorIdx = 0, orien
             .style("cursor", "pointer")
             .attr("dy", !isMediumScreen ? ".20em" : "1em")
             .attr("dx", !isMediumScreen ? "-.8em" : "0em")
-            .attr("class", xAxisTextClass);
-        
-        const y = orientation === 'horizontal'
-            ? valueScale
-            : labelScale;                                                                                   
+            .attr("class", xAxisTextClass);                                                                              
 
         const yAxis = orientation === 'horizontal'
             ? d3.axisLeft(valueScale)
@@ -443,7 +437,7 @@ export function StackedBarChart({ data, focusOnPlot = false, colorIdx = 0, orien
         const labelScalePos = (d: ExtendedSeriesPoint) => {             
             return labelScale(d.data.label + "") ?? 0
         }
-        
+
         const labelScaleBandWidth = labelScale.bandwidth()
 
         const valueScalePos = (d: ExtendedSeriesPoint) => {
@@ -561,7 +555,7 @@ export function StackedBarChart({ data, focusOnPlot = false, colorIdx = 0, orien
                                 const height = isNaN(rectHeight) ? 0 : rectHeight < 0 ? 0 : rectHeight;
                                 const yPos = yFinal + height;
 
-                                if(isFirstRender) return 0// graphHeight - (margin.bottom + margin.top);
+                                if(isFirstRender) return  graphHeight - (margin.bottom + margin.top);
                                 return yPos;
 
                             }

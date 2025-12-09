@@ -6,7 +6,7 @@ import { englishFreq, germanFreq, categoryDataV1, categoryDataV2, categoryDataV3
 import controlStyles from './controls.module.css'
 
 const App = () => {
-  const [selectedData, setSelectedData] = useState<string>("stack1");
+  const [selectedData, setSelectedData] = useState<string>("stack2");
 
   const handleChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     setSelectedData(e.target.value);
@@ -71,7 +71,7 @@ const App = () => {
         </div>
         <div style={{ flex:1, width: "100%", height: "100%", overflow:"hidden" }}>       
           {/*<PieChart data={pointData} innerRadius={0.9} />*/}
-          <StackedBarChart data={selectedStackedData} orientation='vertical' />
+          <GroupedBarChart data={selectedStackedData} orientation='vertical' />
         </div>
       </div>
       <div style={{width: "80vw", maxWidth:"384px", height: "192px", position: "relative" }}>       

@@ -237,7 +237,7 @@ export function GroupedBarChart({ data, colorIdx = 0, orientation = 'horizontal'
                 )
                 : d3.max(chartData, d => d[plotted] as number);
         const valueScale = d3.scaleLinear()
-            .domain(orientation === 'horizontal'?[0, valueMax ?? 0]:[0, valueMax ?? 0])
+            .domain([0, valueMax ?? 0])
             .range(orientation === 'horizontal'?[graphHeight, 0]:[0, graphWidth]);
                                                    
         const xAxis = orientation === 'horizontal' 

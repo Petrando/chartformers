@@ -13,7 +13,7 @@ import stackedBarStyles from './stacked-barchart.module.css';
 import { LayeredData, ExtendedSeries, ExtendedSeriesPoint, StackedBarChartProps } from './types';
 import { useUIControls } from '../../hooks/useUIControls';
 
-export function PercentageBarChart({ data, colorIdx = 0 }: StackedBarChartProps) {
+export function PercentageBarChart({ data, colorIdx = 0, orientation = 'horizontal' }: StackedBarChartProps) {
     const [ref, parentSize] = useParentSize<HTMLDivElement>();
     const { width, height } = parentSize;
     const [hovered, setHovered] = useState<string>("")
@@ -189,6 +189,18 @@ export function PercentageBarChart({ data, colorIdx = 0 }: StackedBarChartProps)
         const xAxisTextClass = !isMediumScreen?stackedBarStyles.rotatedAxisText:
             stackedBarStyles.axisText;
 
+        const labels = sortedData.map(function(d: LayeredData) { return d.label; });
+        const labelScale = d3.scaleBand<string | number>()
+            .domain(labels)
+            .rangeRound(orientation === 'horizontal'?[0, graphWidth]:[graphHeight, 0])
+            .paddingInner(0.1)
+            .align(0.2)
+
+        const valueMax = d3.max(chartData, (d: LayeredData) => d.total)                                                                   
+        const valueScale = d3.scaleLinear()
+            .domain([0, isPercentage?1:valueMax || 0]).nice()
+            .range(orientation === 'horizontal'?[graphHeight, 0]:[0, graphWidth]);
+
         const x: d3.ScaleBand<string | number> = d3.scaleBand<string | number>()
             .rangeRound([0, graphWidth])
             .paddingInner(0.1)
@@ -199,10 +211,14 @@ export function PercentageBarChart({ data, colorIdx = 0 }: StackedBarChartProps)
 
         const prevXLabels: string[] = [];
         
-        const xAxis = d3.axisBottom(x)
-            .tickValues(x.domain())
-            .scale(x)
-            .tickSizeOuter(0);
+        const xAxis = orientation === 'horizontal' 
+            ?d3.axisBottom(labelScale)
+                .tickValues(labelScale.domain())
+                .tickSizeOuter(0):
+            d3.axisBottom(valueScale)
+                .tickValues(valueScale.domain())
+                .ticks(null, isPercentage?".0%":"s")
+                .tickSizeOuter(0);
 
         canvas.select<SVGGElement>(".x-axis")
             .attr("transform", `translate(0,${graphHeight})`)
@@ -218,9 +234,12 @@ export function PercentageBarChart({ data, colorIdx = 0 }: StackedBarChartProps)
 
         const y = d3.scaleLinear()
             .domain([0, isPercentage?1:yMax || 0]).nice()
-            .range([graphHeight, 0]);                            
-
-        const yAxis = d3.axisLeft(y).ticks(null, isPercentage?".0%":"s");            
+            .range([graphHeight, 0]);                                        
+            
+        const yAxis = orientation === 'horizontal'
+            ? d3.axisLeft(valueScale)
+                .ticks(null, isPercentage?".0%":"s")
+            : d3.axisLeft(labelScale).tickSizeOuter(0);            
                                 
         canvas.select<SVGGElement>(".y-axis")  
             .attr("transform", `translate(0,0)`)                      
@@ -250,38 +269,7 @@ export function PercentageBarChart({ data, colorIdx = 0 }: StackedBarChartProps)
             newSeries.key = seriesKey;
             return newSeries;
         });        
-
-        function strokeDasharray(d: ExtendedSeriesPoint){
-            if(d.barKey === hovered){
-                return "none"
-            }
-            const rectWidth = x.bandwidth()
-            const baseHeight = y(d[0]) - y(d[1])
-            const rectHeight = isNaN(baseHeight)?0:baseHeight<0?0:baseHeight    
-            
-            const isTopLayer = keys.indexOf(d.barKey ?? "") === keys.length - 1
-                || d.barKey === plotted
-            if(isTopLayer){
-                return `${rectWidth + rectHeight} ${rectWidth} ${rectHeight}`
-            }                
-            return `${rectHeight} ${rectWidth}`
-        }
-
-        function strokeDashoffset(d: ExtendedSeriesPoint){
-            const rectWidth = x.bandwidth()
-            const isTopLayer = keys.indexOf(d.barKey ?? "") === keys.length - 1
-                || d.barKey === plotted
-
-            return isTopLayer?0:(rectWidth * -1)
-        }
-
-        const updateRectClass = (d:ExtendedSeriesPoint) => {
-                if(hovered !== "" && hovered === d.barKey){
-                    return `rect ${stackedBarStyles.rectLegendHovered}`
-                }
-                return `rect ${stackedBarStyles.rect}`
-        }
-
+        
         let serie = canvas.selectAll<SVGGElement, ExtendedSeries>(".serie")
             .data(extendedDataLayers, function(d){return d.key})
             .join(
@@ -321,6 +309,79 @@ export function PercentageBarChart({ data, colorIdx = 0 }: StackedBarChartProps)
                     .attr("height", 0)
                     .remove()                    
             )
+
+        const labelScalePos = (d: ExtendedSeriesPoint) => {             
+            return labelScale(d.data.label + "") ?? 0
+        }
+
+        const labelScaleBandWidth = labelScale.bandwidth()
+
+        const valueScalePos = (d: ExtendedSeriesPoint) => {
+            return valueScale(orientation === 'horizontal'?d[1]:d[0])
+        }
+
+        const valueScaleDimension = (d: ExtendedSeriesPoint) => {
+            const dimension = orientation === 'horizontal'?valueScale(d[0]) - valueScale(d[1]):
+                valueScale(d[1]) - valueScale(d[0]);
+            return isNaN(dimension)?0:dimension<0?0:dimension;
+        }
+
+        const rectXPos = (d: ExtendedSeriesPoint) => {            
+            return orientation === 'horizontal' ? labelScalePos(d) : valueScalePos(d)
+        }
+
+        const rectWidth = (d: ExtendedSeriesPoint) => {            
+            return orientation === 'horizontal' ? labelScaleBandWidth : valueScaleDimension(d)
+        }
+
+        const rectYPos = (d: ExtendedSeriesPoint) => {            
+            return orientation === 'horizontal' ? valueScalePos(d) : labelScalePos(d)
+        }
+
+        const rectHeight = (d: ExtendedSeriesPoint) => {            
+            return orientation === 'horizontal' ? valueScaleDimension(d) : labelScaleBandWidth
+        }
+
+        function strokeDasharray(d: ExtendedSeriesPoint){
+            if(d.barKey === hovered){
+                return "none"
+            }
+            const rectStrokeWidth = rectWidth(d);            
+            const rectStrokeHeight = rectHeight(d);    
+            
+            const isTopLayer = keys.indexOf(d.barKey) === keys.length - 1
+                || d.barKey === plotted[0]
+
+            if(isTopLayer){
+                if(orientation === 'horizontal'){
+                    return `${rectStrokeWidth + rectStrokeHeight} ${rectStrokeWidth} ${rectStrokeHeight}`
+                }else{
+                    return `${rectStrokeWidth + rectStrokeHeight + rectStrokeWidth}`;
+                }
+            }
+
+            return orientation === 'horizontal'?
+                `${rectStrokeHeight} ${rectStrokeWidth}`:
+                    `${rectStrokeWidth} ${rectStrokeHeight}`
+        }
+
+        function strokeDashoffset(d: ExtendedSeriesPoint){
+            const rectStrokeWidth = rectWidth(d);            
+            const isTopLayer =
+                keys.indexOf(d.barKey) === keys.length - 1;
+
+            if(orientation === 'horizontal'){
+                return isTopLayer ? 0 : rectStrokeWidth * -1;
+            }
+            return 0
+        }
+
+        const updateRectClass = (d:ExtendedSeriesPoint) => {
+                if(hovered !== "" && hovered === d.barKey){
+                    return `rect ${stackedBarStyles.rectLegendHovered}`
+                }
+                return `rect ${stackedBarStyles.rect}`
+        }
             
         serie.selectAll<SVGRectElement, ExtendedSeriesPoint>("rect")
             .data(
@@ -334,41 +395,52 @@ export function PercentageBarChart({ data, colorIdx = 0 }: StackedBarChartProps)
                     theBars = enter
                         .append("rect")
                         .attr("class", updateRectClass)
-                        .attr("x", function(d) {return x(d.data.label + "") ?? 0; })
-                        .attr("width", x.bandwidth())
-                        .attr("y", function(d){                                 
-                            if(!prevXLabels.includes(d.data.label + "")){
-                                return graphHeight - margin.bottom
+                        .attr("x", function(d) {
+                            if(orientation === "horizontal"){
+                                return x(d.data.label + "") ?? 0;
+                            }else{
+                                return valueScale(0)
                             }
-                            //const yFinal = plotted==="all"?y(d[1]):
-                                //d.key.startsWith(plotted)?graphHeight - (y(d[0]) - y(d[1])):y(d[1])                                                                
-
-                            const yFinal = y(d[1]);
-                            const rectHeight = y(d[0]) - y(d[1]);
-                            const height = isNaN(rectHeight)?0:rectHeight<0?0:rectHeight
-                            return yFinal + height;
+                         })
+                        .attr("width", function(d){
+                            if(orientation === 'horizontal'){
+                                return labelScale.bandwidth()
+                            }else{
+                                return 0
+                            }
                         })
-                        .attr("height", 0)
+                        .attr("y", function(d){    
+                            if(orientation === 'horizontal'){
+                                if(!prevXLabels.includes(d.data.label + "")){
+                                    return graphHeight - margin.bottom
+                                }
+                                //const yFinal = plotted==="all"?y(d[1]):
+                                    //d.key.startsWith(plotted)?graphHeight - (y(d[0]) - y(d[1])):y(d[1])                                                                
+
+                                const yFinal = valueScale(d[1]);
+                                const rectHeight = valueScale(d[0]) - valueScale(d[1]);
+                                const height = isNaN(rectHeight)?0:rectHeight<0?0:rectHeight
+                                return yFinal + height;
+                            }else{
+                                return rectYPos(d)
+                            }                             
+                            
+                        })
+                        .attr("height", function(d){
+                            if(orientation === 'horizontal'){
+                                return 0
+                            }else{
+                                return rectHeight(d)
+                            }
+                        })
                         .attr("stroke-dasharray", strokeDasharray)
                         .attr("stroke-dashoffset", strokeDashoffset)
                             .transition().duration(animDuration)
                             //.delay(animDelay)
-                        .attr("x", function(d){                                                        
-                            const xPos = x(d.data.label + "") ?? 0;                          
-                            return xPos
-                        })
-                        .attr("width", function(d){
-                            return x.bandwidth()
-                        })                        
-                        .attr("height", function(d){                                                                
-                            const rectHeight = y(d[0]) - y(d[1]);
-                            return isNaN(rectHeight)?0:rectHeight<0?0:rectHeight;
-                        })
-                        .attr("y", function(d){                                                                                                 
-                            //return plotted==="all"?y(d[1]):
-                                //d.key.startsWith(plotted)?graphHeight - (y(d[0]) - y(d[1])):y(d[1]);
-                            return y(d[1]);
-                        })
+                        .attr("x", rectXPos)
+                        .attr("width", rectWidth)                        
+                        .attr("height", rectHeight)
+                        .attr("y", rectYPos)
                                             
                     return theBars
                 },
@@ -383,23 +455,10 @@ export function PercentageBarChart({ data, colorIdx = 0 }: StackedBarChartProps)
             .attr("stroke-dasharray", strokeDasharray)
             .attr("stroke-dashoffset", strokeDashoffset)
             .transition().duration(animDuration)//.delay(animDelay) 
-                .attr("x", function(d){                                                        
-                    const xPos = x(d.data.label + "") ?? 0;
-                                                
-                    return xPos
-                })                    
-                .attr("width", function(d){
-                    return x.bandwidth()
-                })
-                .attr("height", d => {
-                    const rectHeight = y(d[0]) - y(d[1]);
-                    return isNaN(rectHeight)?0:rectHeight<0?0:rectHeight;
-                })
-                .attr("y", d => {                        
-                    //return plotted==="all"?y(d[1]):
-                        //d.key.startsWith(plotted)?graphHeight - (y(d[0]) - y(d[1])):y(d[1]);
-                        return y(d[1]);
-                }); 
+                .attr("x", rectXPos)                    
+                .attr("width", rectWidth)
+                .attr("height", rectHeight)
+                .attr("y", rectYPos); 
                 
         serie
             .selectAll<SVGRectElement, ExtendedSeriesPoint>("rect")
@@ -437,7 +496,7 @@ export function PercentageBarChart({ data, colorIdx = 0 }: StackedBarChartProps)
                     tooltip.style("opacity", 0);
                 })
 
-    }, [ ...renderDeps, chartData, keys, isPercentage, hovered, dataJustChanged ]);
+    }, [ ...renderDeps, chartData, keys, isPercentage, hovered, orientation, dataJustChanged ]);
     
     return (
         <div 

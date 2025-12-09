@@ -284,7 +284,7 @@ export function StackedBarChart({ data, focusOnPlot = false, colorIdx = 0, orien
                 d3.max(chartData, (d: LayeredData) => d.total); 
 
         const valueScale: d3.ScaleLinear<number, number> = d3.scaleLinear()
-            .domain(orientation === 'horizontal'?[0, valueMax ?? 0]:[0, valueMax ?? 0])
+            .domain([0, valueMax ?? 0])
             .range(orientation === 'horizontal'?[graphHeight, 0]:[0, graphWidth]);
             
         const xAxisTextClass = !isMediumScreen?stackedBarStyles.rotatedAxisText:
@@ -496,8 +496,7 @@ export function StackedBarChart({ data, focusOnPlot = false, colorIdx = 0, orien
         };
 
         const strokeDashoffset = (d: ExtendedSeriesPoint): number => {
-            const rectStrokeWidth = rectWidth(d);
-            const rectStrokeHeight = rectHeight(d);
+            const rectStrokeWidth = rectWidth(d);            
             const isTopLayer =
                 selectedKeys.indexOf(d.barKey) === selectedKeys.length - 1 || d.barKey === plotted[0];
 

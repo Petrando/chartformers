@@ -104,6 +104,10 @@
     
 }
 
+.rect {
+    stroke-width: 1.5;
+}
+
 .rectLegendNotHovered {
     stroke-width: 0;
 }

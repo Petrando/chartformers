@@ -20,7 +20,7 @@ type StackedBarChartPropsExtended =
 
 
 
-export function StackedBarChart({ data, focusOnPlot = false, colorIdx = 0 }: StackedBarChartPropsExtended) {
+export function StackedBarChart({ data, focusOnPlot = false, colorIdx = 0, orientation = 'horizontal' }: StackedBarChartPropsExtended) {
     const [ref, parentSize] = useParentSize<HTMLDivElement>();
     const { width, height } = parentSize;
     const [controlsRef, controlsSize] = useContainerSize<HTMLDivElement>();
@@ -271,24 +271,37 @@ export function StackedBarChart({ data, focusOnPlot = false, colorIdx = 0 }: Sta
             setPrevData(cloneObj(chartData));
         }                       
 
-        const xAxisTextClass = !isMediumScreen?stackedBarStyles.rotatedAxisText:
-            stackedBarStyles.axisText;
-
-        const x: d3.ScaleBand<string> = d3.scaleBand<string>()
-            .rangeRound([0, graphWidth])
+        const labels = sortedData.map(function(d: LayeredData) { return d.label; });
+        const labelScale: d3.ScaleBand<string> = d3.scaleBand<string>()
+            .domain(labels)
+            .rangeRound(orientation === 'horizontal'?[0, graphWidth]:[graphHeight, 0])
             .paddingInner(0.1)
             .align(0.2)
-            
-        const xLabels = sortedData.map(function(d: LayeredData) { return d.label; });
-        x.domain(xLabels);        
 
+        const valueMax = focusOnPlot?(plotted[0] === "all"?
+                d3.max(chartData, (d: LayeredData) => d.total):
+                    d3.max(chartData, (d: LayeredData) => (d[plotted[0]] as number))):
+                d3.max(chartData, (d: LayeredData) => d.total); 
+
+        const valueScale: d3.ScaleLinear<number, number> = d3.scaleLinear()
+            .domain(orientation === 'horizontal'?[0, valueMax ?? 0]:[0, valueMax ?? 0])
+            .range(orientation === 'horizontal'?[graphHeight, 0]:[0, graphWidth]);
+            
+        const xAxisTextClass = !isMediumScreen?stackedBarStyles.rotatedAxisText:
+            stackedBarStyles.axisText;
+        
+        const x = orientation === 'horizontal' ? labelScale : valueScale;
+                            
         const prevXLabels: string[] = [];
         
-        const xAxis = d3.axisBottom(x)
-            .tickValues(x.domain())
-            .scale(x)
-            .tickSizeOuter(0);
-
+        const xAxis = orientation === 'horizontal' 
+            ?d3.axisBottom(labelScale)
+                .tickValues(labelScale.domain())
+                .tickSizeOuter(0):
+             d3.axisBottom(valueScale)
+                .tickValues(valueScale.domain())
+                .tickSizeOuter(0);
+            
         canvas.select<SVGGElement>(".x-axis")
             .attr("transform", `translate(0,${graphHeight})`)
             .transition().duration(animDuration)
@@ -298,20 +311,18 @@ export function StackedBarChart({ data, focusOnPlot = false, colorIdx = 0 }: Sta
             .attr("dy", !isMediumScreen ? ".20em" : "1em")
             .attr("dx", !isMediumScreen ? "-.8em" : "0em")
             .attr("class", xAxisTextClass);
+        
+        const y = orientation === 'horizontal'
+            ? valueScale
+            : labelScale;                                                                                   
 
-        const yMax = focusOnPlot?(plotted[0] === "all"?
-                d3.max(chartData, (d: LayeredData) => d.total):
-                    d3.max(chartData, (d: LayeredData) => (d[plotted[0]] as number))):
-                d3.max(chartData, (d: LayeredData) => d.total); 
-
-        const y: d3.ScaleLinear<number, number> = d3.scaleLinear()
-            .domain([0, yMax ?? 0])
-            .range([graphHeight, 0]);                                                                                   
-
-        const yAxis = d3.axisLeft(y).ticks(null, "s");            
+        const yAxis = orientation === 'horizontal'
+            ? d3.axisLeft(valueScale)
+                .ticks(null, "s")
+            : d3.axisLeft(labelScale).tickSizeOuter(0);                    
                                         
         canvas.select<SVGGElement>(".y-axis")  
-            .attr("transform", `translate(0,0)`)               
+            //.attr("transform", `translate(0,0)`)               
                 .transition().duration(isFirstRender?0:animDuration)
             .call(yAxis)
 
@@ -428,29 +439,79 @@ export function StackedBarChart({ data, focusOnPlot = false, colorIdx = 0 }: Sta
                     .attr("height", 0)
                     .remove()
             );
+
+        const labelScalePos = (d: ExtendedSeriesPoint) => {             
+            return labelScale(d.data.label + "") ?? 0
+        }
+        
+        const labelScaleBandWidth = labelScale.bandwidth()
+
+        const valueScalePos = (d: ExtendedSeriesPoint) => {
+            const orientationDimension = orientation === 'horizontal'?graphHeight:graphWidth
+            if(isFirstRender) return 0
+            
+            return plotted[0] === "all"
+                ? valueScale(orientation === 'horizontal'?d[1]:d[0])
+                : /*d.key.startsWith(plotted)
+                ?*/ (focusOnPlot && orientation !== 'horizontal')?valueScale(0):(orientationDimension - (valueScale(d[0]) - valueScale(d[1])))
+                //: y(d[1]);
+        }
+
+        const valueScaleDimension = (d: ExtendedSeriesPoint) => {
+            const dimension = orientation === 'horizontal'?valueScale(d[0]) - valueScale(d[1]):
+                valueScale(d[1]) - valueScale(d[0])
+            
+            return isNaN(dimension) ? 0 : dimension < 0?0:dimension;
+        }
+
+        const rectXPos = (d: ExtendedSeriesPoint) => {            
+            return orientation === 'horizontal' ? labelScalePos(d) : valueScalePos(d)
+        }
+
+        const rectWidth = (d: ExtendedSeriesPoint) => {            
+            return orientation === 'horizontal' ? labelScaleBandWidth : valueScaleDimension(d)
+        }
+
+        const rectYPos = (d: ExtendedSeriesPoint) => {            
+            return orientation === 'horizontal' ? valueScalePos(d) : labelScalePos(d)
+        }
+
+        const rectHeight = (d: ExtendedSeriesPoint) => {            
+            return orientation === 'horizontal' ? valueScaleDimension(d) : labelScaleBandWidth
+        }
         
         const strokeDasharray = (d: ExtendedSeriesPoint): string => {
             if(d.barKey === hovered){
                 return "none"
             }
-            const rectWidth = x.bandwidth()
-            const baseHeight = y(d[0]) - y(d[1])
-            const rectHeight = isNaN(baseHeight)?0:baseHeight<0?0:baseHeight    
+            const rectStrokeWidth = rectWidth(d);            
+            const rectStrokeHeight = rectHeight(d);    
             
             const isTopLayer = selectedKeys.indexOf(d.barKey) === selectedKeys.length - 1
                 || d.barKey === plotted[0]
             if(isTopLayer){
-                return `${rectWidth + rectHeight} ${rectWidth} ${rectHeight}`
+                if(orientation === 'horizontal'){
+                    return `${rectStrokeWidth + rectStrokeHeight} ${rectStrokeWidth} ${rectStrokeHeight}`
+                }else{
+                    return `${rectStrokeWidth + rectStrokeHeight + rectStrokeWidth}`;
+                }
             }                
-            return `${rectHeight} ${rectWidth}`
+            return orientation === 'horizontal'?
+                `${rectStrokeHeight} ${rectStrokeWidth}`:
+                    `${rectStrokeWidth} ${rectStrokeHeight}`
         };
 
         const strokeDashoffset = (d: ExtendedSeriesPoint): number => {
-            const rectWidth = x.bandwidth();
+            const rectStrokeWidth = rectWidth(d);
+            const rectStrokeHeight = rectHeight(d);
             const isTopLayer =
                 selectedKeys.indexOf(d.barKey) === selectedKeys.length - 1 || d.barKey === plotted[0];
 
-            return isTopLayer ? 0 : rectWidth * -1;
+            if(orientation === 'horizontal'){
+                return isTopLayer ? 0 : rectStrokeWidth * -1;
+            }
+            return 0
+            
         };
 
         const updateRectClass = (d: ExtendedSeriesPoint) => {            
@@ -458,7 +519,7 @@ export function StackedBarChart({ data, focusOnPlot = false, colorIdx = 0 }: Sta
                 return `rect ${stackedBarStyles.rectLegendHovered}`
             }
             return `rect ${stackedBarStyles.rect}`
-        }
+        }       
         
         serie
             .selectAll<SVGRectElement, ExtendedSeriesPoint>("rect")
@@ -471,44 +532,58 @@ export function StackedBarChart({ data, focusOnPlot = false, colorIdx = 0 }: Sta
                     const theBars = enter
                         .append("rect")
                         .attr("class", `rect ${styles.rect}`)
-                        .attr("x", (d) => x(d.data.label + "") ?? 0)
-                        .attr("width", x.bandwidth())
-                        .attr("y", (d) => {
-                            if (!prevXLabels.includes(d.data.label)) return graphHeight;
-
-                            const yFinal =
-                                plotted[0] === "all"
-                                ? y(d[1])
-                                : d.key.startsWith(plotted[0])
-                                ? graphHeight - (y(d[0]) - y(d[1]))
-                                : y(d[1]);
-
-                            const rectHeight = y(d[0]) - y(d[1]);
-                            const height = isNaN(rectHeight) ? 0 : rectHeight < 0 ? 0 : rectHeight;
-                            const yPos = yFinal + height;
-
-                            if(isFirstRender) return 0// graphHeight - (margin.bottom + margin.top);
-                            return yPos;
+                        .attr("x", function(d){
+                            if(orientation === 'horizontal'){
+                                return rectXPos(d)
+                            }else{
+                                return valueScale(0)
+                            }
                         })
-                        .attr("height", 0)
+                        .attr("width", function(d){
+                            if(orientation === 'horizontal'){
+                                return rectWidth(d)
+                            }else{
+                                return 0
+                            }
+                        })
+                        .attr("y", (d) => {
+                            if(orientation === 'horizontal'){
+                                if (!prevXLabels.includes(d.data.label)) return graphHeight;
+
+                                const yFinal =
+                                    plotted[0] === "all"
+                                    ? valueScale(d[1])
+                                    : d.key.startsWith(plotted[0])
+                                    ? graphHeight - (valueScale(d[0]) - valueScale(d[1]))
+                                    : valueScale(d[1]);
+
+                                const rectHeight = valueScale(d[0]) - valueScale(d[1]);
+                                const height = isNaN(rectHeight) ? 0 : rectHeight < 0 ? 0 : rectHeight;
+                                const yPos = yFinal + height;
+
+                                if(isFirstRender) return 0// graphHeight - (margin.bottom + margin.top);
+                                return yPos;
+
+                            }
+                            else{
+                                return rectYPos(d)
+                            }
+                        })
+                        .attr("height", function(d){
+                            if(orientation === 'horizontal'){
+                                return 0
+                            }else{
+                                return rectHeight(d)
+                            }
+                        })
                         .attr("stroke-dasharray", strokeDasharray)
                         .attr("stroke-dashoffset", strokeDashoffset)
                             .transition()
                             .duration(animDuration)
-                        .attr("x", (d) => x(d.data.label + "") ?? 0)
-                        .attr("width", x.bandwidth())
-                        .attr("height", (d) => {
-                            const rectHeight = y(d[0]) - y(d[1]);
-                                return isNaN(rectHeight) ? 0 : rectHeight < 0 ? 0 : rectHeight;
-                        })
-                        .attr("y", (d) => {
-                            if(isFirstRender) return 0
-                            return plotted[0] === "all"
-                                ? y(d[1])
-                                : /*d.key.startsWith(plotted)
-                                ?*/ graphHeight - (y(d[0]) - y(d[1]))
-                                //: y(d[1]);
-                        });
+                        .attr("x", rectXPos)
+                        .attr("width", rectWidth)
+                        .attr("height", rectHeight)
+                        .attr("y", rectYPos);
 
                     return theBars;
                 },
@@ -525,20 +600,10 @@ export function StackedBarChart({ data, focusOnPlot = false, colorIdx = 0 }: Sta
             .attr("stroke-dasharray", strokeDasharray)
             .attr("stroke-dashoffset", strokeDashoffset)
             .transition().duration(animDuration)                
-                .attr("x", (d) => x(d.data.label + "") ?? 0)
-                .attr("width", x.bandwidth())
-                .attr("height", (d) => {
-                    const rectHeight = y(d[0]) - y(d[1]);
-                        return isNaN(rectHeight) ? 0 : rectHeight < 0 ? 0 : rectHeight;
-                })
-                .attr("y", (d) => {
-                    if(isFirstRender) return 0
-                    return plotted[0] === "all"
-                        ? y(d[1])
-                        : /*d.key.startsWith(plotted)
-                        ?*/ graphHeight - (y(d[0]) - y(d[1]))
-                        //: y(d[1]);
-                })
+                .attr("x", rectXPos)
+                .attr("width", rectWidth)
+                .attr("height", rectHeight)
+                .attr("y", rectYPos)
                 .on("start", function(){})
                 .on("end", function(){});
 
@@ -548,9 +613,9 @@ export function StackedBarChart({ data, focusOnPlot = false, colorIdx = 0 }: Sta
                     //unhoverLegend()
                     //console.log("hovered on ", d);
                     
-                    d3.select(".x-axis").selectAll("text")
+                    d3.select(orientation === "horizontal"?".x-axis":".y-axis").selectAll("text")
                         .filter(dText=>dText === d.data.label)
-                        .attr("class", xAxisTextClass + " " + stackedBarStyles.hoveredAxisText)
+                        .attr("class", (orientation === "horizontal"?xAxisTextClass:"") + " " + stackedBarStyles.hoveredAxisText)
 
                     tooltip.style("opacity", 1)
                         .select("p.title").text(d.data.label)
@@ -565,22 +630,22 @@ export function StackedBarChart({ data, focusOnPlot = false, colorIdx = 0 }: Sta
                 })
                 .on("touch", function(e, d){
                     //unhoverLegend()
-                    d3.select(".x-axis").selectAll("text")
+                    d3.select(orientation === "horizontal"?".x-axis":".y-axis").selectAll("text")
                         .filter(dText=>dText === d.data.label)
                         //.attr("class", xAxisTextClass)
                 })
                 .on("mousemove", (e, d)=>{                                                                               
-                    moveTooltip(tooltip, {e, svg:svgNode as SVGSVGElement, yScale: y})
+                    moveTooltip(tooltip, {e, svg:svgNode as SVGSVGElement, yScale: valueScale})
                 })
                 .on("mouseout", function(e, d){
-                    d3.select(".x-axis").selectAll("text")
+                    d3.select(orientation === 'horizontal'?".x-axis":".y-axis").selectAll("text")
                         .filter(dText=>dText === d.data.label)
-                        .attr("class", xAxisTextClass)
+                        .attr("class", orientation==='horizontal'?xAxisTextClass:"")
 
                     tooltip.style("opacity", 0);
                 })
 
-    }, [ ...renderDeps, isSorted, chartData, keys, hovered, justPlotted, dataJustChanged ]);
+    }, [ ...renderDeps, isSorted, chartData, keys, hovered, justPlotted, dataJustChanged, orientation ]);
             
     return (
         <div 

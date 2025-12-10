@@ -27,7 +27,7 @@ export function BarChart({
         idx = 0,               // default idx
         type = 'fixed',        // default type
     } = { idx: 0, type: 'fixed' },
-    orientation = 'horizontal'}:BarchartProps) {
+    orientation = 'vertical'}:BarchartProps) {
     const [ref, parentSize] = useParentSize<HTMLDivElement>();    
     const { width, height } = parentSize;
 
@@ -62,8 +62,8 @@ export function BarChart({
         const margin = { 
             top: 20, 
             right: 30, 
-            bottom: orientation==='horizontal'?50:30, 
-            left: orientation === 'horizontal'?25:50
+            bottom: orientation==='vertical'?50:30, 
+            left: orientation === 'vertical'?25:50
         };
         
         const barchartData:pointData[] = isSorted?
@@ -87,17 +87,17 @@ export function BarChart({
         const labelScale = d3
             .scaleBand()
             .domain(barchartData.map(d => d.label))
-            .rangeRound(orientation === 'horizontal'?
+            .rangeRound(orientation === 'vertical'?
                 [0, graphWidth]:[graphHeight, 0])
             .padding(0.1)
 
         const valueScale = d3
             .scaleLinear()
             .domain([0, d3.max(barchartData, (d) => d.value) ?? 0])
-            .rangeRound(orientation === 'horizontal'?
+            .rangeRound(orientation === 'vertical'?
                 [graphHeight, 0]:[0, graphWidth])        
 
-        const xAxis = orientation === 'horizontal'?
+        const xAxis = orientation === 'vertical'?
             d3
                 .axisBottom(labelScale)
                 .tickValues(labelScale.domain())
@@ -116,7 +116,7 @@ export function BarChart({
             .domain([0, d3.max(barchartData, (d) => d.value) ?? 0])
             .rangeRound([height - margin.bottom, margin.top]);                   
 
-        const y1Axis = orientation === 'horizontal'?
+        const y1Axis = orientation === 'vertical'?
             d3.axisLeft(valueScale).ticks(null, "s"):
             d3.axisLeft(labelScale).tickSizeOuter(0)                 
                     
@@ -141,28 +141,28 @@ export function BarChart({
                 enter=>enter.append("rect")
                 .attr("class", "bar")
                     .attr("x", function(d) { 
-                        if(orientation === 'horizontal'){
+                        if(orientation === 'vertical'){
                             return labelScale(d.label) ?? 0; 
                         }else{
                             return valueScale(0);
                         }                        
                     })
                     .attr("width", function(d){
-                        if(orientation === 'horizontal'){
+                        if(orientation === 'vertical'){
                             return labelScale.bandwidth()
                         }else{
                             return 0
                         }
                     })
                     .attr("y", function(d){
-                        if(orientation === 'horizontal'){
+                        if(orientation === 'vertical'){
                             return valueScale(0)
                         }else{
                             return labelScale(d.label) ?? 0;
                         }
                     })
                     .attr("height", function(){
-                        if(orientation === "horizontal"){
+                        if(orientation === "vertical"){
                             return 0
                         }else{
                             return labelScale.bandwidth()
@@ -171,7 +171,7 @@ export function BarChart({
                     .attr("fill", barColor)
                     .transition().duration(animDuration)
                     .attr("y", function(d){
-                        if(orientation === 'horizontal'){
+                        if(orientation === 'vertical'){
                             return valueScale(d.value);
                         }else{
                             return labelScale(d.label) ?? 0;
@@ -179,14 +179,14 @@ export function BarChart({
                         
                     })
                     .attr("width", function(d){
-                        if(orientation === 'horizontal'){
+                        if(orientation === 'vertical'){
                             return labelScale.bandwidth()
                         }else{
                             return valueScale(d.value)
                         }
                     })
                     .attr("height", function(d){  
-                        if(orientation === 'horizontal'){
+                        if(orientation === 'vertical'){
                             return valueScale(0) - valueScale(d.value);
                         }else{
                             return labelScale.bandwidth()
@@ -230,21 +230,21 @@ export function BarChart({
             .transition().duration(animDuration)
                 .attr("fill", barColor)
                 .attr("x", function(d) {
-                    if(orientation === 'horizontal'){
+                    if(orientation === 'vertical'){
                             return labelScale(d.label) ?? 0; 
                         }else{
                             return valueScale(0);
                         }
                  })
                 .attr("width", function(d){
-                    if(orientation === 'horizontal'){
+                    if(orientation === 'vertical'){
                         return labelScale.bandwidth()
                     }else{
                         return valueScale(d.value)
                     }
                 })
                 .attr("y", function(d){
-                    if(orientation === 'horizontal'){
+                    if(orientation === 'vertical'){
                         return valueScale(d.value);
                     }else{
                         return labelScale(d.label) ?? 0;
@@ -252,7 +252,7 @@ export function BarChart({
                     
                 })
                 .attr("height", function(d){  
-                    if(orientation === 'horizontal'){
+                    if(orientation === 'vertical'){
                         return valueScale(0) - valueScale(d.value);
                     }else{
                         return labelScale.bandwidth()

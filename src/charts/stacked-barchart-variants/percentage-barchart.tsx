@@ -13,7 +13,7 @@ import stackedBarStyles from './stacked-barchart.module.css';
 import { LayeredData, ExtendedSeries, ExtendedSeriesPoint, StackedBarChartProps } from './types';
 import { useUIControls } from '../../hooks/useUIControls';
 
-export function PercentageBarChart({ data, colorIdx = 0, orientation = 'horizontal' }: StackedBarChartProps) {
+export function PercentageBarChart({ data, colorIdx = 0, orientation = 'vertical' }: StackedBarChartProps) {
     const [ref, parentSize] = useParentSize<HTMLDivElement>();
     const { width, height } = parentSize;
     const [hovered, setHovered] = useState<string>("")
@@ -192,14 +192,14 @@ export function PercentageBarChart({ data, colorIdx = 0, orientation = 'horizont
         const labels = sortedData.map(function(d: LayeredData) { return d.label; });
         const labelScale = d3.scaleBand<string | number>()
             .domain(labels)
-            .rangeRound(orientation === 'horizontal'?[0, graphWidth]:[graphHeight, 0])
+            .rangeRound(orientation === 'vertical'?[0, graphWidth]:[graphHeight, 0])
             .paddingInner(0.1)
             .align(0.2)
 
         const valueMax = d3.max(chartData, (d: LayeredData) => d.total)                                                                   
         const valueScale = d3.scaleLinear()
             .domain([0, isPercentage?1:valueMax || 0]).nice()
-            .range(orientation === 'horizontal'?[graphHeight, 0]:[0, graphWidth]);
+            .range(orientation === 'vertical'?[graphHeight, 0]:[0, graphWidth]);
 
         const x: d3.ScaleBand<string | number> = d3.scaleBand<string | number>()
             .rangeRound([0, graphWidth])
@@ -211,7 +211,7 @@ export function PercentageBarChart({ data, colorIdx = 0, orientation = 'horizont
 
         const prevXLabels: string[] = [];
         
-        const xAxis = orientation === 'horizontal' 
+        const xAxis = orientation === 'vertical' 
             ?d3.axisBottom(labelScale)
                 .tickValues(labelScale.domain())
                 .tickSizeOuter(0):
@@ -236,7 +236,7 @@ export function PercentageBarChart({ data, colorIdx = 0, orientation = 'horizont
             .domain([0, isPercentage?1:yMax || 0]).nice()
             .range([graphHeight, 0]);                                        
             
-        const yAxis = orientation === 'horizontal'
+        const yAxis = orientation === 'vertical'
             ? d3.axisLeft(valueScale)
                 .ticks(null, isPercentage?".0%":"s")
             : d3.axisLeft(labelScale).tickSizeOuter(0);            
@@ -317,29 +317,29 @@ export function PercentageBarChart({ data, colorIdx = 0, orientation = 'horizont
         const labelScaleBandWidth = labelScale.bandwidth()
 
         const valueScalePos = (d: ExtendedSeriesPoint) => {
-            return valueScale(orientation === 'horizontal'?d[1]:d[0])
+            return valueScale(orientation === 'vertical'?d[1]:d[0])
         }
 
         const valueScaleDimension = (d: ExtendedSeriesPoint) => {
-            const dimension = orientation === 'horizontal'?valueScale(d[0]) - valueScale(d[1]):
+            const dimension = orientation === 'vertical'?valueScale(d[0]) - valueScale(d[1]):
                 valueScale(d[1]) - valueScale(d[0]);
             return isNaN(dimension)?0:dimension<0?0:dimension;
         }
 
         const rectXPos = (d: ExtendedSeriesPoint) => {            
-            return orientation === 'horizontal' ? labelScalePos(d) : valueScalePos(d)
+            return orientation === 'vertical' ? labelScalePos(d) : valueScalePos(d)
         }
 
         const rectWidth = (d: ExtendedSeriesPoint) => {            
-            return orientation === 'horizontal' ? labelScaleBandWidth : valueScaleDimension(d)
+            return orientation === 'vertical' ? labelScaleBandWidth : valueScaleDimension(d)
         }
 
         const rectYPos = (d: ExtendedSeriesPoint) => {            
-            return orientation === 'horizontal' ? valueScalePos(d) : labelScalePos(d)
+            return orientation === 'vertical' ? valueScalePos(d) : labelScalePos(d)
         }
 
         const rectHeight = (d: ExtendedSeriesPoint) => {            
-            return orientation === 'horizontal' ? valueScaleDimension(d) : labelScaleBandWidth
+            return orientation === 'vertical' ? valueScaleDimension(d) : labelScaleBandWidth
         }
 
         function strokeDasharray(d: ExtendedSeriesPoint){
@@ -353,14 +353,14 @@ export function PercentageBarChart({ data, colorIdx = 0, orientation = 'horizont
                 || d.barKey === plotted[0]
 
             if(isTopLayer){
-                if(orientation === 'horizontal'){
+                if(orientation === 'vertical'){
                     return `${rectStrokeWidth + rectStrokeHeight} ${rectStrokeWidth} ${rectStrokeHeight}`
                 }else{
                     return `${rectStrokeWidth + rectStrokeHeight + rectStrokeWidth}`;
                 }
             }
 
-            return orientation === 'horizontal'?
+            return orientation === 'vertical'?
                 `${rectStrokeHeight} ${rectStrokeWidth}`:
                     `${rectStrokeWidth} ${rectStrokeHeight}`
         }
@@ -370,7 +370,7 @@ export function PercentageBarChart({ data, colorIdx = 0, orientation = 'horizont
             const isTopLayer =
                 keys.indexOf(d.barKey) === keys.length - 1;
 
-            if(orientation === 'horizontal'){
+            if(orientation === 'vertical'){
                 return isTopLayer ? 0 : rectStrokeWidth * -1;
             }
             return 0
@@ -396,21 +396,21 @@ export function PercentageBarChart({ data, colorIdx = 0, orientation = 'horizont
                         .append("rect")
                         .attr("class", updateRectClass)
                         .attr("x", function(d) {
-                            if(orientation === "horizontal"){
+                            if(orientation === "vertical"){
                                 return x(d.data.label + "") ?? 0;
                             }else{
                                 return valueScale(0)
                             }
                          })
                         .attr("width", function(d){
-                            if(orientation === 'horizontal'){
+                            if(orientation === 'vertical'){
                                 return labelScale.bandwidth()
                             }else{
                                 return 0
                             }
                         })
                         .attr("y", function(d){    
-                            if(orientation === 'horizontal'){
+                            if(orientation === 'vertical'){
                                 if(!prevXLabels.includes(d.data.label + "")){
                                     return graphHeight - margin.bottom
                                 }
@@ -427,7 +427,7 @@ export function PercentageBarChart({ data, colorIdx = 0, orientation = 'horizont
                             
                         })
                         .attr("height", function(d){
-                            if(orientation === 'horizontal'){
+                            if(orientation === 'vertical'){
                                 return 0
                             }else{
                                 return rectHeight(d)

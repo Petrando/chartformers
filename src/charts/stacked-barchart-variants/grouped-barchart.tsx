@@ -13,7 +13,7 @@ import stackedBarStyles from './stacked-barchart.module.css';
 import { LayeredData, ExtendedSeriesPoint, ExtendedSeries, StackedBarChartProps } from './types';
 import { useUIControls } from '../../hooks/useUIControls';
 
-export function GroupedBarChart({ data, colorIdx = 0, orientation = 'horizontal' }: StackedBarChartProps) {
+export function GroupedBarChart({ data, colorIdx = 0, orientation = 'vertical' }: StackedBarChartProps) {
     const [ref, parentSize] = useParentSize<HTMLDivElement>();
     const { width, height } = parentSize;
     const [controlsRef, controlsSize] = useContainerSize<HTMLDivElement>();
@@ -217,7 +217,7 @@ export function GroupedBarChart({ data, colorIdx = 0, orientation = 'horizontal'
         
         const labelScale: d3.ScaleBand<string> = d3.scaleBand<string>()
             .domain(labels)
-            .rangeRound(orientation === 'horizontal'?[0, graphWidth]:[graphHeight, 0])
+            .rangeRound(orientation === 'vertical'?[0, graphWidth]:[graphHeight, 0])
             .paddingInner(0.1)
             .align(0.2) 
 
@@ -238,9 +238,9 @@ export function GroupedBarChart({ data, colorIdx = 0, orientation = 'horizontal'
                 : d3.max(chartData, d => d[plotted] as number);
         const valueScale = d3.scaleLinear()
             .domain([0, valueMax ?? 0])
-            .range(orientation === 'horizontal'?[graphHeight, 0]:[0, graphWidth]);
+            .range(orientation === 'vertical'?[graphHeight, 0]:[0, graphWidth]);
                                                    
-        const xAxis = orientation === 'horizontal' 
+        const xAxis = orientation === 'vertical' 
                     ?d3.axisBottom(labelScale)
                         .tickValues(labelScale.domain())
                         .tickSizeOuter(0):
@@ -259,7 +259,7 @@ export function GroupedBarChart({ data, colorIdx = 0, orientation = 'horizontal'
             .attr("dx", !isMediumScreen ? "-.8em" : "0em")
             .attr("class", xAxisTextClass);                      
                                                                                                 
-        const yAxis = orientation === 'horizontal'
+        const yAxis = orientation === 'vertical'
             ? d3.axisLeft(valueScale)
                 .ticks(null, "s")
             : d3.axisLeft(labelScale).tickSizeOuter(0);            
@@ -378,32 +378,32 @@ export function GroupedBarChart({ data, colorIdx = 0, orientation = 'horizontal'
         }
 
         const valueScalePos = (d: ExtendedSeriesPoint) => {
-            return orientation === 'horizontal'?
+            return orientation === 'vertical'?
                 graphHeight - (valueScale(d[0]) - valueScale(d[1])):
                     valueScale(0)
         }
 
         const valueScaleDimension = (d: ExtendedSeriesPoint) => {
-            const rectDimension = orientation === 'horizontal'?
+            const rectDimension = orientation === 'vertical'?
                 valueScale(d[0]) - valueScale(d[1]):
                     valueScale(d[1]) - valueScale(d[0]);
             return isNaN(rectDimension)?0:rectDimension<0?0:rectDimension;
         }
 
         const rectXPos = (d: ExtendedSeriesPoint) => {            
-            return orientation === 'horizontal' ? labelScalePos(d) : valueScalePos(d)
+            return orientation === 'vertical' ? labelScalePos(d) : valueScalePos(d)
         }
 
         const rectWidth = (d: ExtendedSeriesPoint) => {            
-            return orientation === 'horizontal' ? labelScaleBandWidth() : valueScaleDimension(d)
+            return orientation === 'vertical' ? labelScaleBandWidth() : valueScaleDimension(d)
         }
 
         const rectYPos = (d: ExtendedSeriesPoint) => {            
-            return orientation === 'horizontal' ? valueScalePos(d) : labelScalePos(d)
+            return orientation === 'vertical' ? valueScalePos(d) : labelScalePos(d)
         }
 
         const rectHeight = (d: ExtendedSeriesPoint) => {            
-            return orientation === 'horizontal' ? valueScaleDimension(d) : labelScaleBandWidth()
+            return orientation === 'vertical' ? valueScaleDimension(d) : labelScaleBandWidth()
         }
         
         serie.selectAll<SVGRectElement, ExtendedSeriesPoint>("rect")
@@ -419,7 +419,7 @@ export function GroupedBarChart({ data, colorIdx = 0, orientation = 'horizontal'
                         .append("rect")
                         .attr("class", updateRectClass)
                         .attr("x", function(d){
-                            if(orientation === 'horizontal'){
+                            if(orientation === 'vertical'){
                                 return rectXPos(d)
                             }else{
                                 //if(isFirstRender)return graphWidth - (margin.left + margin.right);
@@ -427,7 +427,7 @@ export function GroupedBarChart({ data, colorIdx = 0, orientation = 'horizontal'
                             }
                         })
                         .attr("width", function(d){
-                            if(orientation === 'horizontal'){
+                            if(orientation === 'vertical'){
                                 return plotted === "all"?
                                 labelScale.bandwidth()/keys.length:labelScale.bandwidth()
                             }else{
@@ -436,7 +436,7 @@ export function GroupedBarChart({ data, colorIdx = 0, orientation = 'horizontal'
                             
                         }) 
                         .attr("y", function(d){
-                            if(orientation === 'horizontal'){
+                            if(orientation === 'vertical'){
                                 if(isFirstRender)return graphHeight - (margin.bottom + margin.top);
                                 return graphHeight;
                             }else{
@@ -445,7 +445,7 @@ export function GroupedBarChart({ data, colorIdx = 0, orientation = 'horizontal'
                             
                         })
                         .attr("height", function(d){
-                            if(orientation === 'horizontal'){
+                            if(orientation === 'vertical'){
                                 return 0
                             }else{
                                 return plotted === "all"?
@@ -480,8 +480,8 @@ export function GroupedBarChart({ data, colorIdx = 0, orientation = 'horizontal'
                 .on("mouseover", function(e, d){
                     //unhoverLegend()
                     
-                    d3.select(orientation === "horizontal"?".x-axis":".y-axis").selectAll("text")
-                        .filter(dText=>dText === d.data.label).attr("class", (orientation === "horizontal"?xAxisTextClass:"") + " " + stackedBarStyles.hoveredAxisText)
+                    d3.select(orientation === "vertical"?".x-axis":".y-axis").selectAll("text")
+                        .filter(dText=>dText === d.data.label).attr("class", (orientation === "vertical"?xAxisTextClass:"") + " " + stackedBarStyles.hoveredAxisText)
 
                     tooltip.style("opacity", 1)
                         .select("p.title").text(d.data.label)
@@ -504,9 +504,9 @@ export function GroupedBarChart({ data, colorIdx = 0, orientation = 'horizontal'
                     moveTooltip(tooltip, {e, svg:svgNode as SVGSVGElement, yScale: valueScale})
                 })
                 .on("mouseout", function(e, d){
-                    d3.select(orientation === "horizontal"?".x-axis":".y-axis").selectAll("text")
+                    d3.select(orientation === "vertical"?".x-axis":".y-axis").selectAll("text")
                         .filter(dText=>dText === d.data.label)
-                        .attr("class", orientation === "horizontal"?xAxisTextClass:"")
+                        .attr("class", orientation === "vertical"?xAxisTextClass:"")
 
                     tooltip.style("opacity", 0);
                 })

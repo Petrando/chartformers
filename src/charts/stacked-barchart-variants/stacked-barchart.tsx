@@ -20,7 +20,7 @@ type StackedBarChartPropsExtended =
 
 
 
-export function StackedBarChart({ data, focusOnPlot = false, colorIdx = 0, orientation = 'horizontal' }: StackedBarChartPropsExtended) {
+export function StackedBarChart({ data, focusOnPlot = false, colorIdx = 0, orientation = 'vertical' }: StackedBarChartPropsExtended) {
     const [ref, parentSize] = useParentSize<HTMLDivElement>();
     const { width, height } = parentSize;
     const [controlsRef, controlsSize] = useContainerSize<HTMLDivElement>();
@@ -274,7 +274,7 @@ export function StackedBarChart({ data, focusOnPlot = false, colorIdx = 0, orien
         const labels = sortedData.map(function(d: LayeredData) { return d.label; });
         const labelScale: d3.ScaleBand<string> = d3.scaleBand<string>()
             .domain(labels)
-            .rangeRound(orientation === 'horizontal'?[0, graphWidth]:[graphHeight, 0])
+            .rangeRound(orientation === 'vertical'?[0, graphWidth]:[graphHeight, 0])
             .paddingInner(0.1)
             .align(0.2)
 
@@ -285,14 +285,14 @@ export function StackedBarChart({ data, focusOnPlot = false, colorIdx = 0, orien
 
         const valueScale: d3.ScaleLinear<number, number> = d3.scaleLinear()
             .domain([0, valueMax ?? 0])
-            .range(orientation === 'horizontal'?[graphHeight, 0]:[0, graphWidth]);
+            .range(orientation === 'vertical'?[graphHeight, 0]:[0, graphWidth]);
             
         const xAxisTextClass = !isMediumScreen?stackedBarStyles.rotatedAxisText:
             stackedBarStyles.axisText;
                                             
         const prevXLabels: string[] = [];
         
-        const xAxis = orientation === 'horizontal' 
+        const xAxis = orientation === 'vertical' 
             ?d3.axisBottom(labelScale)
                 .tickValues(labelScale.domain())
                 .tickSizeOuter(0):
@@ -311,7 +311,7 @@ export function StackedBarChart({ data, focusOnPlot = false, colorIdx = 0, orien
             .attr("dx", !isMediumScreen ? "-.8em" : "0em")
             .attr("class", xAxisTextClass);                                                                              
 
-        const yAxis = orientation === 'horizontal'
+        const yAxis = orientation === 'vertical'
             ? d3.axisLeft(valueScale)
                 .ticks(null, "s")
             : d3.axisLeft(labelScale).tickSizeOuter(0);                    
@@ -442,37 +442,37 @@ export function StackedBarChart({ data, focusOnPlot = false, colorIdx = 0, orien
         const labelScaleBandWidth = labelScale.bandwidth()
 
         const valueScalePos = (d: ExtendedSeriesPoint) => {
-            const orientationDimension = orientation === 'horizontal'?graphHeight:graphWidth
+            const orientationDimension = orientation === 'vertical'?graphHeight:graphWidth
             if(isFirstRender) return 0
             
             return plotted[0] === "all"
-                ? valueScale(orientation === 'horizontal'?d[1]:d[0])
+                ? valueScale(orientation === 'vertical'?d[1]:d[0])
                 : /*d.key.startsWith(plotted)
-                ?*/ (focusOnPlot && orientation !== 'horizontal')?valueScale(0):(orientationDimension - (valueScale(d[0]) - valueScale(d[1])))
+                ?*/ (focusOnPlot && orientation !== 'vertical')?valueScale(0):(orientationDimension - (valueScale(d[0]) - valueScale(d[1])))
                 //: y(d[1]);
         }
 
         const valueScaleDimension = (d: ExtendedSeriesPoint) => {
-            const dimension = orientation === 'horizontal'?valueScale(d[0]) - valueScale(d[1]):
+            const dimension = orientation === 'vertical'?valueScale(d[0]) - valueScale(d[1]):
                 valueScale(d[1]) - valueScale(d[0])
             
             return isNaN(dimension) ? 0 : dimension < 0?0:dimension;
         }
 
         const rectXPos = (d: ExtendedSeriesPoint) => {            
-            return orientation === 'horizontal' ? labelScalePos(d) : valueScalePos(d)
+            return orientation === 'vertical' ? labelScalePos(d) : valueScalePos(d)
         }
 
         const rectWidth = (d: ExtendedSeriesPoint) => {            
-            return orientation === 'horizontal' ? labelScaleBandWidth : valueScaleDimension(d)
+            return orientation === 'vertical' ? labelScaleBandWidth : valueScaleDimension(d)
         }
 
         const rectYPos = (d: ExtendedSeriesPoint) => {            
-            return orientation === 'horizontal' ? valueScalePos(d) : labelScalePos(d)
+            return orientation === 'vertical' ? valueScalePos(d) : labelScalePos(d)
         }
 
         const rectHeight = (d: ExtendedSeriesPoint) => {            
-            return orientation === 'horizontal' ? valueScaleDimension(d) : labelScaleBandWidth
+            return orientation === 'vertical' ? valueScaleDimension(d) : labelScaleBandWidth
         }
         
         const strokeDasharray = (d: ExtendedSeriesPoint): string => {
@@ -485,13 +485,13 @@ export function StackedBarChart({ data, focusOnPlot = false, colorIdx = 0, orien
             const isTopLayer = selectedKeys.indexOf(d.barKey) === selectedKeys.length - 1
                 || d.barKey === plotted[0]
             if(isTopLayer){
-                if(orientation === 'horizontal'){
+                if(orientation === 'vertical'){
                     return `${rectStrokeWidth + rectStrokeHeight} ${rectStrokeWidth} ${rectStrokeHeight}`
                 }else{
                     return `${rectStrokeWidth + rectStrokeHeight + rectStrokeWidth}`;
                 }
             }                
-            return orientation === 'horizontal'?
+            return orientation === 'vertical'?
                 `${rectStrokeHeight} ${rectStrokeWidth}`:
                     `${rectStrokeWidth} ${rectStrokeHeight}`
         };
@@ -501,7 +501,7 @@ export function StackedBarChart({ data, focusOnPlot = false, colorIdx = 0, orien
             const isTopLayer =
                 selectedKeys.indexOf(d.barKey) === selectedKeys.length - 1 || d.barKey === plotted[0];
 
-            if(orientation === 'horizontal'){
+            if(orientation === 'vertical'){
                 return isTopLayer ? 0 : rectStrokeWidth * -1;
             }
             return 0
@@ -527,21 +527,21 @@ export function StackedBarChart({ data, focusOnPlot = false, colorIdx = 0, orien
                         .append("rect")
                         .attr("class", `rect ${styles.rect}`)
                         .attr("x", function(d){
-                            if(orientation === 'horizontal'){
+                            if(orientation === 'vertical'){
                                 return rectXPos(d)
                             }else{
                                 return valueScale(0)
                             }
                         })
                         .attr("width", function(d){
-                            if(orientation === 'horizontal'){
+                            if(orientation === 'vertical'){
                                 return rectWidth(d)
                             }else{
                                 return 0
                             }
                         })
                         .attr("y", (d) => {
-                            if(orientation === 'horizontal'){
+                            if(orientation === 'vertical'){
                                 if (!prevXLabels.includes(d.data.label)) return graphHeight;
 
                                 const yFinal =
@@ -564,7 +564,7 @@ export function StackedBarChart({ data, focusOnPlot = false, colorIdx = 0, orien
                             }
                         })
                         .attr("height", function(d){
-                            if(orientation === 'horizontal'){
+                            if(orientation === 'vertical'){
                                 return 0
                             }else{
                                 return rectHeight(d)
@@ -607,9 +607,9 @@ export function StackedBarChart({ data, focusOnPlot = false, colorIdx = 0, orien
                     //unhoverLegend()
                     //console.log("hovered on ", d);
                     
-                    d3.select(orientation === "horizontal"?".x-axis":".y-axis").selectAll("text")
+                    d3.select(orientation === "vertical"?".x-axis":".y-axis").selectAll("text")
                         .filter(dText=>dText === d.data.label)
-                        .attr("class", (orientation === "horizontal"?xAxisTextClass:"") + " " + stackedBarStyles.hoveredAxisText)
+                        .attr("class", (orientation === "vertical"?xAxisTextClass:"") + " " + stackedBarStyles.hoveredAxisText)
 
                     tooltip.style("opacity", 1)
                         .select("p.title").text(d.data.label)
@@ -624,7 +624,7 @@ export function StackedBarChart({ data, focusOnPlot = false, colorIdx = 0, orien
                 })
                 .on("touch", function(e, d){
                     //unhoverLegend()
-                    d3.select(orientation === "horizontal"?".x-axis":".y-axis").selectAll("text")
+                    d3.select(orientation === "vertical"?".x-axis":".y-axis").selectAll("text")
                         .filter(dText=>dText === d.data.label)
                         //.attr("class", xAxisTextClass)
                 })
@@ -632,9 +632,9 @@ export function StackedBarChart({ data, focusOnPlot = false, colorIdx = 0, orien
                     moveTooltip(tooltip, {e, svg:svgNode as SVGSVGElement, yScale: valueScale})
                 })
                 .on("mouseout", function(e, d){
-                    d3.select(orientation === 'horizontal'?".x-axis":".y-axis").selectAll("text")
+                    d3.select(orientation === 'vertical'?".x-axis":".y-axis").selectAll("text")
                         .filter(dText=>dText === d.data.label)
-                        .attr("class", orientation==='horizontal'?xAxisTextClass:"")
+                        .attr("class", orientation==='vertical'?xAxisTextClass:"")
 
                     tooltip.style("opacity", 0);
                 })

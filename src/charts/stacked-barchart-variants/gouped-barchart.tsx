@@ -246,6 +246,7 @@ export function GroupedBarChart({ data, colorIdx = 0, orientation = 'horizontal'
                         .tickSizeOuter(0):
                      d3.axisBottom(valueScale)
                         .tickValues(valueScale.domain())
+                        .ticks(null, "s")
                         .tickSizeOuter(0);
 
         canvas.select<SVGGElement>(".x-axis")

@@ -95,13 +95,7 @@ export function BarChart({
             .scaleLinear()
             .domain([0, d3.max(barchartData, (d) => d.value) ?? 0])
             .rangeRound(orientation === 'horizontal'?
-                [graphHeight, 0]:[0, graphWidth])
-
-        const x = d3
-            .scaleBand()
-            .domain(barchartData.map(d => d.label))
-            .rangeRound([margin.left, width - margin.right])
-            .padding(0.1);
+                [graphHeight, 0]:[0, graphWidth])        
 
         const xAxis = orientation === 'horizontal'?
             d3

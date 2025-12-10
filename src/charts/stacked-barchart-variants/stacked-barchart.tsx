@@ -298,6 +298,7 @@ export function StackedBarChart({ data, focusOnPlot = false, colorIdx = 0, orien
                 .tickSizeOuter(0):
              d3.axisBottom(valueScale)
                 .tickValues(valueScale.domain())
+                .ticks(null, "s")
                 .tickSizeOuter(0);
             
         canvas.select<SVGGElement>(".x-axis")

@@ -6,7 +6,7 @@ import { englishFreq, germanFreq, categoryDataV1, categoryDataV2, categoryDataV3
 import controlStyles from './controls.module.css'
 
 const App = () => {
-  const [selectedData, setSelectedData] = useState<string>("english");
+  const [selectedData, setSelectedData] = useState<string>("stack1");
 
   const handleChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     setSelectedData(e.target.value);
@@ -34,16 +34,16 @@ const App = () => {
           <div id="select-optional" className={`${controlStyles["select-optional"]}`}>
             <label htmlFor="choose-data">Choose data:</label>
             <select id="choose-data" value={selectedData} onChange={handleChange}>
-              <option value="english">English</option>
+              {/*<option value="english">English</option>
               <option value="german">German</option>
               <option value={"category1"}>Category 1</option>
               <option value={"category2"}>Category 2</option>
-              <option value={"category3"}>Category 3</option>
-             {/*
+              <option value={"category3"}>Category 3</option>*/}
+             {
                 ["stack1", "stack2", "stack3", "stack4", "stack5"].map(s => (
                   <option key={s} value={s}>{s}</option>
                 ))
-              */}
+              }
             </select>
           </div>
           <div className={`${controlStyles["UI-controls"]}`}>
@@ -70,8 +70,8 @@ const App = () => {
           
         </div>
         <div style={{ flex:1, width: "100%", height: "100%", overflow:"hidden" }}>       
-          <BarChart data={pointData} color={{idx:26, type:'colorful'}} orientation='vertical' />
-          {/*<PercentageBarChart data={selectedStackedData} orientation='vertical' />*/}
+          {/*BarChart data={pointData} color={{idx:26, type:'colorful'}} orientation='vertical' />*/}
+          <StackedBarChart data={selectedStackedData} orientation='vertical' />
         </div>
       </div>
       <div style={{width: "80vw", maxWidth:"384px", height: "192px", position: "relative" }}>       

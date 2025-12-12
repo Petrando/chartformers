@@ -34,7 +34,7 @@ export declare const year1: {
     Biology: number;
     Economy: number;
     Geography: number;
-    Sociology: number;
+    "Social Science": number;
     "Country History": number;
     "World History": number;
 }[];
@@ -66,4 +66,31 @@ export declare const stackedDataVar2: {
     gas: number;
     solar: number;
     hydro: number;
+}[];
+export declare const stackData1: {
+    label: string;
+    alpha: number;
+    beta: number;
+    gamma: number;
+    delta: number;
+    epsilon: number;
+    zeta: number;
+}[];
+export declare const stackData2: {
+    label: string;
+    alpha: number;
+    beta: number;
+    delta: number;
+    epsilon: number;
+    theta: number;
+}[];
+export declare const stackData3: {
+    label: string;
+    alpha: number;
+    beta: number;
+    delta: number;
+    epsilon: number;
+    iota: number;
+    kappa: number;
+    lambda: number;
 }[];

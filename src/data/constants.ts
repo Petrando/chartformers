@@ -101,12 +101,12 @@ export const categoryDataV3 = [
 
 
 export const year1 = [
-  { label: "Jin", ["Mandatory Math"]: 7, ["Interest Math"]: 8, English: 9, ["Bahasa Indonesia"]: 8, Physics: 6, Chemistry: 7, Biology: 9, Economy: 6, Geography: 7, Sociology: 6, ["Country History"]: 5, ["World History"]: 6 },
-  { label: "Asuka", ["Mandatory Math"]: 7, ["Interest Math"]: 5, English: 10, ["Bahasa Indonesia"]: 9, Physics: 6, Chemistry: 8, Biology: 9, Economy: 7, Geography: 8, Sociology: 6, ["Country History"]: 4, ["World History"]: 6 },
-  { label: "Hwoarang", ["Mandatory Math"]: 9, ["Interest Math"]: 10, English: 6, ["Bahasa Indonesia"]: 8, Physics: 4, Chemistry: 7, Biology: 8, Economy: 3, Geography: 6, Sociology: 5, ["Country History"]: 9, ["World History"]: 8 },
-  { label: "Ling", ["Mandatory Math"]: 2, ["Interest Math"]: 3, English: 6, ["Bahasa Indonesia"]: 9, Physics: 10, Chemistry: 8, Biology: 9, Economy: 5, Geography: 6, Sociology: 8, ["Country History"]: 4, ["World History"]: 9 },
-  { label: "Nina", ["Mandatory Math"]: 10, ["Interest Math"]: 4, English: 6, ["Bahasa Indonesia"]: 7, Physics: 5, Chemistry: 3, Biology: 9, Economy: 8, Geography: 9, Sociology: 6, ["Country History"]: 5, ["World History"]: 7 },
-  { label: "Paul", ["Mandatory Math"]: 0, ["Interest Math"]: 10, English: 8, ["Bahasa Indonesia"]: 6, Physics: 5, Chemistry: 8, Biology: 7, Economy: 4, Geography: 3, Sociology: 9, ["Country History"]: 8, ["World History"]: 9 },
+  { label: "Jin", ["Mandatory Math"]: 7, ["Interest Math"]: 8, English: 9, ["Bahasa Indonesia"]: 8, Physics: 6, Chemistry: 7, Biology: 9, Economy: 6, Geography: 7, ["Social Science"]: 6, ["Country History"]: 5, ["World History"]: 6 },
+  { label: "Asuka", ["Mandatory Math"]: 7, ["Interest Math"]: 5, English: 10, ["Bahasa Indonesia"]: 9, Physics: 6, Chemistry: 8, Biology: 9, Economy: 7, Geography: 8, ["Social Science"]: 6, ["Country History"]: 4, ["World History"]: 6 },
+  { label: "Hwoarang", ["Mandatory Math"]: 9, ["Interest Math"]: 10, English: 6, ["Bahasa Indonesia"]: 8, Physics: 4, Chemistry: 7, Biology: 8, Economy: 3, Geography: 6, ["Social Science"]: 5, ["Country History"]: 9, ["World History"]: 8 },
+  { label: "Ling", ["Mandatory Math"]: 2, ["Interest Math"]: 3, English: 6, ["Bahasa Indonesia"]: 9, Physics: 10, Chemistry: 8, Biology: 9, Economy: 5, Geography: 6, ["Social Science"]: 8, ["Country History"]: 4, ["World History"]: 9 },
+  { label: "Nina", ["Mandatory Math"]: 10, ["Interest Math"]: 4, English: 6, ["Bahasa Indonesia"]: 7, Physics: 5, Chemistry: 3, Biology: 9, Economy: 8, Geography: 9, ["Social Science"]: 6, ["Country History"]: 5, ["World History"]: 7 },
+  { label: "Paul", ["Mandatory Math"]: 0, ["Interest Math"]: 10, English: 8, ["Bahasa Indonesia"]: 6, Physics: 5, Chemistry: 8, Biology: 7, Economy: 4, Geography: 3, ["Social Science"]: 9, ["Country History"]: 8, ["World History"]: 9 },
 ];
 
 export const year2 = [
@@ -205,6 +205,154 @@ export const stackedDataVar2 = [
     gas: 90,
     solar: 75,  // solar returns,
     hydro: 0
+  },
+];
+
+export const stackData1 = [
+  {
+    label: "Globex",
+    alpha: 5400,
+    beta: 6900,
+    gamma: 8700,
+    delta: 13400,
+    epsilon: 7600,
+    zeta: 4200,
+  },
+  {
+    label: "Initech",
+    alpha: 3700,
+    beta: 10200,
+    gamma: 5300,
+    delta: 8400,
+    epsilon: 15800,
+    zeta: 6900,
+  },
+  {
+    label: "Umbrella",
+    alpha: 7500,
+    beta: 9100,
+    gamma: 6100,
+    delta: 12300,
+    epsilon: 5800,
+    zeta: 4900,
+  },
+  {
+    label: "Aperture Labs",
+    alpha: 9700,
+    beta: 9300,
+    gamma: 6400,
+    delta: 4300,
+    epsilon: 6700,
+    zeta: 4800,
+  },
+];
+
+export const stackData2 = [
+  {
+    label: "Initech",
+    alpha: 14900,
+    beta: 8800,
+    delta: 9600,
+    epsilon: 5400,
+    theta: 6100,
+  },
+  {
+    label: "Umbrella",
+    alpha: 6800,
+    beta: 7400,
+    delta: 17100,
+    epsilon: 9300,
+    theta: 5200,
+  },
+  {
+    label: "Hooli",
+    alpha: 6900,
+    beta: 10400,
+    delta: 7400,
+    epsilon: 16200,
+    theta: 5700,
+  },
+
+  
+  {
+    label: "Aperture Labs",
+    alpha: 8200,
+    beta: 9100,
+    delta: 14300,
+    epsilon: 7600,
+    theta: 4600,
+  },
+  // NEW MEMBERS
+  {
+    label: "Cyberdyne Systems",
+    alpha: 18800,
+    beta: 9700,
+    delta: 6900,
+    epsilon: 8300,
+    theta: 6200,
+  },
+  {
+    label: "Massive Dynamic",
+    alpha: 9600,
+    beta: 7800,
+    delta: 4900,
+    epsilon: 7200,
+    theta: 15500,
+  },
+];
+
+export const stackData3 = [
+  {
+    label: "Umbrella",
+    alpha: 6200,
+    beta: 8900,
+    delta: 10400,
+    epsilon: 4200,
+    iota: 5400,
+    kappa: 14100,
+    lambda: 3900,
+  },
+  {
+    label: "Hooli",
+    alpha: 11200,
+    beta: 17600,
+    delta: 7500,
+    epsilon: 8400,
+    iota: 5900,
+    kappa: 3600,
+    lambda: 4200,
+  },
+  {
+    label: "Vehement Capital",
+    alpha: 5100,
+    beta: 9600,
+    delta: 13200,
+    epsilon: 7300,
+    iota: 6900,
+    kappa: 4600,
+    lambda: 3800,
+  },
+
+  // NEW MEMBERS
+  {
+    label: "Stark Industries",
+    alpha: 10800,
+    beta: 8200,
+    delta: 19000,
+    epsilon: 7600,
+    iota: 6800,
+    kappa: 4700,
+    lambda: 5200,
+  },
+  {
+    label: "Tyrell Corporation",
+    alpha: 15800,
+    beta: 8800,
+    delta: 7200,
+    epsilon: 5500,
+    iota: 4300,
+    kappa: 3600,
+    lambda: 3000,
   },
 ];
 

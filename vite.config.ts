@@ -20,9 +20,9 @@ export default defineConfig(({ command, mode }) => {
       build: {
         lib: {
           entry: path.resolve(__dirname, 'src/index.ts'),
-          name: 'flowvis',
+          name: 'chartformers',
           formats: ['es', 'umd'],
-          fileName: (format) => `flowvis.${format}.js`
+          fileName: (format) => `chartformers.${format}.js`
         },
         rollupOptions: {
           external: ['react', 'react-dom'],

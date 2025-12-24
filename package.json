@@ -1,10 +1,10 @@
 {
-  "name": "flowvis",
+  "name": "chartformers",
   "version": "1.0.35",
   "description": "",
   "author": "Petrando Richard",
-  "main": "dist/flowvis.umd.js",
-  "module": "dist/flowvis.es.js",
+  "main": "dist/chartformers.umd.js",
+  "module": "dist/chartformers.es.js",
   "types": "dist/index.d.ts",
   "files": [
     "dist"

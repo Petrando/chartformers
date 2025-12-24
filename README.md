@@ -1,14 +1,14 @@
-# flowvis
+# chartformers
 
-[![npm version](https://img.shields.io/npm/v/flowvis)](https://www.npmjs.com/package/flowvis)
-[![npm downloads](https://img.shields.io/npm/dw/flowvis)](https://www.npmjs.com/package/flowvis)
-[![bundlephobia](https://img.shields.io/bundlephobia/minzip/flowvis)](https://bundlephobia.com/package/flowvis)
-[![GitHub stars](https://img.shields.io/github/stars/petrando/flowvis)](https://github.com/petrando/flowvis)
-[![license](https://img.shields.io/npm/l/flowvis)](./LICENSE)
+[![npm version](https://img.shields.io/npm/v/chartformers)](https://www.npmjs.com/package/chartformers)
+[![npm downloads](https://img.shields.io/npm/dw/chartformers)](https://www.npmjs.com/package/chartformers)
+[![bundlephobia](https://img.shields.io/bundlephobia/minzip/chartformers)](https://bundlephobia.com/package/chartformers)
+[![GitHub stars](https://img.shields.io/github/stars/petrando/chartformers)](https://github.com/petrando/chartformers)
+[![license](https://img.shields.io/npm/l/chartformers)](./LICENSE)
 
 
-**flowvis** is a lightweight React.js library for rendering **interactive, responsive, and animated D3.js charts**.  
-![Demo](https://raw.githubusercontent.com/Petrando/flowvis/master/media/Pie.gif)
+**chartformers** is a lightweight React.js library for rendering **interactive, responsive, and animated D3.js charts**.  
+![Demo](https://raw.githubusercontent.com/Petrando/chartformers/master/media/Pie.gif)
 It is designed to simplify chart creation in modern React apps while retaining the full power of D3 under the hood.
 
 ## ✨ Features
@@ -23,13 +23,13 @@ It is designed to simplify chart creation in modern React apps while retaining t
 ## 📦 Installation
 
 ```bash
-npm install flowvis@latest
+npm install chartformers@latest
 ```   
 
 To use a bar chart component import these:  
 ```bash
-import { BarChart } from 'flowvis';
-import 'flowvis/dist/flowvis.css';
+import { BarChart } from 'chartformers';
+import 'chartformers/dist/chartformers.css';
 ```
 Render the chart inside a container with explicit width and height:
 ```js
@@ -40,8 +40,8 @@ Render the chart inside a container with explicit width and height:
 
 ## Example: sortable stacked bar chart
 ```js
-import { StackedBarChart } from "flowvis"; 
-import 'flowvis/dist/flowvis.css';
+import { StackedBarChart } from "chartformers"; 
+import 'chartformers/dist/chartformers.css';
 
 export default function StackedBarChartExample() {  
   export const stackData2 = [
@@ -102,11 +102,11 @@ export default function StackedBarChartExample() {
   );
 }
 ```
-![Demo](https://raw.githubusercontent.com/Petrando/flowvis/master/media/StackedBarChart.gif)
+![Demo](https://raw.githubusercontent.com/Petrando/chartformers/master/media/StackedBarChart.gif)
 
 For full explanations on the options and properties, with live demo:
-## Visit the [flowvis documentation](https://flowvis-docs.vercel.app/).  
+## Visit the [chartformers documentation](https://chartformers-docs.vercel.app/).  
 
 
 Or you can grab the source code at:
-## the [github repo](https://github.com/Petrando/flowvis)
+## the [github repo](https://github.com/Petrando/chartformers)

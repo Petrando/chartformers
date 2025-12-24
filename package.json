@@ -1,6 +1,6 @@
 {
   "name": "chartformers",
-  "version": "1.0.35",
+  "version": "1.0.36",
   "description": "",
   "author": "Petrando Richard",
   "main": "dist/chartformers.umd.js",

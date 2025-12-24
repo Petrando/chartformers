@@ -1,14 +1,26 @@
 {
   "name": "chartformers",
+  "license": "SEE LICENSE IN LICENSE",
   "version": "1.0.36",
-  "description": "",
-  "author": "Petrando Richard",
+  "description": "Animated React charting library powered by D3 with smooth data transitions and interactive features",
+  "author": {
+    "name": "Petrando Richard",
+    "email": "petrandorichard@gmail.com"
+  },
   "main": "dist/chartformers.umd.js",
   "module": "dist/chartformers.es.js",
   "types": "dist/index.d.ts",
   "files": [
     "dist"
   ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/petrando/chartformers.git"
+  },
+  "homepage": "https://chartformers-docs.vercel.app/",
+  "bugs": {
+    "url": "https://github.com/petrando/chartformers/issues"
+  },
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "dev": "vite --config vite.config.ts --port 3000",
@@ -39,8 +51,7 @@
     "sortable-chart",
     "sortable-pie",
     "animated-pie-chart"
-  ],
-  "license": "ISC",
+  ],  
   "type": "module",
   "engines": {
     "node": ">=18.0.0"

@@ -18,13 +18,13 @@ type StackedBarChartPropsExtended =
         focusOnPlot?: boolean;
 };
 
-
-
 export function StackedBarChart({ data, focusOnPlot = false, colorIdx = 0, orientation = 'vertical' }: StackedBarChartPropsExtended) {
     const [ref, parentSize] = useParentSize<HTMLDivElement>();
-    const { width, height } = parentSize;
-    const [controlsRef, controlsSize] = useContainerSize<HTMLDivElement>();
-    const { height: controlsHeight } = controlsSize;    
+    const { width: parentWidth, height: parentHeight } = parentSize;
+    const [controlsRef, controlsSize] = useContainerSize<HTMLDivElement>();        
+    const { height: controlsHeight } = controlsSize;
+    const [chartContainerRef, chartSize] = useContainerSize<HTMLDivElement>()
+    const { width, height } = chartSize    
     const [prevData, setPrevData] = useState<LayeredData[] | null>(null);
         
     const [dataJustChanged, setDataJustChanged] = useState(false)
@@ -52,9 +52,9 @@ export function StackedBarChart({ data, focusOnPlot = false, colorIdx = 0, orien
         return () => { clearTimeout(timer)}
     }, [dataJustChanged])    
 
-    const chartHeight = uiControls ? height : height  - controlsHeight;
+    const chartHeight = uiControls ? height : height - controlsHeight ;
 
-    const renderDeps = [ width, chartHeight, plotted, colorIdx, focusOnPlot ]
+    const renderDeps = [ width, height, plotted, colorIdx, focusOnPlot ]
 
     const chartData:LayeredData[] = cloneObj(stackData);                        
     const keys = chartData.length === 0 ? [] :
@@ -220,10 +220,10 @@ export function StackedBarChart({ data, focusOnPlot = false, colorIdx = 0, orien
     );
 
     const chartRef = useD3<HTMLDivElement>((container) => {
-        if (width === 0 || chartHeight === 0) return;
+        if (width === 0 || height === 0) return;
         if(hovered !== "" && dataJustChanged) return        
         
-        const margin = { top: 20, right: 30, bottom: 30, left: 40 };
+        const margin = { top: 20, right: 20, bottom: 30, left: 40 };
         const isMediumScreen = width > 1024; 
         
         const selectedKeys = focusOnPlot?keys:keys.filter(k => !plotted.includes(k))
@@ -255,7 +255,7 @@ export function StackedBarChart({ data, focusOnPlot = false, colorIdx = 0, orien
             }):filteredData
                 
         const graphWidth = width - margin.left - margin.right,
-            graphHeight = chartHeight - margin.top - margin.bottom;
+            graphHeight = height - margin.top - margin.bottom;
 
         const canvasSvg = container.select<SVGSVGElement>("svg")
         const svgNode = canvasSvg.node()
@@ -644,28 +644,32 @@ export function StackedBarChart({ data, focusOnPlot = false, colorIdx = 0, orien
     return (
         <div 
             ref={ref} 
-            style={{ width: `${width}px`, height: `${height}px`, display:'flex', flexDirection:'column' }}
-        >
-            
+            style={{ width: `${parentWidth}px`, height: `${parentHeight}px`, display:'flex', flexDirection:'column' }}
+        >            
             {uiControls
                 ? createPortal(controls, uiControls)
                     : controls}
             <div
-                ref={chartRef} 
+                ref={chartContainerRef} 
                 className={`${styles["fill-container"]}`}
-                style={{ display:"flex", flexDirection:"column"}}>
-                <svg                              
-                    className={`${styles["chart-svg"]} ${styles["fill-container"]}`}        
-                    viewBox={`0 0 ${width} ${chartHeight}`}
-                >
-                    <g className="plot-area">
-                        <g className="plot-rects" />
-                        <g className="y-axis" />
-                        <g className="x-axis" />  
-                    </g>        
-                    
-                </svg>
-                <Tooltip pCount={3} />
+                style={{ display:"flex", flexDirection:"column" }}>
+                <div 
+                    ref={chartRef}
+                    className={`${styles["fill-container"]}`}
+                    style={{ display:"flex", flexDirection:"column" }}>                                                
+                    <svg                              
+                        className={`${styles["chart-svg"]} ${styles["fill-container"]}`}        
+                        viewBox={`0 0 ${width} ${height}`}
+                    >
+                        <g className="plot-area">
+                            <g className="plot-rects" />
+                            <g className="y-axis" />
+                            <g className="x-axis" />  
+                        </g>        
+                        
+                    </svg>
+                    <Tooltip pCount={3} />
+                </div>
             </div>
             
         </div>

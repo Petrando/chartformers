@@ -15,12 +15,16 @@ import { useUIControls } from '../../hooks/useUIControls';
 
 export function PercentageBarChart({ data, colorIdx = 0, orientation = 'vertical' }: StackedBarChartProps) {
     const [ref, parentSize] = useParentSize<HTMLDivElement>();
-    const { width, height } = parentSize;
+    const { width: parentWidth, height: parentHeight } = parentSize;    
+    
+    const [controlsRef, controlsSize] = useContainerSize<HTMLDivElement>();
+    const { height: controlsHeight } = controlsSize;        
+    const [chartContainerRef, chartSize] = useContainerSize<HTMLDivElement>()
+    const { width, height } = chartSize    
+
     const [hovered, setHovered] = useState<string>("")
     const [ isPercentage, setIsPercentage ] = useState<boolean>(true);
     const [dataJustChanged, setDataJustChanged] = useState<boolean>(false)
-    const [controlsRef, controlsSize] = useContainerSize<HTMLDivElement>();
-    const { height: controlsHeight } = controlsSize;        
     const [plotted, setPlotted] = useState<string>("all");  
     
     const uiControls = useUIControls();
@@ -43,7 +47,7 @@ export function PercentageBarChart({ data, colorIdx = 0, orientation = 'vertical
 
     const chartHeight = uiControls ? height : height  - controlsHeight;
     
-    const renderDeps = [ width, chartHeight, plotted, colorIdx ]
+    const renderDeps = [ width, height, plotted, colorIdx ]
 
     const chartData:LayeredData[] = cloneObj(stackData);                        
     const keys = chartData.length === 0 ? [] :
@@ -155,7 +159,7 @@ export function PercentageBarChart({ data, colorIdx = 0, orientation = 'vertical
     );    
     
     const chartRef = useD3<HTMLDivElement>((container) => {
-        if (width === 0 || chartHeight === 0) return;
+        if (width === 0 || height === 0) return;
         if(hovered !== "" && dataJustChanged) return
         
         const margin = { top: 20, right: 30, bottom: 30, left: 40 };
@@ -176,7 +180,7 @@ export function PercentageBarChart({ data, colorIdx = 0, orientation = 'vertical
         const sortedData:LayeredData[] = filteredData
 
         const graphWidth = width - margin.left - margin.right,
-                    graphHeight = chartHeight - margin.top - margin.bottom;
+            graphHeight = height - margin.top - margin.bottom;
 
         const canvasSvg = container.select<SVGSVGElement>("svg")
         const svgNode = canvasSvg.node()
@@ -412,7 +416,7 @@ export function PercentageBarChart({ data, colorIdx = 0, orientation = 'vertical
                         .attr("y", function(d){    
                             if(orientation === 'vertical'){
                                 if(!prevXLabels.includes(d.data.label + "")){
-                                    return graphHeight - margin.bottom
+                                    return graphHeight
                                 }
                                 //const yFinal = plotted==="all"?y(d[1]):
                                     //d.key.startsWith(plotted)?graphHeight - (y(d[0]) - y(d[1])):y(d[1])                                                                
@@ -501,26 +505,31 @@ export function PercentageBarChart({ data, colorIdx = 0, orientation = 'vertical
     return (
         <div 
             ref={ref} 
-            style={{ width, height, display:'flex', flexDirection:'column' }}
+            style={{ width: parentWidth, height: parentHeight, display:'flex', flexDirection:'column' }}
         >
             {uiControls
                 ? createPortal(controls, uiControls)
                     : controls}
             <div
-                ref={chartRef} 
+                ref={chartContainerRef} 
                 className={`${styles["fill-container"]}`}
                 style={{ display:"flex", flexDirection:"column"}}>
-                <svg
-                    className={`${styles["chart-svg"]} ${styles["fill-container"]}`}        
-                    viewBox={`0 0 ${width} ${chartHeight}`}
-                >
-                    <g className="plot-area">
-                        <g className="plot-rects" />
-                        <g className="y-axis" />
-                        <g className="x-axis" />  
-                    </g>                        
-                </svg>
-                <Tooltip pCount={3} />
+                <div
+                    ref={chartRef} 
+                    className={`${styles["fill-container"]}`}
+                    style={{ display:"flex", flexDirection:"column"}}>
+                    <svg
+                        className={`${styles["chart-svg"]} ${styles["fill-container"]}`}        
+                        viewBox={`0 0 ${width} ${height}`}
+                    >
+                        <g className="plot-area">
+                            <g className="plot-rects" />
+                            <g className="y-axis" />
+                            <g className="x-axis" />  
+                        </g>                        
+                    </svg>
+                    <Tooltip pCount={3} />
+                </div>
             </div>
         </div>
     );

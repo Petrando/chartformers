@@ -55,23 +55,31 @@ export function GroupedBarChart({ data, colorIdx = 0, orientation = 'vertical' }
             .filter((key) => key !== "label" && key !== "total") as string[];
 
     const layers = useLayerIndex(keys)
+    const isMediumScreen = width > 576;
 
     const legendRef = useD3<HTMLDivElement>((container) => { 
         if(dataJustChanged) return
-        const legendWidth = 80               
+        const legendWidth = isMediumScreen?80:50
+        
+        const legendClass = function(d:string){
+            const containerClass = stackedBarStyles[isMediumScreen?"legend-container":"legend-container-sm"]
+            const containerActiveClass = stackedBarStyles[isMediumScreen?"legend-container-active":"legend-container-active-sm"]
+            const containerInactiveClass = stackedBarStyles[isMediumScreen?"legend-container-inactive":"legend-container-inactive-sm"]
+            return  `
+                ${plotted.includes(d)?
+                    plotted === d?containerActiveClass:containerInactiveClass:
+                        containerClass}
+                legend-item
+            `            
+        }
+
         const legends = container.selectAll<HTMLDivElement, string>(".legend-item")
             .data([...keys], d=>d)
             .join(
                 enter => {
                     const divs = enter
                         .append("div")
-                        .attr("class", function(d){  
-                            return `                                
-                                ${plotted === d ?
-                                    stackedBarStyles["legend-container-active"]:
-                                        stackedBarStyles["legend-container"]} 
-                                legend-item`
-                        })
+                        .attr("class", legendClass)
                         .style("left", (_, i)=> `${i * legendWidth}px`)
                         .style("top", "-53px")
                         .style("opacity", 0);
@@ -94,12 +102,7 @@ export function GroupedBarChart({ data, colorIdx = 0, orientation = 'vertical' }
                 },
                 update => {
                     update
-                        .attr("class", (d) => `                                
-                                ${plotted === d ?
-                                    stackedBarStyles["legend-container-active"]:
-                                        stackedBarStyles["legend-container"]} 
-                                legend-item`
-                        )
+                        .attr("class", legendClass)
                         .transition().duration(animDuration)
                             .style("top", "0px")
                             .style("left", (_, i)=> `${i * legendWidth}px`) 
@@ -147,12 +150,12 @@ export function GroupedBarChart({ data, colorIdx = 0, orientation = 'vertical' }
     const controls = (
         <div 
             ref={controlsRef}
-            className={`${styles["controls-container"]} ${uiControls?styles["fill-container"]:""}`}
+            className={`${styles[isMediumScreen?"controls-container":"controls-container-sm"]} ${uiControls?styles["fill-container"]:""}`}
         >
-            <label className={styles["controls-label"]} style={{paddingRight: '12px'}}>
+            <label className={`${styles["controls-label"]} ${plotted === "all"?styles.disabled:""}`} style={{paddingRight: '12px'}}>
                 <input 
                     type="checkbox" 
-                    className={`${styles["controls-checkbox"]} ${plotted === "all"?styles.disabled:""}`} 
+                    className={`${styles["controls-checkbox"]}`} 
                     checked={isSorted}
                     onChange={(e) => setIsSorted(e.target.checked)}
                     disabled={plotted === "all"}
@@ -171,8 +174,7 @@ export function GroupedBarChart({ data, colorIdx = 0, orientation = 'vertical' }
         if (width === 0 || height === 0) return;
         if(hovered !== "" && dataJustChanged) return
         
-        const margin = { top: 20, right: 30, bottom: 30, left: 40 };
-        const isMediumScreen = width > 576;  
+        const margin = { top: 20, right: 30, bottom: 30, left: 40 };          
                     
         chartData.forEach(function(d: LayeredData) {
             d.total = keys.reduce((acc, curr) => {
@@ -544,12 +546,14 @@ export function GroupedBarChart({ data, colorIdx = 0, orientation = 'vertical' }
                     className={`${styles["chart-svg"]} ${styles["fill-container"]}`}        
                     viewBox={`0 0 ${width} ${height}`}
                 >
-                    <g className="plot-area">
-                        <g className="plot-rects" />
-                        <g className={`${orientation === 'vertical'?stackedBarStyles["value-axis"]:""} y-axis`} />
-                        <g className={`${orientation === 'horizontal'?stackedBarStyles["value-axis"]:""} x-axis`} />  
-                    </g>        
-                    
+                    {
+                        width > 0 &&
+                        <g className="plot-area">
+                            <g className="plot-rects" />
+                            <g className={`${orientation === 'vertical'?stackedBarStyles["value-axis"]:""} y-axis`} />
+                            <g className={`${orientation === 'horizontal'?stackedBarStyles["value-axis"]:""} x-axis`} />  
+                        </g>        
+                    }                                        
                 </svg>
                 <Tooltip pCount={3} />
                 </div>

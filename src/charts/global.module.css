@@ -1,13 +1,20 @@
-.controls-container {
+.controls-container, .controls-container-sm {
     display: flex;
     flex-direction: row;
     align-items: center;
-    justify-content: flex-start;
-    padding: 0.5rem 1rem 0;
+    justify-content: flex-start;    
     background: rgba(255, 255, 255, 0.8);
     border-bottom: 1px solid #ddd;
     z-index: 10;  
     overflow: hidden;              
+}
+
+.controls-container {
+    padding: 0.5rem 1rem 0;
+}
+
+.controls-container-sm {
+    padding: 0.4rem 0.8rem 0;
 }
 
 .fill-container {
@@ -18,28 +25,46 @@
     overflow-y: visible;
 }
 
-.controls-label {
+.controls-container .controls-label, .controls-container-sm .controls-label {
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: flex-start;
-    /*gap: 0.4rem;*/
+    /*gap: 0.4rem;*/    
+    color: #333;    
+    padding-top: 0;
+}
+
+.controls-container .controls-label {
     font-size: 0.9rem;
     font-weight: 500;
-    color: #333;
     height: 50px;
-    padding-top: 0;
+}
+
+.controls-container-sm .controls-label {
+    font-size: 0.7rem;
+    font-weight: 500;
+    height: 40px;
 }
 
 .disabled {
     opacity: 0.5;
     pointer-events: none;
 }
-.controls-checkbox {
-    width: 16px;
-    height: 16px;
+
+.controls-container .controls-checkbox, .controls-container-sm .controls-checkbox {    
     cursor: pointer;
     accent-color: #007bff;
+}
+
+.controls-container .controls-checkbox {
+    width: 16px;
+    height: 16px;
+}
+
+.controls-container-sm .controls-checkbox {
+    width: 12px;
+    height: 12px;
 }
 
 .chart-svg {                    

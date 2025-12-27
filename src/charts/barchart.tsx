@@ -36,11 +36,12 @@ export function BarChart({
     
     const uiControls = useUIControls();
 
+    const isMediumScreen = width > 576;
     // Define the controls element (checkbox)
     const controls = (
         <div 
             id="controls" 
-            className={`${styles["controls-container"]} ${uiControls?styles["fill-container"]:""}`}
+            className={`${styles[isMediumScreen?"controls-container":"controls-container-sm"]} ${uiControls?styles["fill-container"]:""}`}
         >
             <label className={styles["controls-label"]}>
                 <input 
@@ -77,8 +78,7 @@ export function BarChart({
 
         const tooltip = getTooltip(container as any)
             .style("opacity", 0);
-
-        const isMediumScreen = width > 576;
+        
         const xAxisTextClass = !isMediumScreen?barchartStyles.rotatedAxisText:
                     barchartStyles.axisText;
 

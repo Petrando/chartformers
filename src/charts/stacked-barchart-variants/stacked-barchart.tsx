@@ -50,9 +50,7 @@ export function StackedBarChart({ data, focusOnPlot = false, colorIdx = 0, orien
             timer = setTimeout(()=>{setDataJustChanged(false)}, animDuration + 500)
         }
         return () => { clearTimeout(timer)}
-    }, [dataJustChanged])    
-
-    const chartHeight = uiControls ? height : height - controlsHeight ;
+    }, [dataJustChanged])        
 
     const renderDeps = [ width, height, plotted, colorIdx, focusOnPlot ]
 
@@ -60,28 +58,35 @@ export function StackedBarChart({ data, focusOnPlot = false, colorIdx = 0, orien
     const keys = chartData.length === 0 ? [] :
         (Object.keys(chartData[0]) as (keyof LayeredData)[])
             .filter((key) => key !== "label" && key !== "total") as string[];
-    const layersRef = useLayerIndex(keys)       
+    const layersRef = useLayerIndex(keys)
     
-    const legendRef = useD3<HTMLDivElement>((container) => { 
+    const isMediumScreen = width > 576;
+    
+    const legendRef = useD3<HTMLDivElement>((container) => {         
         if(dataJustChanged){
             return
+        }        
+        const legendWidth = isMediumScreen?80:50
+        
+        const legendClass = function(d:string){
+            const containerClass = stackedBarStyles[isMediumScreen?"legend-container":"legend-container-sm"]
+            const containerActiveClass = stackedBarStyles[isMediumScreen?"legend-container-active":"legend-container-active-sm"]
+            const containerInactiveClass = stackedBarStyles[isMediumScreen?"legend-container-inactive":"legend-container-inactive-sm"]
+            return  `
+                ${plotted.includes(d)?
+                    focusOnPlot?containerActiveClass:containerInactiveClass:
+                        containerClass}
+                legend-item
+            `
+            
         }
-        const legendWidth = 80              
         const legends = container.selectAll<HTMLDivElement, string>(".legend-item")
             .data([...keys], d=>d)
             .join(
                 enter => {
                     const divs = enter
                         .append("div")
-                        .attr("class", function(d){                            
-                            return  `
-                                ${plotted.includes(d)?
-                                    stackedBarStyles[focusOnPlot?"legend-container-active":"legend-container-inactive"]:
-                                        stackedBarStyles["legend-container"]}
-                                legend-item
-                            `
-                            
-                        })
+                        .attr("class", legendClass)
                         .style("left", (_, i)=> `${i * legendWidth}px`)
                         .style("top", "-53px")
                         .style("opacity", 0)
@@ -112,12 +117,7 @@ export function StackedBarChart({ data, focusOnPlot = false, colorIdx = 0, orien
                 },
                 update => {
                     update
-                        .attr("class", (d) => `                                
-                                ${plotted.includes(d)?
-                                    stackedBarStyles[focusOnPlot?"legend-container-active":"legend-container-inactive"]:
-                                        stackedBarStyles["legend-container"]}
-                                legend-item`
-                        ) 
+                        .attr("class", legendClass) 
                         .transition().duration(animDuration)
                             .style("top", "0px")
                             .style("left", (_, i)=> `${i * legendWidth}px`) 
@@ -200,7 +200,7 @@ export function StackedBarChart({ data, focusOnPlot = false, colorIdx = 0, orien
     const controls = (
         <div 
             ref={controlsRef}
-            className={`${styles["controls-container"]} ${uiControls?styles["fill-container"]:""}`}
+            className={`${styles[isMediumScreen?"controls-container":"controls-container-sm"]} ${uiControls?styles["fill-container"]:""}`}
         >
             <label className={styles["controls-label"]} style={{paddingRight: '12px'}}>
                 <input 
@@ -223,8 +223,7 @@ export function StackedBarChart({ data, focusOnPlot = false, colorIdx = 0, orien
         if (width === 0 || height === 0) return;
         if(hovered !== "" && dataJustChanged) return        
         
-        const margin = { top: 20, right: 20, bottom: 30, left: 40 };
-        const isMediumScreen = width > 576; 
+        const margin = { top: 20, right: 20, bottom: 30, left: 40 };         
         
         const selectedKeys = focusOnPlot?keys:keys.filter(k => !plotted.includes(k))
                 
@@ -669,12 +668,14 @@ export function StackedBarChart({ data, focusOnPlot = false, colorIdx = 0, orien
                         className={`${styles["chart-svg"]} ${styles["fill-container"]}`}        
                         viewBox={`0 0 ${width} ${height}`}
                     >
-                        <g className="plot-area">
-                            <g className="plot-rects" />
-                            <g className={`${orientation === 'vertical'?stackedBarStyles["value-axis"]:""} y-axis`} />
-                            <g className={`${orientation === 'horizontal'?stackedBarStyles["value-axis"]:""} x-axis`} />  
-                        </g>        
-                        
+                        {
+                            width > 0 &&
+                            <g className="plot-area">
+                                <g className="plot-rects" />
+                                <g className={`${orientation === 'vertical'?stackedBarStyles["value-axis"]:""} y-axis`} />
+                                <g className={`${orientation === 'horizontal'?stackedBarStyles["value-axis"]:""} x-axis`} />  
+                            </g>
+                        }                                                        
                     </svg>
                     <Tooltip pCount={3} />
                 </div>

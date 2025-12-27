@@ -78,18 +78,19 @@ export function BarChart({
         const tooltip = getTooltip(container as any)
             .style("opacity", 0);
 
-        const isMediumScreen = width > 1024;
+        const isMediumScreen = width > 576;
         const xAxisTextClass = !isMediumScreen?barchartStyles.rotatedAxisText:
                     barchartStyles.axisText;
 
         const graphWidth = width - margin.left - margin.right
         const graphHeight = height - margin.top - margin.bottom
-        const labelScale = d3
-            .scaleBand()
+        const labelScale = d3.scaleBand()
             .domain(barchartData.map(d => d.label))
             .rangeRound(orientation === 'vertical'?
                 [0, graphWidth]:[graphHeight, 0])
-            .padding(0.1)
+            .paddingInner(isMediumScreen?0.4:0.25)
+            .paddingOuter(0.1)            
+            //.align(0.2)
 
         const valueScale = d3
             .scaleLinear()
@@ -103,21 +104,19 @@ export function BarChart({
                 .tickValues(labelScale.domain())
                 .scale(labelScale)
                 .tickSizeOuter(0):
-            d3.axisBottom(valueScale).ticks(null, "s");        
+            d3.axisBottom(valueScale)
+                .ticks(5, "s")
+                .tickSizeOuter(0)
+                .tickSize(-graphHeight);        
 
         canvas.select<SVGGElement>(".x-axis")
             .attr("transform", `translate(0, ${graphHeight})`)
             .transition().duration(animDuration).call(xAxis)
             .selectAll("text")
-            .attr("class", xAxisTextClass);
-
-        const y1 = d3
-            .scaleLinear()
-            .domain([0, d3.max(barchartData, (d) => d.value) ?? 0])
-            .rangeRound([height - margin.bottom, margin.top]);                   
+            .attr("class", xAxisTextClass);                         
 
         const y1Axis = orientation === 'vertical'?
-            d3.axisLeft(valueScale).ticks(null, "s"):
+            d3.axisLeft(valueScale).ticks(5, "s").tickSize(-graphWidth):
             d3.axisLeft(labelScale).tickSizeOuter(0)                 
                     
         canvas.select<SVGGElement>(".y-axis")
@@ -277,8 +276,8 @@ export function BarChart({
                     viewBox={`0 0 ${width} ${height}`}
                 >
                     <g className="plot-area">
-                        <g className="y-axis" />
-                        <g className="x-axis" />  
+                        <g className={`${orientation === 'vertical'?barchartStyles["value-axis"]:""} y-axis`} />
+                        <g className={`${orientation === 'horizontal'?barchartStyles["value-axis"]:""} x-axis`} />    
                     </g>                        
                 </svg>            
                 {

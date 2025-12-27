@@ -172,7 +172,7 @@ export function GroupedBarChart({ data, colorIdx = 0, orientation = 'vertical' }
         if(hovered !== "" && dataJustChanged) return
         
         const margin = { top: 20, right: 30, bottom: 30, left: 40 };
-        const isMediumScreen = width > 1024;  
+        const isMediumScreen = width > 576;  
                     
         chartData.forEach(function(d: LayeredData) {
             d.total = keys.reduce((acc, curr) => {
@@ -195,7 +195,7 @@ export function GroupedBarChart({ data, colorIdx = 0, orientation = 'vertical' }
             }):filteredData
 
         const graphWidth = width - margin.left - margin.right,
-                    graphHeight = height - margin.top - margin.bottom;
+            graphHeight = height - margin.top - margin.bottom;
 
         const canvasSvg = container.select<SVGSVGElement>("svg")
         const svgNode = canvasSvg.node()
@@ -211,15 +211,17 @@ export function GroupedBarChart({ data, colorIdx = 0, orientation = 'vertical' }
             setPrevData(cloneObj(chartData));
         }
 
+        const noPlot = plotted === "all"
+
         const xAxisTextClass = !isMediumScreen?stackedBarStyles.rotatedAxisText:
-            stackedBarStyles.axisText;
+            stackedBarStyles.axisText;    
             
-        const labels = sortedData.map(function(d: LayeredData) { return d.label; });        
-        
+        const labels = sortedData.map(function(d: LayeredData) { return d.label; });                
         const labelScale: d3.ScaleBand<string> = d3.scaleBand<string>()
             .domain(labels)
             .rangeRound(orientation === 'vertical'?[0, graphWidth]:[graphHeight, 0])
-            .paddingInner(0.1)
+            .paddingInner(noPlot?0.15:isMediumScreen?0.4:0.25)
+            .paddingOuter(0.2)            
             .align(0.2) 
 
         /*const yMax = plotted === "all"?
@@ -242,13 +244,14 @@ export function GroupedBarChart({ data, colorIdx = 0, orientation = 'vertical' }
             .range(orientation === 'vertical'?[graphHeight, 0]:[0, graphWidth]);
                                                    
         const xAxis = orientation === 'vertical' 
-                    ?d3.axisBottom(labelScale)
-                        .tickValues(labelScale.domain())
-                        .tickSizeOuter(0):
-                     d3.axisBottom(valueScale)
-                        .tickValues(valueScale.domain())
-                        .ticks(null, "s")
-                        .tickSizeOuter(0);
+            ?d3.axisBottom(labelScale)
+                .tickValues(labelScale.domain())
+                .tickSizeOuter(0):
+                d3.axisBottom(valueScale)
+                .tickValues(valueScale.domain())
+                .ticks(4, "s")
+                .tickSizeOuter(0)
+                .tickSize(-graphHeight);
 
         canvas.select<SVGGElement>(".x-axis")
             .attr("transform", `translate(0,${graphHeight})`)
@@ -258,17 +261,24 @@ export function GroupedBarChart({ data, colorIdx = 0, orientation = 'vertical' }
             .style("cursor", "pointer")
             .attr("dy", !isMediumScreen ? ".20em" : "1em")
             .attr("dx", !isMediumScreen ? "-.8em" : "0em")
-            .attr("class", xAxisTextClass);                      
+            .attr("class", xAxisTextClass)
+            .selectAll(".tick")
+            .filter(d => d === 0)
+            .select("line")
+            .remove();                      
                                                                                                 
         const yAxis = orientation === 'vertical'
-            ? d3.axisLeft(valueScale)
-                .ticks(null, "s")
+            ? d3.axisLeft(valueScale).ticks(4, "s").tickSize(-graphWidth)
             : d3.axisLeft(labelScale).tickSizeOuter(0);            
                                 
         canvas.select<SVGGElement>(".y-axis")  
             .attr("transform", `translate(0,0)`)                     
                 .transition().duration(animDuration)
-            .call(yAxis)
+            .call(yAxis)            
+            .selectAll(".tick")
+            .filter(d => d === 0)
+            .select("line")
+            .remove()
 
         const dataLayers: d3.Series<LayeredData, string | string[]>[] =
             d3.stack<LayeredData>().keys(keys)(sortedData);        
@@ -537,8 +547,8 @@ export function GroupedBarChart({ data, colorIdx = 0, orientation = 'vertical' }
                 >
                     <g className="plot-area">
                         <g className="plot-rects" />
-                        <g className="y-axis" />
-                        <g className="x-axis" />  
+                        <g className={`${orientation === 'vertical'?stackedBarStyles["value-axis"]:""} y-axis`} />
+                        <g className={`${orientation === 'horizontal'?stackedBarStyles["value-axis"]:""} x-axis`} />  
                     </g>        
                     
                 </svg>

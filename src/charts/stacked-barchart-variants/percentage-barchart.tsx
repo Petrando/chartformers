@@ -163,7 +163,7 @@ export function PercentageBarChart({ data, colorIdx = 0, orientation = 'vertical
         if(hovered !== "" && dataJustChanged) return
         
         const margin = { top: 20, right: 30, bottom: 30, left: 40 };
-        const isMediumScreen = width > 1024;                      
+        const isMediumScreen = width > 576;                      
         
         chartData.forEach(function(d: LayeredData) {
                 d.total = keys.reduce((acc, curr) => {
@@ -197,7 +197,8 @@ export function PercentageBarChart({ data, colorIdx = 0, orientation = 'vertical
         const labelScale = d3.scaleBand<string | number>()
             .domain(labels)
             .rangeRound(orientation === 'vertical'?[0, graphWidth]:[graphHeight, 0])
-            .paddingInner(0.1)
+            .paddingInner(isMediumScreen?0.4:0.25)
+            .paddingOuter(0.2)            
             .align(0.2)
 
         const valueMax = d3.max(chartData, (d: LayeredData) => d.total)                                                                   
@@ -221,8 +222,9 @@ export function PercentageBarChart({ data, colorIdx = 0, orientation = 'vertical
                 .tickSizeOuter(0):
             d3.axisBottom(valueScale)
                 .tickValues(valueScale.domain())
-                .ticks(null, isPercentage?".0%":"s")
-                .tickSizeOuter(0);
+                .ticks(4, isPercentage?".0%":"s")
+                .tickSizeOuter(0)
+                .tickSize(-graphHeight);
 
         canvas.select<SVGGElement>(".x-axis")
             .attr("transform", `translate(0,${graphHeight})`)
@@ -232,7 +234,11 @@ export function PercentageBarChart({ data, colorIdx = 0, orientation = 'vertical
             .style("cursor", "pointer")
             .attr("dy", !isMediumScreen ? ".20em" : "1em")
             .attr("dx", !isMediumScreen ? "-.8em" : "0em")
-            .attr("class", xAxisTextClass);
+            .attr("class", xAxisTextClass)
+            .selectAll(".tick")
+            .filter(d => d === 0)
+            .select("line")
+            .remove();
 
         const yMax = d3.max(chartData, (d: LayeredData) => d.total)                                                                   
 
@@ -241,14 +247,17 @@ export function PercentageBarChart({ data, colorIdx = 0, orientation = 'vertical
             .range([graphHeight, 0]);                                        
             
         const yAxis = orientation === 'vertical'
-            ? d3.axisLeft(valueScale)
-                .ticks(null, isPercentage?".0%":"s")
+            ? d3.axisLeft(valueScale).ticks(4, isPercentage?".0%":"s").tickSize(-graphWidth)
             : d3.axisLeft(labelScale).tickSizeOuter(0);            
                                 
         canvas.select<SVGGElement>(".y-axis")  
             .attr("transform", `translate(0,0)`)                      
                 .transition().duration(animDuration)
             .call(yAxis)
+            .selectAll(".tick")
+            .filter(d => d === 0)
+            .select("line")
+            .remove()
 
         const stack = d3.stack<LayeredData>()
             .order(d3.stackOrderNone)
@@ -524,8 +533,8 @@ export function PercentageBarChart({ data, colorIdx = 0, orientation = 'vertical
                     >
                         <g className="plot-area">
                             <g className="plot-rects" />
-                            <g className="y-axis" />
-                            <g className="x-axis" />  
+                            <g className={`${orientation === 'vertical'?stackedBarStyles["value-axis"]:""} y-axis`} />
+                            <g className={`${orientation === 'horizontal'?stackedBarStyles["value-axis"]:""} x-axis`} />    
                         </g>                        
                     </svg>
                     <Tooltip pCount={3} />

@@ -72,11 +72,11 @@ const App = () => {
           
         </div>
         <div style={{ flex:1, width: "100%", height: "100%", overflow:"hidden", border: "1px solid grey" }}>                 
-          <PercentageBarChart data={selectedStackedData}  colorIdx={28}  />
+          <PercentageBarChart data={selectedStackedData} colorIdx={28}  />
         </div>
       </div>
-      <div style={{width: "80vw", maxWidth:"384px", height: "192px", position: "relative" }}>                 
-          <PercentageBarChart data={selectedStackedData} colorIdx={50} orientation='horizontal' />
+      <div style={{width: "80vw", maxWidth:"500px", height: "300px", position: "relative" }}>                 
+          <PercentageBarChart data={selectedStackedData} colorIdx={50} orientation='horizontal'  />
       </div>
     </div>
 )};

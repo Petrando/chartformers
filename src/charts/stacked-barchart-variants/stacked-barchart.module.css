@@ -170,3 +170,12 @@ Special classes for normalized stacked
     fill: #0891b2;
 }
 
+.value-axis path {
+    display: none;
+}
+
+.value-axis line {
+  stroke: #d6d3d1;  
+  stroke-width: 1.5px;
+  shape-rendering: crispEdges;
+}

@@ -224,7 +224,7 @@ export function StackedBarChart({ data, focusOnPlot = false, colorIdx = 0, orien
         if(hovered !== "" && dataJustChanged) return        
         
         const margin = { top: 20, right: 20, bottom: 30, left: 40 };
-        const isMediumScreen = width > 1024; 
+        const isMediumScreen = width > 576; 
         
         const selectedKeys = focusOnPlot?keys:keys.filter(k => !plotted.includes(k))
                 
@@ -275,7 +275,8 @@ export function StackedBarChart({ data, focusOnPlot = false, colorIdx = 0, orien
         const labelScale: d3.ScaleBand<string> = d3.scaleBand<string>()
             .domain(labels)
             .rangeRound(orientation === 'vertical'?[0, graphWidth]:[graphHeight, 0])
-            .paddingInner(0.1)
+            .paddingInner(isMediumScreen?0.4:0.25)
+            .paddingOuter(0.2)            
             .align(0.2)
 
         const valueMax = focusOnPlot?(plotted[0] === "all"?
@@ -298,28 +299,38 @@ export function StackedBarChart({ data, focusOnPlot = false, colorIdx = 0, orien
                 .tickSizeOuter(0):
              d3.axisBottom(valueScale)
                 .tickValues(valueScale.domain())
-                .ticks(null, "s")
-                .tickSizeOuter(0);
+                .ticks(4, "s")
+                .tickSizeOuter(0)
+                .tickSize(-graphHeight);
             
-        canvas.select<SVGGElement>(".x-axis")
+        const xAxisGroup = canvas.select<SVGGElement>(".x-axis")                        
             .attr("transform", `translate(0,${graphHeight})`)
             .transition().duration(animDuration)
-            .call(xAxis)
+            .call(xAxis) 
             .selectAll("text")
             .style("cursor", "pointer")
             .attr("dy", !isMediumScreen ? ".20em" : "1em")
             .attr("dx", !isMediumScreen ? "-.8em" : "0em")
-            .attr("class", xAxisTextClass);                                                                              
+            .attr("class", xAxisTextClass)
+            .selectAll(".tick")
+            .filter(d => d === 0)
+            .select("line")
+            .remove()                   
 
+        //xAxisGroup.
+            
         const yAxis = orientation === 'vertical'
-            ? d3.axisLeft(valueScale)
-                .ticks(null, "s")
+            ? d3.axisLeft(valueScale).ticks(4, "s").tickSize(-graphWidth)
             : d3.axisLeft(labelScale).tickSizeOuter(0);                    
                                         
-        canvas.select<SVGGElement>(".y-axis")  
-            //.attr("transform", `translate(0,0)`)               
+        canvas.select<SVGGElement>(".y-axis")            
+            .attr("transform", `translate(0,0)`)               
                 .transition().duration(isFirstRender?0:animDuration)
             .call(yAxis)
+            .selectAll(".tick")
+            .filter(d => d === 0)
+            .select("line")
+            .remove()                        
 
         const dataLayers: d3.Series<LayeredData, string>[] =
             d3.stack<LayeredData>().keys(selectedKeys)(sortedData);
@@ -663,8 +674,8 @@ export function StackedBarChart({ data, focusOnPlot = false, colorIdx = 0, orien
                     >
                         <g className="plot-area">
                             <g className="plot-rects" />
-                            <g className="y-axis" />
-                            <g className="x-axis" />  
+                            <g className={`${orientation === 'vertical'?stackedBarStyles["value-axis"]:""} y-axis`} />
+                            <g className={`${orientation === 'horizontal'?stackedBarStyles["value-axis"]:""} x-axis`} />  
                         </g>        
                         
                     </svg>

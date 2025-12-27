@@ -190,7 +190,7 @@ export function PercentageBarChart({ data, colorIdx = 0, orientation = 'vertical
         const tooltip = getTooltip(container as any)
             .style("opacity", 0);        
 
-        const xAxisTextClass = !isMediumScreen?stackedBarStyles.rotatedAxisText:
+        const xAxisTextClass = (!isMediumScreen && orientation === 'vertical')?stackedBarStyles.rotatedAxisText:
             stackedBarStyles.axisText;
 
         const labels = sortedData.map(function(d: LayeredData) { return d.label; });
@@ -220,8 +220,7 @@ export function PercentageBarChart({ data, colorIdx = 0, orientation = 'vertical
             ?d3.axisBottom(labelScale)
                 .tickValues(labelScale.domain())
                 .tickSizeOuter(0):
-            d3.axisBottom(valueScale)
-                .tickValues(valueScale.domain())
+            d3.axisBottom(valueScale)                
                 .ticks(4, isPercentage?".0%":"s")
                 .tickSizeOuter(0)
                 .tickSize(-graphHeight);

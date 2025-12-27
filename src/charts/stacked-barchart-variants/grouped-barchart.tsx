@@ -213,7 +213,7 @@ export function GroupedBarChart({ data, colorIdx = 0, orientation = 'vertical' }
 
         const noPlot = plotted === "all"
 
-        const xAxisTextClass = !isMediumScreen?stackedBarStyles.rotatedAxisText:
+        const xAxisTextClass = (!isMediumScreen && orientation === 'vertical')?stackedBarStyles.rotatedAxisText:
             stackedBarStyles.axisText;    
             
         const labels = sortedData.map(function(d: LayeredData) { return d.label; });                
@@ -247,8 +247,7 @@ export function GroupedBarChart({ data, colorIdx = 0, orientation = 'vertical' }
             ?d3.axisBottom(labelScale)
                 .tickValues(labelScale.domain())
                 .tickSizeOuter(0):
-                d3.axisBottom(valueScale)
-                .tickValues(valueScale.domain())
+                d3.axisBottom(valueScale)                
                 .ticks(4, "s")
                 .tickSizeOuter(0)
                 .tickSize(-graphHeight);

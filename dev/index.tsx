@@ -1,6 +1,8 @@
 import React, { useState} from 'react';
 import { createRoot } from 'react-dom/client';
-import { BarChart, PieChart, StackedBarChart, GroupedBarChart, PercentageBarChart } from '../src';
+import { BarChart, PieChart, StackedBarChart, GroupedBarChart, PercentageBarChart,
+  SankeyChart
+ } from '../src';
 import { year1, year2, stackedData, stackedDataVar1, stackedDataVar2, stackData1, stackData2, stackData3 } from '../src/data/constants';
 import { englishFreq, germanFreq, categoryDataV1, categoryDataV2, categoryDataV3 } from '../src/data/constants';
 import controlStyles from './controls.module.css'
@@ -25,6 +27,12 @@ const App = () => {
   return(
   
     <div style={{paddingBottom: "20px"}}>      
+    <div style={{
+        width: '80vw',
+        height: '450px', display:"flex", flexDirection:"column", overflow:'hidden', 
+        marginTop: '20px', /*border: '2px solid red'*/}}>
+          <SankeyChart />
+      </div>
       <h2>Testing BarChart Component</h2>
       <div style={{
         width: '80%',

@@ -90,6 +90,28 @@ export function moveTooltip(tooltip:any, positionProps:PositioningProps){
                 (e.y + 30)  + "px")                
 }
 
+export function moveSankeyTooltip(e:any, tooltip:any){
+    const { offsetWidth, offsetHeight } = tooltip.node() || {};
+              
+    const clientWidth = document.documentElement.clientWidth
+    const baseXPos =  e.x - (offsetWidth/2); 
+
+    let xPos = 0;
+    if(baseXPos < 0){//too much to the left....
+        xPos = 0;
+    }
+    else if(baseXPos + offsetWidth > clientWidth){//too much to the right....
+        const difference =  (baseXPos + offsetWidth) - clientWidth;
+      xPos = baseXPos - difference;
+    }
+    else{
+        xPos = baseXPos;
+    }
+    tooltip.style("left", xPos + "px")
+        .attr("class", `${styles.tooltip} ${styles["tooltip--arrow-down"]}`)
+        .style("top", (e.y - (offsetHeight+ 10))  + "px");//put a little 10px top margin...
+}
+
 export function hideTooltip(tooltip:any){              
 
     tooltip.style("opacity", 0)

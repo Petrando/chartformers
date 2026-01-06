@@ -1,0 +1,204 @@
+.cardNode, .baseNode {
+    stroke: #475569;
+    stroke-width: 1;
+    transition: all .25s;
+}
+
+.cardNode:hover, .baseNode:hover {
+    stroke: #1f2937;
+    stroke-width: 1.5;
+}
+
+.node {
+    cursor: pointer;
+    fill:#059669;
+    stroke-width: 1.5;
+    transition: all .25s;
+}
+
+.balancedNodeStroke {
+    stroke: #6b7280;
+}
+
+.surplusNodeStroke {
+    stroke: #10b981;
+}
+
+.minusNodeStroke {
+    stroke: #dc2626;
+}
+
+.focusFill {
+    fill:#059669;
+    stroke-width: 2;
+    transition: all .25s;
+}
+
+.focusFill:hover {
+    stroke-width: 3;
+}
+
+.parentFill {
+    fill: #065f46;
+}
+
+.childFill {
+    fill: #65a30d;
+}
+
+.inactiveFill {
+    fill: #a3a3a3;
+}
+.node:hover {
+    stroke-width: 2.5;
+}
+
+.sankeyLink, .disabledLink {
+    stroke: #1f2937;
+    stroke-opacity:0.6;
+    transition: all 0.25s;
+    fill: none;
+}
+/*
+Concept : animate stroke opacity from 0 to 0.6 when link is in enter stage
+Doesn't seem to work properly
+
+.sankeyLinkEnter {
+    stroke: #1f2937;
+    stroke-opacity: 0;
+    fill: none;
+    animation: strokeEnter 1s infinite;
+}
+
+@keyframes strokeEnter {
+    from {
+        stroke-opacity: 0;
+    }
+    to {
+        stroke-opacity: 0.6;
+    }    
+}
+*/
+
+.linkAnimate {
+    stroke: #facc15;
+    stroke-width: 2;
+    fill: none;
+    pointer-events: none;
+    /*fill-opacity: 0;*/
+    stroke-dasharray: 4 4;
+    stroke-dashoffset: 0;    
+    animation: progress 1s infinite ease-in-out;
+}
+
+.linkAnimateDisabled {
+    stroke: none;
+    stroke-width: 0;
+    fill: none;
+    pointer-events: none;
+}
+
+@keyframes progress {
+    from {
+        stroke-dashoffset: 4;
+        
+    }    
+    to {
+        stroke-dashoffset: 0;
+    }
+}
+
+.dashed{
+    stroke-dasharray: 10;  
+}
+
+.sankeyLink:hover, .hoveredNodeLink {
+    stroke: #1f2937;
+    stroke-opacity:0.8;
+    fill: none;
+}
+
+.relativeLink{
+    stroke: #083344;
+    stroke-opacity: 0.75;
+    fill: none;
+    transition: all 0.25s;
+}
+
+.nonRelativeLink {
+    stroke: #1f2937;
+    stroke-opacity:0.3;
+    fill: none;
+    transition: all 0.25s;
+}
+
+.nonRelativeLink:hover {
+    stroke-opacity: 0.8;
+}
+
+.relativeLink:hover{
+    stroke-opacity: 0.85;
+}
+
+.sankeyEnergyLink {
+    stroke-opacity: 0.5;
+    transition: all 0.25s;
+    fill: none;
+}
+
+.sankeyLinkNotHovered {
+    stroke: #1f2937;
+    stroke-opacity:0.3;
+    transition: all 0.25s;
+    fill: none;
+}
+
+.sankeyEnergyLinkNotHovered {
+    stroke-opacity: 0.2;
+    transition: all 0.25s;
+    fill: none;
+}
+
+.sankeyLabel{
+    font-size: 16px;
+    font-weight: bold;
+    pointer-events: none;
+    font-family: sans-serif;
+    stroke: #eff1f4;
+    stroke-width: 0.25px;
+}
+
+.sankeyLabelFocusRelatives {
+    font-size:13px;
+}
+
+.hideLabel {
+    opacity: 0;
+}
+
+.sankeyLabelHidden {
+    font-size: 10px;
+}
+  
+.sankeyLabelSmallText {
+    font-size: 10px;
+    pointer-events: none;
+    font-family: sans-serif;
+}
+  
+@media (max-width:648px){    
+    .sankeyLabel {
+        font-weight: normal;
+        stroke-width: 0px;
+        font-size: 12px;
+    }
+    .sankeyEnergyLinkNotHovered {
+        stroke-opacity: 0.15;
+        fill: none;
+    }
+}
+
+.labelHidden {
+    opacity: 0;
+    transition: all 0.25s;
+}

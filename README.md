@@ -19,7 +19,7 @@ It is designed to simplify chart creation in modern React apps while retaining t
 - Responsive charts that auto-fit their containers  
 - Simple styling with the included CSS  
 - Powered by D3.js + React
-
+n
 ## 📦 Installation
 
 ```bash

@@ -406,8 +406,7 @@ export function SankeyChart() {
                 const trgt = sankeyData.nodes[d.target].name;
                 const linkID = src + " → " + trgt;
                 d.sourceName = src;
-                d.targetName = trgt;
-                //console.log(linkID);
+                d.targetName = trgt;                
                 d.id = linkID;
             });
 
@@ -636,25 +635,23 @@ export function SankeyChart() {
                         return true;
                     })
                     .style("stroke", "#1f2937")
-                    .style("stroke-opacity", 0.15);                                        
+                    .style("stroke-opacity", 0.1);                                        
                     
                     const enteringValue = d.targetLinks?.reduce((acc, curr)=>{
                         return acc + curr.value
                     }, 0)
                     const exitingValue = d.sourceLinks?.reduce((acc, curr)=>{
                         return acc + curr.value
-                    }, 0)
-                    console.log(d)
-                    console.log(exitingValue)
+                    }, 0)                    
                     
                     tooltip.style("opacity", 1)
                     tooltip.select("p.title").text(d.name + " :")
                     tooltip.select("p.top-label")
                         .style("display", "block")
-                        .text("entering : " + basicFormat(enteringValue!))                    
+                        .text("in : " + basicFormat(enteringValue!))                    
                     tooltip.select("p.bottom-label")
                         .style("display", "block")
-                        .text("exiting : " + basicFormat(exitingValue!))
+                        .text("out : " + basicFormat(exitingValue!))
                 })
                 .on("mousemove", (e, d) => {
                     moveSankeyTooltip(e, tooltip)

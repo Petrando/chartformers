@@ -5,14 +5,21 @@ import { BarChart, PieChart, StackedBarChart, GroupedBarChart, PercentageBarChar
  } from '../src';
 import { year1, year2, stackedData, stackedDataVar1, stackedDataVar2, stackData1, stackData2, stackData3 } from '../src/data/constants';
 import { englishFreq, germanFreq, categoryDataV1, categoryDataV2, categoryDataV3 } from '../src/data/constants';
+import { flightData, flightData1, energyData, brexitVoting } from '../src/data/constants';
 import controlStyles from './controls.module.css'
 
 const App = () => {
   const [selectedData, setSelectedData] = useState<string>("stack1");
-
+  
   const handleChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     setSelectedData(e.target.value);
   };
+
+  const [selectedSankeyData, setSelectedSankeyData] = useState<string>("brexit voting")
+
+  const handleSankeyChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    setSelectedSankeyData(e.target.value)
+  }
 
   const selectedStackedData = selectedData === "stack1" ? year1 : 
     selectedData === "stack2" ? year2:
@@ -23,15 +30,29 @@ const App = () => {
     selectedData === "category2"?categoryDataV2:categoryDataV3
 
   const pointData = selectedData.startsWith("category")?categoryData:languageData
-  // 
+  
+  const sankeyData = selectedSankeyData === "flight data"?flightData:
+    selectedSankeyData === "flight data 1"?flightData1:      
+        selectedSankeyData === "energy data"?energyData:
+          brexitVoting
   return(
   
-    <div style={{paddingBottom: "20px"}}>      
+    <div style={{paddingBottom: "20px"}}>    
+    <div id="select-sankey-data" className={`${controlStyles["select-optional"]}`}>
+      <label htmlFor="choose-sankey-data">Choose sankey data:</label>
+      <select id="choose-sankey-data" value={selectedSankeyData} onChange={handleSankeyChange}>              
+        {
+          ["brexit voting", "flight data", "flight data 1", "energy data"].map(s => (
+            <option key={s} value={s}>{s}</option>
+          ))
+        }
+      </select>
+    </div>  
     <div style={{
         width: '80vw',
         height: '450px', display:"flex", flexDirection:"column", overflow:'hidden', 
         marginTop: '20px', /*border: '2px solid red'*/}}>
-          <SankeyChart />
+          <SankeyChart data={sankeyData} />
       </div>
       <h2>Testing BarChart Component</h2>
       <div style={{

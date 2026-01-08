@@ -1,4 +1,4 @@
-import React, {useState, useEffect} from 'react';
+import React, {useState, useEffect, useRef} from 'react';
 import { createPortal } from 'react-dom';
 import * as d3 from 'd3';
 import { sankey, sankeyLinkHorizontal, SankeyGraph, SankeyNode, SankeyLink, SankeyNodeMinimal, SankeyLinkMinimal } from "d3-sankey";
@@ -23,368 +23,44 @@ export type LayoutLink =
 export type LayoutGraph =
   SankeyGraph<sankeyNode, sankeyLink>;
 
-const flightData: sankeyData = {
-    "nodes": [
-        {
-            "name": "Brazil",
-            "color": ""
-        },
-        {
-            "name": "Portugal",
-            "color": ""
-        },
-        {
-            "name": "France",
-            "color": ""
-        },
-        {
-            "name": "Spain",
-            "color": ""
-        },
-        {
-            "name": "England",
-            "color": ""
-        },
-        {
-            "name": "Angola",
-            "color": ""
-        },
-        {
-            "name": "Senegal",
-            "color": ""
-        },
-        {
-            "name": "Morocco",
-            "color": ""
-        },
-        {
-            "name": "South Africa",
-            "color": ""
-        },
-        {
-            "name": "China",
-            "color": ""
-        },
-        {
-            "name": "India",
-            "color": ""
-        },
-        {
-            "name": "Japan",
-            "color": ""
-        },
-        {
-            "name": "Canada",
-            "color": ""
-        },
-        {
-            "name": "Mali",
-            "color": ""
-        },
-        {
-            "name": "Mexico",
-            "color": ""
-        },
-        {
-            "name": "USA",
-            "color": ""
-        }
-    ],
-    "links": [
-        {
-            "source": 0,
-            "target": 1,
-            "value": 5,
-            "_id": "65294719671d25cb449b6cc8"
-        },
-        {
-            "source": 0,
-            "target": 2,
-            "value": 1,
-            "_id": "65294719671d25cb449b6cc9"
-        },
-        {
-            "source": 0,
-            "target": 3,
-            "value": 1,
-            "_id": "65294719671d25cb449b6cca"
-        },
-        {
-            "source": 0,
-            "target": 4,
-            "value": 1,
-            "_id": "65294719671d25cb449b6ccb"
-        },
-        {
-            "source": 1,
-            "target": 5,
-            "value": 2,
-            "_id": "65294719671d25cb449b6ccc"
-        },
-        {
-            "source": 1,
-            "target": 6,
-            "value": 1,
-            "_id": "65294719671d25cb449b6ccd"
-        },
-        {
-            "source": 1,
-            "target": 7,
-            "value": 1,
-            "_id": "65294719671d25cb449b6cce"
-        },
-        {
-            "source": 1,
-            "target": 8,
-            "value": 3,
-            "_id": "65294719671d25cb449b6ccf"
-        },
-        {
-            "source": 5,
-            "target": 9,
-            "value": 5,
-            "_id": "65294719671d25cb449b6cd0"
-        },
-        {
-            "source": 5,
-            "target": 10,
-            "value": 1,
-            "_id": "65294719671d25cb449b6cd1"
-        },
-        {
-            "source": 5,
-            "target": 11,
-            "value": 3,
-            "_id": "65294719671d25cb449b6cd2"
-        },
-        {
-            "source": 12,
-            "target": 1,
-            "value": 1,
-            "_id": "65294719671d25cb449b6cd3"
-        },
-        {
-            "source": 12,
-            "target": 2,
-            "value": 5,
-            "_id": "65294719671d25cb449b6cd4"
-        },
-        {
-            "source": 12,
-            "target": 4,
-            "value": 1,
-            "_id": "65294719671d25cb449b6cd5"
-        },
-        {
-            "source": 2,
-            "target": 5,
-            "value": 1,
-            "_id": "65294719671d25cb449b6cd6"
-        },
-        {
-            "source": 2,
-            "target": 6,
-            "value": 3,
-            "_id": "65294719671d25cb449b6cd7"
-        },
-        {
-            "source": 2,
-            "target": 13,
-            "value": 3,
-            "_id": "65294719671d25cb449b6cd8"
-        },
-        {
-            "source": 2,
-            "target": 7,
-            "value": 3,
-            "_id": "65294719671d25cb449b6cd9"
-        },
-        {
-            "source": 2,
-            "target": 8,
-            "value": 1,
-            "_id": "65294719671d25cb449b6cda"
-        },
-        {
-            "source": 6,
-            "target": 9,
-            "value": 5,
-            "_id": "65294719671d25cb449b6cdb"
-        },
-        {
-            "source": 6,
-            "target": 10,
-            "value": 1,
-            "_id": "65294719671d25cb449b6cdc"
-        },
-        {
-            "source": 6,
-            "target": 11,
-            "value": 3,
-            "_id": "65294719671d25cb449b6cdd"
-        },
-        {
-            "source": 14,
-            "target": 1,
-            "value": 1,
-            "_id": "65294719671d25cb449b6cde"
-        },
-        {
-            "source": 14,
-            "target": 2,
-            "value": 1,
-            "_id": "65294719671d25cb449b6cdf"
-        },
-        {
-            "source": 14,
-            "target": 3,
-            "value": 5,
-            "_id": "65294719671d25cb449b6ce0"
-        },
-        {
-            "source": 14,
-            "target": 4,
-            "value": 1,
-            "_id": "65294719671d25cb449b6ce1"
-        },
-        {
-            "source": 3,
-            "target": 6,
-            "value": 1,
-            "_id": "65294719671d25cb449b6ce2"
-        },
-        {
-            "source": 3,
-            "target": 7,
-            "value": 3,
-            "_id": "65294719671d25cb449b6ce3"
-        },
-        {
-            "source": 3,
-            "target": 8,
-            "value": 1,
-            "_id": "65294719671d25cb449b6ce4"
-        },
-        {
-            "source": 7,
-            "target": 9,
-            "value": 5,
-            "_id": "65294719671d25cb449b6ce5"
-        },
-        {
-            "source": 7,
-            "target": 10,
-            "value": 1,
-            "_id": "65294719671d25cb449b6ce6"
-        },
-        {
-            "source": 7,
-            "target": 11,
-            "value": 3,
-            "_id": "65294719671d25cb449b6ce7"
-        },
-        {
-            "source": 15,
-            "target": 1,
-            "value": 1,
-            "_id": "65294719671d25cb449b6ce8"
-        },
-        {
-            "source": 15,
-            "target": 2,
-            "value": 1,
-            "_id": "65294719671d25cb449b6ce9"
-        },
-        {
-            "source": 15,
-            "target": 3,
-            "value": 1,
-            "_id": "65294719671d25cb449b6cea"
-        },
-        {
-            "source": 15,
-            "target": 4,
-            "value": 5,
-            "_id": "65294719671d25cb449b6ceb"
-        },
-        {
-            "source": 4,
-            "target": 5,
-            "value": 1,
-            "_id": "65294719671d25cb449b6cec"
-        },
-        {
-            "source": 4,
-            "target": 6,
-            "value": 1,
-            "_id": "65294719671d25cb449b6ced"
-        },
-        {
-            "source": 4,
-            "target": 7,
-            "value": 2,
-            "_id": "65294719671d25cb449b6cee"
-        },
-        {
-            "source": 4,
-            "target": 8,
-            "value": 7,
-            "_id": "65294719671d25cb449b6cef"
-        },
-        {
-            "source": 8,
-            "target": 9,
-            "value": 5,
-            "_id": "65294719671d25cb449b6cf0"
-        },
-        {
-            "source": 8,
-            "target": 10,
-            "value": 1,
-            "_id": "65294719671d25cb449b6cf1"
-        },
-        {
-            "source": 8,
-            "target": 11,
-            "value": 3,
-            "_id": "65294719671d25cb449b6cf2"
-        },
-        {
-            "source": 13,
-            "target": 9,
-            "value": 5,
-            "_id": "65294719671d25cb449b6cf3"
-        },
-        {
-            "source": 13,
-            "target": 10,
-            "value": 1,
-            "_id": "65294719671d25cb449b6cf4"
-        },
-        {
-            "source": 13,
-            "target": 11,
-            "value": 3,
-            "_id": "65294719671d25cb449b6cf5"
-        }
-    ]
+type SankeyProps = {
+    data: sankeyData;
 }
-export function SankeyChart() {
-    const [data, setData] = useState<sankeyData>({nodes: [], links: []});
+export function SankeyChart({data}: SankeyProps) {
+    const [sankeyData, setSankeyData] = useState<sankeyData | null>(null);
+    const isFreshData = useRef(true)
     const [prevData, setPrevData] = useState<sankeyData | null>(null);
     const [hoveredNode, setHoveredNode] = useState<number | null>(null);
     const [hoveredLink, setHoveredLink] = useState<number | null>(null);
     const [ref, parentSize] = useParentSize<HTMLDivElement>();
     const { width:parentWidth, height: parentHeight} = parentSize;
     const containerSize = useContainerSize();
-    const layerIndex = useLayerIndex(flightData.nodes.map(n => n.name));
-    
-    const sankeyData = cloneObj(flightData);
+    const layerIndex = useLayerIndex(sankeyData?sankeyData.nodes.map(n => n.name):[]);
+
+    useEffect(()=>{
+        setSankeyData((prev) => {
+            const prevNames = prev === null?[]:prev.nodes.map(node =>  node.name)
+            const currentNames = data.nodes.map(node => node.name)
+
+            isFreshData.current = currentNames.every(name => {
+                if(prevNames.includes(name)){
+                    return false
+                }
+                return true
+            });
+            return data
+        })
+    }, [data])        
 
     const isMidSmallScreen = parentWidth <= 768;
     const animDuration = 1000
-    const chartRef = useD3<HTMLDivElement>((container) => 
+    const chartRef = useD3<HTMLDivElement>(
+        (container) => 
         {
+            if(!sankeyData){
+                return
+            }
+            console.log(sankeyData)
             const width = parentWidth;
             const height = parentHeight;
             if(width === 0 || height === 0){
@@ -408,18 +84,7 @@ export function SankeyChart() {
                 d.sourceName = src;
                 d.targetName = trgt;                
                 d.id = linkID;
-            });
-
-            //setPrevData(sankeyData)            
-            const prevNodeNames = prevData === null?[]:prevData.nodes.map(d => d.name)
-            const nodeNames = sankeyData.nodes.map((d:sankeyNode) => d.name)
-            
-            const isFreshData = nodeNames.every((name: string) => {
-                if(prevNodeNames.includes(name)){
-                    return false
-                }
-                return true
-            })
+            });                                                
 
             const canvasSvg = container.select<SVGSVGElement>("svg")
             const svgNode = canvasSvg.node()
@@ -482,7 +147,7 @@ export function SankeyChart() {
             }
             
             const linkDelay = (d: SankeyLink<sankeyNode, sankeyLink>) => {
-                if(!isFreshData){
+                if(!isFreshData.current){
                     return 0
                 }
 
@@ -583,7 +248,7 @@ export function SankeyChart() {
                         
 
             const nodeDelay = (d:SankeyNode<sankeyNode, sankeyLink>) => {
-                if(!isFreshData || d.depth === 0){
+                if(!isFreshData.current || d.depth === 0){
                     return 0
                 }
                 return (d.depth! * animDuration) + (animDuration/3)
@@ -598,13 +263,13 @@ export function SankeyChart() {
                         .attr("x", d => d.x0!)
                         .attr("y", d => d.y0!)
                         .attr("height", d=>{
-                            if(isFreshData){
+                            if(isFreshData.current){
                                 return Math.abs(d.y1! - d.y0!)
                             }
                             return 0
                         })
                         .attr("width", d => {
-                            if(isFreshData){
+                            if(isFreshData.current){
                                 return 0
                             }
                             return d.x1! - d.x0!

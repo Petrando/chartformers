@@ -546,7 +546,9 @@ export function SankeyChart() {
                         .style("opacity", 0);
                     
                     tooltip.style("opacity", 1)
-                    tooltip.select("p").text(d.id + " : " + basicFormat(d.value/*, settings*/))                    
+                    tooltip.select("p.title").text(d.id + " : " + basicFormat(d.value/*, settings*/))                    
+                    tooltip.select("p.top-label").style("display", "none")
+                    tooltip.select("p.bottom-label").style("display", "none")
                         
                 })
                 .on("mousemove", (e, d) => {   
@@ -636,8 +638,23 @@ export function SankeyChart() {
                     .style("stroke", "#1f2937")
                     .style("stroke-opacity", 0.15);                                        
                     
+                    const enteringValue = d.targetLinks?.reduce((acc, curr)=>{
+                        return acc + curr.value
+                    }, 0)
+                    const exitingValue = d.sourceLinks?.reduce((acc, curr)=>{
+                        return acc + curr.value
+                    }, 0)
+                    console.log(d)
+                    console.log(exitingValue)
+                    
                     tooltip.style("opacity", 1)
-                    tooltip.select("p").text("from " + d.name + " : " + basicFormat(d.value as number))                    
+                    tooltip.select("p.title").text(d.name + " :")
+                    tooltip.select("p.top-label")
+                        .style("display", "block")
+                        .text("entering : " + basicFormat(enteringValue!))                    
+                    tooltip.select("p.bottom-label")
+                        .style("display", "block")
+                        .text("exiting : " + basicFormat(exitingValue!))
                 })
                 .on("mousemove", (e, d) => {
                     moveSankeyTooltip(e, tooltip)
@@ -715,7 +732,7 @@ export function SankeyChart() {
                 >
                     <g className="plot-area" />
                 </svg>
-                <Tooltip />
+                <Tooltip pCount={3} />
             </div>            
         </div>  
     )

@@ -11,7 +11,14 @@ export const Tooltip:FunctionComponent<ITooltip> = ({pCount}) => {
         <div id="tooltip" className={`${styles.tooltip}`}>
             {
                 !pCount &&
-                    <p className={`${styles["text-small"]}`} />
+                    <p className={`top-label ${styles["text-small"]}`} />
+            }
+            {
+                pCount === 2 &&
+                    <>
+                        <p className={`top-label ${styles["text-small"]}`} />
+                        <p className={`bottom-label ${styles["text-small"]}`} />
+                    </>
             }
             {
                 pCount === 3 &&

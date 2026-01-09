@@ -102,20 +102,15 @@ export function SankeyChart({data}: SankeyProps) {
             const mySankey = sankey<sankeyNode, sankeyLink>()                                
                 .nodeSort(null)
                 .linkSort(null)
-                .nodeWidth(
-                            /*graphWidth<=540?12:
-                                graphWidth > 540 && graphWidth <= 1024?17.5:
-                                    20*/
-                                graphWidth<=540?12:15
-                          )
+                .nodeWidth(graphWidth<=540?12:15)
                 .nodePadding(graphWidth<=540?5:8)                
-                .extent([[0, 0], [graphWidth, graphHeight]])
+                .extent([[0, 0], [graphWidth, graphHeight]])    
             
             const graph:LayoutGraph = mySankey({
                 nodes: clonedNodes.map((d: sankeyNode) => Object.assign({}, d)),
                 links: clonedLinks.map((d: sankeyLink) => Object.assign({}, d))
             });
-
+            
             const { nodes, links } = graph;            
 
             canvas.selectAll("linearGradient").remove();
@@ -179,7 +174,7 @@ export function SankeyChart({data}: SankeyProps) {
                         })                        
                         .attr("stroke-dasharray", strokeDasharray)
                         .attr("stroke-dashoffset", strokeDashoffset)                                                       
-                        .attr("stroke-width", d => Math.max(1, d.width!))                        
+                        .attr("stroke-width", d => Math.max(1, d.width!))                         
                             .transition().duration(animDuration)
                             .delay(linkDelay)                        
                         .attr("stroke-dashoffset", 0)                            
@@ -243,11 +238,11 @@ export function SankeyChart({data}: SankeyProps) {
                     canvas.selectAll("text.label")
                         .style("opacity", 1)
                         
-                })
-                .attr("d", sankeyLinkHorizontal())
+                })                
                 .attr("stroke-width", d => Math.max(1, d.width || 0))
                 .transition().duration(animDuration)
-                    .delay(linkDelay)                                                                             
+                    .delay(linkDelay)               
+                .attr("d", sankeyLinkHorizontal())                                                              
                 .attr("stroke-dashoffset", 0)
                 .on("end", function(){
                     d3.select(this).attr("stroke-dasharray", `none`)

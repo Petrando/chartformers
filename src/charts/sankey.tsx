@@ -29,13 +29,14 @@ type SankeyProps = {
 export function SankeyChart({data}: SankeyProps) {
     const [sankeyData, setSankeyData] = useState<sankeyData | null>(null);
     const isFreshData = useRef(true)
+    const isFirstRender = useRef(true)
     const [prevData, setPrevData] = useState<sankeyData | null>(null);
     const [hoveredNode, setHoveredNode] = useState<number | null>(null);
     const [hoveredLink, setHoveredLink] = useState<number | null>(null);
     const [ref, parentSize] = useParentSize<HTMLDivElement>();
     const { width:parentWidth, height: parentHeight} = parentSize;
     const containerSize = useContainerSize();
-    const layerIndex = useLayerIndex(sankeyData?sankeyData.nodes.map(n => n.name):[]);
+    const layersRef = useLayerIndex(sankeyData?sankeyData.nodes.map(n => n.name):[]);
 
     useEffect(()=>{
         setSankeyData((prev) => {
@@ -48,6 +49,10 @@ export function SankeyChart({data}: SankeyProps) {
                 }
                 return true
             });
+
+            if(prev !== null){
+                isFirstRender.current = false
+            }
             return data
         })
     }, [data])        
@@ -59,8 +64,8 @@ export function SankeyChart({data}: SankeyProps) {
         {
             if(!sankeyData){
                 return
-            }
-            console.log(sankeyData)
+            }                        
+
             const width = parentWidth;
             const height = parentHeight;
             if(width === 0 || height === 0){
@@ -92,9 +97,7 @@ export function SankeyChart({data}: SankeyProps) {
                 .attr("transform", "translate(" + margin.left + "," + margin.top + ")")
 
             const tooltip = getTooltip(container as any)
-                .style("opacity", 0);
-
-            const color = d3.scaleOrdinal(d3.schemeCategory10); 
+                .style("opacity", 0);            
 
             const mySankey = sankey<sankeyNode, sankeyLink>()                                
                 .nodeSort(null)
@@ -126,11 +129,17 @@ export function SankeyChart({data}: SankeyProps) {
 
             gradients.append("stop")
                 .attr("offset", "0%")
-                .attr("stop-color", d => color(d.sourceName!));
+                .attr("stop-color", d => {
+                    const colorIndex = layersRef.current.findIndex(layer => layer === d.sourceName)
+                    return indexColor(colorIndex, false)
+                });
 
             gradients.append("stop")
                 .attr("offset", "100%")
-                .attr("stop-color", d => color(d.targetName!));
+                .attr("stop-color", d => {
+                    const colorIndex = layersRef.current.findIndex(layer => layer === d.targetName)
+                    return indexColor(colorIndex, false)
+                });
 
             const strokeDashoffset = (
                 d: SankeyLink<sankeyNode, sankeyLink>
@@ -179,12 +188,11 @@ export function SankeyChart({data}: SankeyProps) {
                         })
                     },
                     undefined,
-                    exit => exit.transition().duration(250)
+                    exit => exit.transition().duration(animDuration/4)
                         .attr("stroke-width", 0)
                         .remove()
                 )
-                .on("mouseover", (e, d)=>{     
-                    
+                .on("mouseover", (e, d)=>{                         
                     canvas.selectAll("path.link").filter(dPath => {
                         const pathData = dPath as SankeyLink<sankeyNode, sankeyLink>
                         return pathData.id !== d.id
@@ -215,10 +223,10 @@ export function SankeyChart({data}: SankeyProps) {
                     tooltip.select("p.bottom-label").style("display", "none")
                         
                 })
-                .on("mousemove", (e, d) => {   
+                .on("mousemove", (e, d) => {                     
                     moveSankeyTooltip(e, tooltip)                    
                 })
-                .on("mouseout", (e, d)=>{
+                .on("mouseout", (e, d)=>{                    
                     tooltip.style("opacity", 0);                    
 
                     canvas.selectAll("path.link")  
@@ -238,9 +246,8 @@ export function SankeyChart({data}: SankeyProps) {
                 })
                 .attr("d", sankeyLinkHorizontal())
                 .attr("stroke-width", d => Math.max(1, d.width || 0))
-                .transition().duration(1000)
-                    .delay(linkDelay)                                                             
-                .attr("stroke-dasharray", width + " " + width)
+                .transition().duration(animDuration)
+                    .delay(linkDelay)                                                                             
                 .attr("stroke-dashoffset", 0)
                 .on("end", function(){
                     d3.select(this).attr("stroke-dasharray", `none`)
@@ -251,8 +258,8 @@ export function SankeyChart({data}: SankeyProps) {
                 if(!isFreshData.current || d.depth === 0){
                     return 0
                 }
-                return (d.depth! * animDuration) + (animDuration/3)
-            }
+                return (d.depth! * animDuration) + animDuration/4
+            }            
             
             const nodeRects = canvas.selectAll<SVGRectElement, SankeyNode<sankeyNode, sankeyLink>>("rect.node")
                 .data(nodes, (d=>d.name))
@@ -277,18 +284,22 @@ export function SankeyChart({data}: SankeyProps) {
                         .attr("opacity", 0)
                             .transition().duration(animDuration)
                             .delay(nodeDelay)
-                        .attr("fill", d=>color(d.name))
+                        .attr("fill", d=>{
+                            const colorIndex = layersRef.current.findIndex(layer => layer === d.name)
+                            return indexColor(colorIndex, false)
+                        })
                         .attr("opacity", 1)
                         .attr("width", function(d){
                             return d.x1! - d.x0!
                         })
                     },
                     undefined,
-                    exit=>exit.transition().duration(250)
+                    exit=>exit.transition().duration(animDuration/4)
                         .attr("height", 0)
                         .remove()
                 )
-                .on("mouseover", (e,d)=>{                                                        
+                .on("mouseover", (e,d)=>{                          
+
                     canvas.selectAll("path.link").filter(dPath => {
                         const pathData = dPath as SankeyLink<sankeyNode, sankeyLink>
                         if(pathData.sourceName === d.name){
@@ -318,10 +329,10 @@ export function SankeyChart({data}: SankeyProps) {
                         .style("display", "block")
                         .text("out : " + basicFormat(exitingValue!))
                 })
-                .on("mousemove", (e, d) => {
+                .on("mousemove", (e, d) => {                    
                     moveSankeyTooltip(e, tooltip)
                 })
-                .on("mouseout", (e, d)=>{                
+                .on("mouseout", (e, d)=>{                                    
                     tooltip.style("opacity", 0);                                            
     
                     canvas.selectAll("path.link")
@@ -335,14 +346,17 @@ export function SankeyChart({data}: SankeyProps) {
                         .style("fill", "none")                      
                         .attr("class", `link ${styles.sankeyEnergyLink}`)
                 })
-                .transition().duration(1000)
+                .transition().duration(animDuration)
                     .delay(nodeDelay)
                 .attr("opacity", 1)
                 .attr("x", d => d.x0!)
                 .attr("y", d => d.y0!)
                 .attr("height", d => Math.abs(d.y1! - d.y0!))
                 .attr("width", d => d.x1! - d.x0!)
-                .attr("fill", d=>color(d.name));
+                .attr("fill", d=>{
+                    const colorIndex = layersRef.current.findIndex(layer => layer === d.name)
+                    return indexColor(colorIndex, false)
+                });
 
                 const labels = canvas.selectAll<SVGTextElement, SankeyNode<sankeyNode, sankeyLink>>("text.label")
                 .data(nodes, d=>d.name)
@@ -360,7 +374,7 @@ export function SankeyChart({data}: SankeyProps) {
                         .text(d => d.name)
                         .attr("opacity", 0),                            
                     undefined,
-                    exit=>exit.transition().duration(250)
+                    exit=>exit.transition().duration(animDuration/4)
                         .attr("opacity", 0)
                         .remove()
                 )

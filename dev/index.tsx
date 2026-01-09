@@ -19,6 +19,8 @@ const App = () => {
 
   const handleSankeyChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     setSelectedSankeyData(e.target.value)
+    e.stopPropagation()
+    e.preventDefault()
   }
 
   const selectedStackedData = selectedData === "stack1" ? year1 : 

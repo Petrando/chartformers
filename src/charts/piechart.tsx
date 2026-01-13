@@ -5,7 +5,7 @@ import { useParentSize } from '../hooks/useParentSize';
 import { useContainerSize } from '../hooks/useContainerSize';
 import { useLayerIndex } from '../hooks/useLayerIndex';
 import { cloneObj, indexSelectedColor } from '../utils';
-import { inactiveColor } from '../data/constants';
+import { inactiveColor } from '../../dev/data/constants';
 import styles from './global.module.css';
 import pieStyles from './piechart.module.css'
 import { pointData } from '../types';

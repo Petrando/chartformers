@@ -7,7 +7,7 @@ import { useParentSize } from '../hooks/useParentSize';
 import { useContainerSize } from '../hooks/useContainerSize';
 import { useLayerIndex } from '../hooks/useLayerIndex';
 import { cloneObj, indexColor, basicFormat } from '../utils';
-import { inactiveColor } from '../data/constants';
+import { inactiveColor } from '../../dev/data/constants';
 import { Tooltip, getTooltip, moveTooltip, moveSankeyTooltip } from '../components/tooltip';
 import { sankeyData, sankeyNode, sankeyLink } from '../types';
 import styles from './global.module.css';
@@ -150,7 +150,7 @@ export function SankeyChart({data}: SankeyProps) {
                 return strokeDashoffset(d) + " " + strokeDashoffset(d)
             }
             
-            const linkDelay = (d: SankeyLink<sankeyNode, sankeyLink>) => {
+            const linkDelay = (d: SankeyLink<sankeyNode, sankeyLink>) => {                
                 if(!isFreshData.current){
                     return 0
                 }
@@ -176,16 +176,34 @@ export function SankeyChart({data}: SankeyProps) {
                         .attr("stroke-dashoffset", strokeDashoffset)                                                       
                         .attr("stroke-width", d => Math.max(1, d.width!))                         
                             .transition().duration(animDuration)
-                            .delay(linkDelay)                        
+                            .delay(function(d){                                
+                                if(!isFreshData.current){                                    
+                                    return animDuration
+                                }
+                                return linkDelay(d)
+                            })                        
                         .attr("stroke-dashoffset", 0)                            
                         .on("end", function(){
                             d3.select(this).attr("stroke-dasharray", `none`)
                         })
                     },
-                    undefined,
-                    exit => exit.transition().duration(animDuration/4)
-                        .attr("stroke-width", 0)
-                        .remove()
+                    update=>{
+                        update.attr("stroke-width", d => Math.max(1, d.width || 0))
+                            .transition().duration(animDuration)
+                                .delay(linkDelay)               
+                            .attr("d", sankeyLinkHorizontal())                                                              
+                            .attr("stroke-dashoffset", 0)
+                            .on("end", function(){
+                                d3.select(this).attr("stroke-dasharray", `none`)
+                            })
+                        return update
+                    },
+                    exit => {
+                        if(isFreshData.current){
+                            return exit.remove()
+                        }
+                        return exit.transition().duration(animDuration/4).style("opacity", 0).remove()
+                    }
                 )
                 .on("mouseover", (e, d)=>{                         
                     canvas.selectAll("path.link").filter(dPath => {
@@ -238,14 +256,6 @@ export function SankeyChart({data}: SankeyProps) {
                     canvas.selectAll("text.label")
                         .style("opacity", 1)
                         
-                })                
-                .attr("stroke-width", d => Math.max(1, d.width || 0))
-                .transition().duration(animDuration)
-                    .delay(linkDelay)               
-                .attr("d", sankeyLinkHorizontal())                                                              
-                .attr("stroke-dashoffset", 0)
-                .on("end", function(){
-                    d3.select(this).attr("stroke-dasharray", `none`)
                 });
                         
 
@@ -289,9 +299,12 @@ export function SankeyChart({data}: SankeyProps) {
                         })
                     },
                     undefined,
-                    exit=>exit.transition().duration(animDuration/4)
-                        .attr("height", 0)
-                        .remove()
+                    exit => {
+                        if(isFreshData.current){
+                            return exit.remove()
+                        }
+                        return exit.transition().duration(animDuration/4).style("opacity", 0).remove()
+                    }
                 )
                 .on("mouseover", (e,d)=>{                          
 
@@ -369,9 +382,7 @@ export function SankeyChart({data}: SankeyProps) {
                         .text(d => d.name)
                         .attr("opacity", 0),                            
                     undefined,
-                    exit=>exit.transition().duration(animDuration/4)
-                        .attr("opacity", 0)
-                        .remove()
+                    exit=>exit.remove()
                 )
                 .style("font-size", graphWidth < 648?"12px":"16px")
                 .style("font-weight", graphWidth < 648?"normal":"bold")

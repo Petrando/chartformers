@@ -7,7 +7,7 @@ import { useContainerSize } from '../../hooks/useContainerSize';
 import { useLayerIndex } from '../../hooks/useLayerIndex';
 import { Tooltip, getTooltip, moveTooltip } from '../../components/tooltip';
 import { cloneObj, indexColor, basicFormat } from '../../utils';
-import { inactiveColor } from '../../data/constants';
+import { inactiveColor } from '../../../dev/data/constants';
 import styles from '../global.module.css';
 import stackedBarStyles from './stacked-barchart.module.css';
 import { LayeredData, ExtendedSeriesPoint, ExtendedSeries, StackedBarChartProps } from './types';

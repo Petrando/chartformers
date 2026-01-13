@@ -1,4 +1,4 @@
-import { sankeyData } from "../types";
+import { sankeyData } from "../../src/types";
 
 export const inactiveColor = "#d1d5db"
 

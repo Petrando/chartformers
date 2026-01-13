@@ -6,7 +6,7 @@ import { useParentSize } from '../hooks/useParentSize';
 import { useUIControls } from '../hooks/useUIControls';
 import { Tooltip, getTooltip, moveTooltip } from '../components/tooltip';
 import { cloneObj, indexSelectedColor } from '../utils';
-import { inactiveColor } from '../data/constants';
+import { inactiveColor } from '../../dev/data/constants';
 import styles from './global.module.css';
 import barchartStyles from './barchart.module.css';
 import { pointData } from '../types';

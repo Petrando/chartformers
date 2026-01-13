@@ -1,11 +1,12 @@
 import React, { useState} from 'react';
 import { createRoot } from 'react-dom/client';
 import { BarChart, PieChart, StackedBarChart, GroupedBarChart, PercentageBarChart,
-  SankeyChart
+  SankeyChart, CirclePack
  } from '../src';
-import { year1, year2, stackedData, stackedDataVar1, stackedDataVar2, stackData1, stackData2, stackData3 } from '../src/data/constants';
-import { englishFreq, germanFreq, categoryDataV1, categoryDataV2, categoryDataV3 } from '../src/data/constants';
-import { flightData, flightData1, energyData, brexitVoting } from '../src/data/constants';
+import { year1, year2, stackedData, stackedDataVar1, stackedDataVar2, stackData1, stackData2, stackData3 } from './data/constants';
+import { englishFreq, germanFreq, categoryDataV1, categoryDataV2, categoryDataV3 } from './data/constants';
+import { flightData, flightData1, energyData, brexitVoting } from './data/constants'
+import { loanData1, loanData2, flareData } from './data/loan-data';
 import controlStyles from './controls.module.css'
 
 const App = () => {
@@ -22,6 +23,18 @@ const App = () => {
     e.stopPropagation()
     e.preventDefault()
   }
+
+  const [selectedPackData, setSelectedPackData] = useState<string>("loan 1")
+
+  const handlePackChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    setSelectedPackData(e.target.value)
+    e.stopPropagation()
+    e.preventDefault()
+  }
+
+  const packData = selectedPackData === "loan 1"?loanData1:
+    selectedPackData === "loan 2"?loanData2:
+      flareData
 
   const selectedStackedData = selectedData === "stack1" ? year1 : 
     selectedData === "stack2" ? year2:
@@ -40,6 +53,22 @@ const App = () => {
   return(
   
     <div style={{paddingBottom: "20px"}}>    
+    <div style={{
+        width: '80vw',
+        height: '450px', display:"flex", flexDirection:"column", overflow:'hidden', 
+        marginTop: '20px', /*border: '2px solid red'*/}}>
+          <div id="select-sankey-data" className={`${controlStyles["select-optional"]}`}>
+            <label htmlFor="choose-pack-data">Choose pack data:</label>
+            <select id="choose-pack-data" value={selectedPackData} onChange={handlePackChange}>              
+              {
+                ["loan 1", "loan 2", "flare"].map(s => (
+                  <option key={s} value={s}>{s}</option>
+                ))
+              }
+            </select>
+          </div>
+          <CirclePack data={packData} />
+    </div>
     <div id="select-sankey-data" className={`${controlStyles["select-optional"]}`}>
       <label htmlFor="choose-sankey-data">Choose sankey data:</label>
       <select id="choose-sankey-data" value={selectedSankeyData} onChange={handleSankeyChange}>              

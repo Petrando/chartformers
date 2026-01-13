@@ -1,4 +1,4 @@
-import { SankeyNodeMinimal } from "d3-sankey";
+import { SankeyNodeMinimal, SankeyNode } from "d3-sankey";
 
 export type pointData = {
     label: string;
@@ -23,4 +23,10 @@ export type sankeyLink = {
 export type sankeyData = {
     nodes: sankeyNode[];
     links: sankeyLink[];
+}
+
+export type circlePackData = {
+    name: string;
+    value?: number;
+    children?: circlePackData[];
 }

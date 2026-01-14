@@ -6,6 +6,7 @@ import styles from "./tooltip.module.css"
 type ITooltip = {
     pCount?:number;
 }
+
 export const Tooltip:FunctionComponent<ITooltip> = ({pCount}) => {
     return (
         <div id="tooltip" className={`${styles.tooltip}`}>
@@ -21,12 +22,16 @@ export const Tooltip:FunctionComponent<ITooltip> = ({pCount}) => {
                     </>
             }
             {
-                pCount === 3 &&
+                (pCount === 3 || 4) &&
                 <>
                     <p className={`title ${styles.title}`} />
                     <p className={`top-label ${styles["right-label"]}`} />
                     <p className={`bottom-label ${styles["right-label"]}`} />
                 </>
+            }
+            {
+                pCount === 4 &&
+                    <p className={`small-text ${styles["right-label"]} ${styles["small-text"]}`} />
             }
         </div>
     )

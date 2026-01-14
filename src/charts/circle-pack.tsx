@@ -102,6 +102,7 @@ export function CirclePack({data}: PackProps) {
                                 const cirleColor = d.children ? color(d.depth) : "#f0fdfa";                              
                                 return cirleColor; 
                             })
+                            .style("cursor", "pointer")
                                 .transition().duration(animDuration)
                             .attr("r", function(d) { 
                                 const k = diameter / view[2];		 
@@ -213,6 +214,7 @@ export function CirclePack({data}: PackProps) {
                         .style("fill-opacity", 0)
                         .style("stroke-opacity", 0)
                         .style("display", "none")
+                        .style("pointer-events", "none")
                         .style("text-shadow", "0 1px 0 lightblue, 1px 0 0 lightblue, -1px 0 0 lightblue, 0 -1px 0 lightblue")                            
                             .transition().duration(animDuration)
                         .attr("transform", function(d) { 

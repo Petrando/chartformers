@@ -28,6 +28,7 @@ type SankeyProps = {
 }
 export function SankeyChart({data}: SankeyProps) {
     const [sankeyData, setSankeyData] = useState<sankeyData | null>(null);
+    const [ sortLink, setSortLink ] = useState(false)
     const isFreshData = useRef(true)
     const isFirstRender = useRef(true)
     const [prevData, setPrevData] = useState<sankeyData | null>(null);
@@ -55,7 +56,12 @@ export function SankeyChart({data}: SankeyProps) {
             }
             return data
         })
-    }, [data])        
+
+        if(sortLink){
+            setSortLink(false)
+        }
+        
+    }, [data])
 
     const isMidSmallScreen = parentWidth <= 768;
     const animDuration = 1000
@@ -101,7 +107,10 @@ export function SankeyChart({data}: SankeyProps) {
 
             const mySankey = sankey<sankeyNode, sankeyLink>()                                
                 .nodeSort(null)
-                .linkSort(null)
+                .linkSort(sortLink?
+                    (a, b)=> a.value - b.value:
+                    null
+                )
                 .nodeWidth(graphWidth<=540?12:15)
                 .nodePadding(graphWidth<=540?5:8)                
                 .extent([[0, 0], [graphWidth, graphHeight]])    
@@ -152,6 +161,9 @@ export function SankeyChart({data}: SankeyProps) {
             
             const linkDelay = (d: SankeyLink<sankeyNode, sankeyLink>) => {                
                 if(!isFreshData.current){
+                    return 0
+                }
+                if(sortLink){
                     return 0
                 }
 
@@ -263,8 +275,45 @@ export function SankeyChart({data}: SankeyProps) {
                 if(!isFreshData.current || d.depth === 0){
                     return 0
                 }
+                if(sortLink){
+                    return 0
+                }
                 return (d.depth! * animDuration) + animDuration/4
-            }            
+            }       
+            
+            const calculateNodeFlow = (d:SankeyNode<sankeyNode, sankeyLink>) => {
+                const enteringValue = d.targetLinks?.reduce((acc, curr)=>{
+                        return acc + curr.value
+                    }, 0) ?? 0
+                const exitingValue = d.sourceLinks?.reduce((acc, curr)=>{
+                    return acc + curr.value
+                }, 0) ?? 0
+
+                return { enteringValue, exitingValue }
+            }
+
+            const getNodeState = (d: SankeyNode<sankeyNode, sankeyLink>) => {
+                const {enteringValue, exitingValue} = calculateNodeFlow(d)
+                const nodeState = 
+                    (d.sourceLinks?.length === 0 && d.targetLinks?.length === 0)?"stray node":
+                    d.sourceLinks?.length === 0?"leaf node":
+                    d.targetLinks?.length === 0?"source node":
+                    enteringValue > exitingValue?"surplus":
+                        enteringValue < exitingValue?"minus":
+                            "balanced"
+
+                return { nodeState, enteringValue, exitingValue }
+            }
+
+            const getNodeStateStyle = (d:SankeyNode<sankeyNode, sankeyLink>) => {
+                const { nodeState, enteringValue, exitingValue } = getNodeState(d)
+                
+                const stateColor = nodeState === "surplus"?"#4ade80":
+                    nodeState === "minus"?"#f87171":
+                        "#e7e7e7"
+                
+                return { enteringValue, exitingValue, nodeState, stateColor }
+            }
             
             const nodeRects = canvas.selectAll<SVGRectElement, SankeyNode<sankeyNode, sankeyLink>>("rect.node")
                 .data(nodes, (d=>d.name))
@@ -286,7 +335,8 @@ export function SankeyChart({data}: SankeyProps) {
                             }
                             return d.x1! - d.x0!
                         })
-                        .attr("opacity", 0)
+                        .attr("opacity", 0)                        
+                        .attr("stroke-width", 2.5)
                             .transition().duration(animDuration)
                             .delay(nodeDelay)
                         .attr("fill", d=>{
@@ -321,12 +371,7 @@ export function SankeyChart({data}: SankeyProps) {
                     .style("stroke", "#1f2937")
                     .style("stroke-opacity", 0.1);                                        
                     
-                    const enteringValue = d.targetLinks?.reduce((acc, curr)=>{
-                        return acc + curr.value
-                    }, 0)
-                    const exitingValue = d.sourceLinks?.reduce((acc, curr)=>{
-                        return acc + curr.value
-                    }, 0)                    
+                    const { enteringValue, exitingValue, nodeState, stateColor } = getNodeStateStyle(d)                   
                     
                     tooltip.style("opacity", 1)
                     tooltip.select("p.title").text(d.name + " :")
@@ -336,12 +381,20 @@ export function SankeyChart({data}: SankeyProps) {
                     tooltip.select("p.bottom-label")
                         .style("display", "block")
                         .text("out : " + basicFormat(exitingValue!))
+                                        
+
+                    tooltip.select("p.small-text")
+                        .style("display", "block")
+                        .text(`${nodeState}`)
+                        .style("color", `${stateColor}`)
                 })
                 .on("mousemove", (e, d) => {                    
                     moveSankeyTooltip(e, tooltip)
                 })
                 .on("mouseout", (e, d)=>{                                    
-                    tooltip.style("opacity", 0);                                            
+                    tooltip.style("opacity", 0);                         
+                    tooltip.select("p.small-text")
+                        .style("display", "none")                   
     
                     canvas.selectAll("path.link")
                         .style("stroke", function(d){
@@ -356,6 +409,11 @@ export function SankeyChart({data}: SankeyProps) {
                 })
                 .transition().duration(animDuration)
                     .delay(nodeDelay)
+                .attr("stroke-width", 2.5)
+                .style("stroke", function(d){
+                    const { stateColor, nodeState } = getNodeStateStyle(d)
+                    return (nodeState === "surplus" || nodeState === "minus")? stateColor:"#52525b"
+                })
                 .attr("opacity", 1)
                 .attr("x", d => d.x0!)
                 .attr("y", d => d.y0!)
@@ -396,7 +454,7 @@ export function SankeyChart({data}: SankeyProps) {
                 .attr("opacity", 1);
                         
         }, 
-        [sankeyData, parentWidth, parentHeight]
+        [sankeyData, sortLink, parentWidth, parentHeight]
     );
 
     return (
@@ -414,7 +472,19 @@ export function SankeyChart({data}: SankeyProps) {
                 >
                     <g className="plot-area" />
                 </svg>
-                <Tooltip pCount={3} />
+                <label 
+                    className={styles["controls-label"]}
+                    style={{position: "absolute", right: "12px", top: "6px"}}
+                >
+                    <input 
+                        type="checkbox" 
+                        className={styles["controls-checkbox"]}                         
+                        checked={sortLink}
+                        onChange={(e) => setSortLink(e.target.checked)}
+                    />
+                        Sort link
+                </label>
+                <Tooltip pCount={4} />
             </div>            
         </div>  
     )

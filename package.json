@@ -1,7 +1,7 @@
 {
   "name": "chartformers",
   "license": "SEE LICENSE IN LICENSE",
-  "version": "1.0.38",
+  "version": "1.0.39",
   "description": "Animated React charting library powered by D3 with smooth data transitions and interactive features",
   "author": {
     "name": "Petrando Richard",

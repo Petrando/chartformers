@@ -9,7 +9,7 @@
   },
   "main": "dist/chartformers.umd.js",
   "module": "dist/chartformers.es.js",
-  "types": "dist/index.d.ts",
+  "types": "dist/src/index.d.ts",
   "files": [
     "dist"
   ],

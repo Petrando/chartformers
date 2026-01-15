@@ -1,18 +1,15 @@
 import React, {useState, useEffect, useRef} from 'react';
-import { createPortal } from 'react-dom';
 import * as d3 from 'd3';
-import { sankey, sankeyLinkHorizontal, SankeyGraph, SankeyNode, SankeyLink, SankeyNodeMinimal, SankeyLinkMinimal } from "d3-sankey";
+import { sankey, sankeyLinkHorizontal, SankeyGraph, SankeyNode, SankeyLink } from "d3-sankey";
 import { useD3 } from '../hooks/useD3';
 import { useParentSize } from '../hooks/useParentSize';
 import { useContainerSize } from '../hooks/useContainerSize';
 import { useLayerIndex } from '../hooks/useLayerIndex';
-import { cloneObj, indexColor, basicFormat } from '../utils';
-import { inactiveColor } from '../../dev/data/constants';
+import { indexColor, basicFormat } from '../utils';
 import { Tooltip, getTooltip, moveTooltip, moveSankeyTooltip } from '../components/tooltip';
-import { sankeyData, sankeyNode, sankeyLink } from '../types';
+import { sankeyData, sankeyNode, sankeyLink, tooltipFormat } from '../types';
 import styles from './global.module.css';
 import sankeyStyles from './sankey.module.css'
-import { link } from 'fs';
 
 export type LayoutNode =
   SankeyNode<sankeyNode, sankeyLink>;
@@ -25,18 +22,16 @@ export type LayoutGraph =
 
 type SankeyProps = {
     data: sankeyData;
+    tooltipFormat?: tooltipFormat;
 }
-export function SankeyChart({data}: SankeyProps) {
+export function SankeyChart({data, tooltipFormat}: SankeyProps) {
     const [sankeyData, setSankeyData] = useState<sankeyData | null>(null);
     const [ sortLink, setSortLink ] = useState(false)
+    const [ sortNode, setSortNode ] = useState(false)
     const isFreshData = useRef(true)
-    const isFirstRender = useRef(true)
-    const [prevData, setPrevData] = useState<sankeyData | null>(null);
-    const [hoveredNode, setHoveredNode] = useState<number | null>(null);
-    const [hoveredLink, setHoveredLink] = useState<number | null>(null);
+    const isFirstRender = useRef(true)    
     const [ref, parentSize] = useParentSize<HTMLDivElement>();
-    const { width:parentWidth, height: parentHeight} = parentSize;
-    const containerSize = useContainerSize();
+    const { width:parentWidth, height: parentHeight} = parentSize;    
     const layersRef = useLayerIndex(sankeyData?sankeyData.nodes.map(n => n.name):[]);
 
     useEffect(()=>{
@@ -57,6 +52,9 @@ export function SankeyChart({data}: SankeyProps) {
             return data
         })
 
+        if(sortNode){
+            setSortNode(false)
+        }
         if(sortLink){
             setSortLink(false)
         }
@@ -77,7 +75,7 @@ export function SankeyChart({data}: SankeyProps) {
             if(width === 0 || height === 0){
                 return
             }
-            const margin = { top: 20, right: 20, bottom: 20, left: 20 };            
+            const margin = { top: 30, right: 20, bottom: 20, left: 20 };            
 
             const baseHeight = height - (margin.top + margin.bottom)
             const baseWidth = width - (margin.left + margin.right)
@@ -105,8 +103,26 @@ export function SankeyChart({data}: SankeyProps) {
             const tooltip = getTooltip(container as any)
                 .style("opacity", 0);            
 
+            const calculateNodeFlow = (d:SankeyNode<sankeyNode, sankeyLink>) => {
+                const enteringValue = d.targetLinks?.reduce((acc, curr)=>{
+                        return acc + curr.value
+                    }, 0) ?? 0
+                const exitingValue = d.sourceLinks?.reduce((acc, curr)=>{
+                    return acc + curr.value
+                }, 0) ?? 0
+
+                return { enteringValue, exitingValue }
+            }
+
             const mySankey = sankey<sankeyNode, sankeyLink>()                                
-                .nodeSort(null)
+                .nodeSort(sortNode?
+                    (a, b) => {
+                        const { enteringValue:aEnteringValue, exitingValue: aExitingValue } = calculateNodeFlow(a)
+                        const { enteringValue:bEnteringValue, exitingValue: bExitingValue } = calculateNodeFlow(b)
+                        return Math.max(aEnteringValue, aExitingValue) - Math.max(bEnteringValue, bExitingValue)
+                    }:
+                    null
+                )
                 .linkSort(sortLink?
                     (a, b)=> a.value - b.value:
                     null
@@ -163,7 +179,7 @@ export function SankeyChart({data}: SankeyProps) {
                 if(!isFreshData.current){
                     return 0
                 }
-                if(sortLink){
+                if(sortLink || sortNode){
                     return 0
                 }
 
@@ -189,7 +205,7 @@ export function SankeyChart({data}: SankeyProps) {
                         .attr("stroke-width", d => Math.max(1, d.width!))                         
                             .transition().duration(animDuration)
                             .delay(function(d){                                
-                                if(!isFreshData.current){                                    
+                                if(!isFreshData.current && !sortLink && !sortNode){                                    
                                     return animDuration
                                 }
                                 return linkDelay(d)
@@ -243,7 +259,7 @@ export function SankeyChart({data}: SankeyProps) {
                         .style("opacity", 0);
                     
                     tooltip.style("opacity", 1)
-                    tooltip.select("p.title").text(d.id + " : " + basicFormat(d.value/*, settings*/))                    
+                    tooltip.select("p.title").text(d.id + basicFormat(d.value, tooltipFormat))                    
                     tooltip.select("p.top-label").style("display", "none")
                     tooltip.select("p.bottom-label").style("display", "none")
                         
@@ -275,23 +291,12 @@ export function SankeyChart({data}: SankeyProps) {
                 if(!isFreshData.current || d.depth === 0){
                     return 0
                 }
-                if(sortLink){
+                if(sortLink || sortNode){
                     return 0
                 }
                 return (d.depth! * animDuration) + animDuration/4
             }       
-            
-            const calculateNodeFlow = (d:SankeyNode<sankeyNode, sankeyLink>) => {
-                const enteringValue = d.targetLinks?.reduce((acc, curr)=>{
-                        return acc + curr.value
-                    }, 0) ?? 0
-                const exitingValue = d.sourceLinks?.reduce((acc, curr)=>{
-                    return acc + curr.value
-                }, 0) ?? 0
-
-                return { enteringValue, exitingValue }
-            }
-
+                        
             const getNodeState = (d: SankeyNode<sankeyNode, sankeyLink>) => {
                 const {enteringValue, exitingValue} = calculateNodeFlow(d)
                 const nodeState = 
@@ -377,10 +382,10 @@ export function SankeyChart({data}: SankeyProps) {
                     tooltip.select("p.title").text(d.name + " :")
                     tooltip.select("p.top-label")
                         .style("display", "block")
-                        .text("in : " + basicFormat(enteringValue!))                    
+                        .text("in " + basicFormat(enteringValue!, tooltipFormat))                    
                     tooltip.select("p.bottom-label")
                         .style("display", "block")
-                        .text("out : " + basicFormat(exitingValue!))
+                        .text("out " + basicFormat(exitingValue!, tooltipFormat))
                                         
 
                     tooltip.select("p.small-text")
@@ -454,7 +459,7 @@ export function SankeyChart({data}: SankeyProps) {
                 .attr("opacity", 1);
                         
         }, 
-        [sankeyData, sortLink, parentWidth, parentHeight]
+        [sankeyData, sortLink, sortNode, parentWidth, parentHeight, tooltipFormat]
     );
 
     return (
@@ -472,18 +477,35 @@ export function SankeyChart({data}: SankeyProps) {
                 >
                     <g className="plot-area" />
                 </svg>
-                <label 
-                    className={styles["controls-label"]}
-                    style={{position: "absolute", right: "12px", top: "6px"}}
+                <div 
+                    style={{
+                        position: "absolute", right: "12px", top: "6px",
+                        display: "flex", alignItems: "center"
+                    }}
                 >
-                    <input 
-                        type="checkbox" 
-                        className={styles["controls-checkbox"]}                         
-                        checked={sortLink}
-                        onChange={(e) => setSortLink(e.target.checked)}
-                    />
-                        Sort link
-                </label>
+                    <label 
+                        className={styles["controls-label"]}                 
+                    >
+                        <input 
+                            type="checkbox" 
+                            className={styles["controls-checkbox"]}                         
+                            checked={sortLink}
+                            onChange={(e) => setSortLink(e.target.checked)}
+                        />
+                            Sort link
+                    </label>
+                    <label 
+                        className={styles["controls-label"]}                    
+                    >
+                        <input 
+                            type="checkbox" 
+                            className={styles["controls-checkbox"]}                         
+                            checked={sortNode}
+                            onChange={(e) => setSortNode(e.target.checked)}
+                        />
+                            Sort node
+                    </label>
+                </div>
                 <Tooltip pCount={4} />
             </div>            
         </div>  

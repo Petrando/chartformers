@@ -18,7 +18,7 @@ type StackedBarChartPropsExtended =
         focusOnPlot?: boolean;
 };
 
-export function StackedBarChart({ data, focusOnPlot = false, colorIdx = 0, orientation = 'vertical' }: StackedBarChartPropsExtended) {
+export function StackedBarChart({ data, focusOnPlot = false, colorIdx = 0, orientation = 'vertical', tooltipFormat }: StackedBarChartPropsExtended) {
     const [ref, parentSize] = useParentSize<HTMLDivElement>();
     const { width: parentWidth, height: parentHeight } = parentSize;
     const [controlsRef, controlsSize] = useContainerSize<HTMLDivElement>();        
@@ -625,9 +625,9 @@ export function StackedBarChart({ data, focusOnPlot = false, colorIdx = 0, orien
                     const {total} = d.data
                     const percentage = (value/total!) * 100
                     
-                    tooltip.select("p.top-label").text(d.barKey + " : " + basicFormat(value))
+                    tooltip.select("p.top-label").text(d.barKey + " : " + basicFormat(value, tooltipFormat))
                     tooltip.select("p.bottom-label").text(plotted[0] === "all"?
-                        `Total : ${basicFormat(total as number)}`:"~")
+                        `Total : ${basicFormat(total as number, tooltipFormat)}`:"~")
                 })
                 .on("touch", function(e, d){
                     //unhoverLegend()
@@ -646,7 +646,7 @@ export function StackedBarChart({ data, focusOnPlot = false, colorIdx = 0, orien
                     tooltip.style("opacity", 0);
                 })
 
-    }, [ ...renderDeps, isSorted, chartData, keys, hovered, justPlotted, dataJustChanged, orientation ]);
+    }, [ ...renderDeps, isSorted, chartData, keys, hovered, justPlotted, dataJustChanged, orientation, tooltipFormat ]);
             
     return (
         <div 

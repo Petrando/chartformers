@@ -30,3 +30,9 @@ export type circlePackData = {
     value?: number;
     children?: circlePackData[];
 }
+
+export type tooltipFormat = {
+    formatType?: "long" | "short";
+    prefix?: string;
+    suffix?: string;
+}

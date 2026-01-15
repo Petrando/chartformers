@@ -1,31 +1,22 @@
 import React, {useState, useEffect, useRef} from 'react';
-import { createPortal } from 'react-dom';
 import * as d3 from 'd3';
 import { useD3 } from '../hooks/useD3';
 import { useParentSize } from '../hooks/useParentSize';
 import { useContainerSize } from '../hooks/useContainerSize';
-import { useLayerIndex } from '../hooks/useLayerIndex';
-import { cloneObj, indexColor, basicFormat } from '../utils';
-import { inactiveColor } from '../../dev/data/constants';
-import { Tooltip, getTooltip, moveTooltip, moveSankeyTooltip } from '../components/tooltip';
-import { circlePackData } from '../types';
+import { circlePackData, tooltipFormat } from '../types';
 import styles from './global.module.css';
 import packStyles from './circle-pack.module.css'
 
 type PackProps = {
     data: circlePackData[];
+    tooltipFormat?: tooltipFormat;
 }
 
-export function CirclePack({data}: PackProps) {
-    const [circlePackData, setPackData] = useState<circlePackData[] | null>(null);
-    const isFreshData = useRef(true)
+export function CirclePack({data, tooltipFormat}: PackProps) {
+    const [circlePackData, setPackData] = useState<circlePackData[] | null>(null);    
     const isFirstRender = useRef(true)
-    const [prevData, setPrevData] = useState<circlePackData | null>(null);
-    const [hoveredNode, setHoveredNode] = useState<number | null>(null);
-    const [hoveredLink, setHoveredLink] = useState<number | null>(null);
     const [ref, parentSize] = useParentSize<HTMLDivElement>();
-    const { width:parentWidth, height: parentHeight} = parentSize;
-    const containerSize = useContainerSize();    
+    const { width:parentWidth, height: parentHeight} = parentSize;    
 
     useEffect(()=>{
         setPackData((prev) => {            

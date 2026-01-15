@@ -1,4 +1,5 @@
 import { schemeSet1, schemeSet2, schemeSet3, schemeCategory10, schemeTableau10, shuffle, format  } from "d3"
+import { tooltipFormat } from "./types";
 
 export const cloneObj = (arr:any) => {    
     try{
@@ -61,8 +62,12 @@ export const indexSelectedColor = (i:number) => {
     return selectedColors[i % selectedColors.length];    
 }
 
-export const basicFormat = (num:number) => {
-    return format(",")(num)
+export const basicFormat = (num:number, {
+  formatType = "long",
+  prefix = "",
+  suffix = "",
+}: tooltipFormat = {}) => {
+    return prefix + format(formatType === "long"?",":"~s")(num) + suffix
 }
 
 export function getMouseYInData(e: MouseEvent, svg: SVGSVGElement, yScale: d3.ScaleLinear<number, number>) {

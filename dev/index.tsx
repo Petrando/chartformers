@@ -50,23 +50,28 @@ const App = () => {
     selectedSankeyData === "flight data 1"?flightData1:      
         selectedSankeyData === "energy data"?energyData:
           brexitVoting
+
+  const sankeyFormat = selectedSankeyData.startsWith("flight data")?{prefix: " flights: "}:          
+        selectedSankeyData === "energy data"?{prefix: " ", suffix: " KWh"}:
+          {prefix: " votes: "}
   return(
   
     <div style={{paddingBottom: "20px"}}>    
+      <div id="select-sankey-data" className={`${controlStyles["select-optional"]}`}>
+        <label htmlFor="choose-pack-data">Choose pack data:</label>
+        <select id="choose-pack-data" value={selectedPackData} onChange={handlePackChange}>              
+          {
+            ["loan 1", "loan 2", "flare"].map(s => (
+              <option key={s} value={s}>{s}</option>
+            ))
+          }
+        </select>
+      </div>
     <div style={{
         width: '80vw',
         height: '450px', display:"flex", flexDirection:"column", overflow:'hidden', 
-        marginTop: '20px', /*border: '2px solid red'*/}}>
-          <div id="select-sankey-data" className={`${controlStyles["select-optional"]}`}>
-            <label htmlFor="choose-pack-data">Choose pack data:</label>
-            <select id="choose-pack-data" value={selectedPackData} onChange={handlePackChange}>              
-              {
-                ["loan 1", "loan 2", "flare"].map(s => (
-                  <option key={s} value={s}>{s}</option>
-                ))
-              }
-            </select>
-          </div>
+        marginTop: '20px', border: '2px solid red'}}>
+          
           <CirclePack data={packData} />
     </div>
     <div id="select-sankey-data" className={`${controlStyles["select-optional"]}`}>
@@ -82,8 +87,8 @@ const App = () => {
     <div style={{
         width: '80vw',
         height: '450px', display:"flex", flexDirection:"column", overflow:'hidden', 
-        marginTop: '20px', /*border: '2px solid red'*/}}>
-          <SankeyChart data={sankeyData} />
+        marginTop: '20px', border: '2px solid #047857'}}>
+          <SankeyChart data={sankeyData} tooltipFormat={sankeyFormat} />
       </div>
       <h2>Testing BarChart Component</h2>
       <div style={{

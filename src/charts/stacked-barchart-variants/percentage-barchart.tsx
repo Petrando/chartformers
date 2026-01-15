@@ -13,7 +13,7 @@ import stackedBarStyles from './stacked-barchart.module.css';
 import { LayeredData, ExtendedSeries, ExtendedSeriesPoint, StackedBarChartProps } from './types';
 import { useUIControls } from '../../hooks/useUIControls';
 
-export function PercentageBarChart({ data, colorIdx = 0, orientation = 'vertical' }: StackedBarChartProps) {
+export function PercentageBarChart({ data, colorIdx = 0, orientation = 'vertical', tooltipFormat }: StackedBarChartProps) {
     const [ref, parentSize] = useParentSize<HTMLDivElement>();
     const { width: parentWidth, height: parentHeight } = parentSize;    
     
@@ -490,9 +490,9 @@ export function PercentageBarChart({ data, colorIdx = 0, orientation = 'vertical
                     const percentage = (value/total) * 100
                     const percentText = d3.format(".1f")(percentage) + "%"
                     tooltip.select("p.top-label").text(d.barKey + " : " + (!isPercentage?
-                        basicFormat(value):percentText))
-                    tooltip.select("p.bottom-label").text(isPercentage?`(${basicFormat(value)} of ${basicFormat(total)})`:
-                        `Total : ${basicFormat(total)}`
+                        basicFormat(value, tooltipFormat):percentText))
+                    tooltip.select("p.bottom-label").text(isPercentage?`(${basicFormat(value, tooltipFormat)} of ${basicFormat(total, tooltipFormat)})`:
+                        `Total : ${basicFormat(total, tooltipFormat)}`
                     )
                 })
                 .on("touch", function(e, d){
@@ -510,7 +510,7 @@ export function PercentageBarChart({ data, colorIdx = 0, orientation = 'vertical
                     tooltip.style("opacity", 0);
                 })
 
-    }, [ ...renderDeps, chartData, keys, isPercentage, hovered, orientation, dataJustChanged ]);
+    }, [ ...renderDeps, chartData, keys, isPercentage, hovered, orientation, dataJustChanged, tooltipFormat ]);
     
     return (
         <div 

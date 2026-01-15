@@ -9,7 +9,7 @@ import { cloneObj, indexSelectedColor } from '../utils';
 import { inactiveColor } from '../../dev/data/constants';
 import styles from './global.module.css';
 import barchartStyles from './barchart.module.css';
-import { pointData } from '../types';
+import { pointData, tooltipFormat } from '../types';
 import { useLayerIndex } from '../hooks/useLayerIndex';
 
 type BarchartProps = {
@@ -19,15 +19,20 @@ type BarchartProps = {
         type?: 'fixed' | 'colorful';
     };
     orientation?: 'horizontal' | 'vertical';
+    tooltipFormat?: tooltipFormat;
 }
 
 export function BarChart({
-    data, 
-    color: {
-        idx = 0,               // default idx
-        type = 'fixed',        // default type
-    } = { idx: 0, type: 'fixed' },
-    orientation = 'vertical'}:BarchartProps) {
+        data, 
+        color: {
+            idx = 0,               // default idx
+            type = 'fixed',        // default type
+        } = { idx: 0, type: 'fixed' },
+        orientation = 'vertical',
+        tooltipFormat: {
+            prefix = "", suffix = "", formatType = "long"
+        } = { prefix: "", suffix: "", formatType: "long"}
+    }:BarchartProps) {
     const [ref, parentSize] = useParentSize<HTMLDivElement>();    
     const { width, height } = parentSize;
 
@@ -203,9 +208,13 @@ export function BarChart({
                     .filter(dBar => (dBar as pointData).label === d.label)
                     .style("stroke", "#71717a")
                     .style("stroke-width", 1)
+                
 
                 tooltip.style("opacity", 1)
-                    .select("p").text(d.label + ` : ${d3.format(",")(d.value)}`);              
+                    .select("p").text(d.label + ` : 
+                        ${prefix}
+                        ${d3.format(formatType === "long"?",":"~s")(d.value)}
+                        ${suffix}`);              
                 
                 d3.select(".x-axis").selectAll("text")
                     .filter(dText=>dText === d.label).style("font-weight", "bold")
@@ -258,7 +267,7 @@ export function BarChart({
                     }                                                                                                              
                 });    
 
-    }, [data, color, width, height, isSorted, orientation]);
+    }, [data, color, width, height, isSorted, orientation, {prefix, suffix, formatType}]);
     
     return (
         <div 

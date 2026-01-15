@@ -13,7 +13,7 @@ import stackedBarStyles from './stacked-barchart.module.css';
 import { LayeredData, ExtendedSeriesPoint, ExtendedSeries, StackedBarChartProps } from './types';
 import { useUIControls } from '../../hooks/useUIControls';
 
-export function GroupedBarChart({ data, colorIdx = 0, orientation = 'vertical' }: StackedBarChartProps) {
+export function GroupedBarChart({ data, colorIdx = 0, orientation = 'vertical', tooltipFormat }: StackedBarChartProps) {
     const [ref, parentSize] = useParentSize<HTMLDivElement>();
     const { width: parentWidth, height: parentHeight } = parentSize;
     const [controlsRef, controlsSize] = useContainerSize<HTMLDivElement>();
@@ -501,9 +501,9 @@ export function GroupedBarChart({ data, colorIdx = 0, orientation = 'vertical' }
                     const {total} = d.data
                     const percentage = (value as number/total!) * 100
                     const percentText = d3.format(".1f")(percentage) + "%"
-                    tooltip.select("p.top-label").text(d.barKey + " : " + basicFormat(value as number))
+                    tooltip.select("p.top-label").text(d.barKey + " : " + basicFormat(value as number, tooltipFormat))
                     tooltip.select("p.bottom-label").text(
-                        plotted === "all"?`Total : ${basicFormat(total!)}`:"~"
+                        plotted === "all"?`Total : ${basicFormat(total!, tooltipFormat)}`:"~"
                     )
                 })
                 .on("touch", function(e, d){
@@ -524,7 +524,7 @@ export function GroupedBarChart({ data, colorIdx = 0, orientation = 'vertical' }
             
                          
 
-    }, [ ...renderDeps, isSorted, chartData, keys, hovered, justPlotted, orientation, dataJustChanged ]);
+    }, [ ...renderDeps, isSorted, chartData, keys, hovered, justPlotted, orientation, dataJustChanged, tooltipFormat ]);
     
     return (
         <div 

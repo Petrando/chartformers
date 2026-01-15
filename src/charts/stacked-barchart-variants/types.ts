@@ -1,3 +1,5 @@
+import { tooltipFormat } from "../../types";
+
 export interface LayeredData {
   label: string;
   total?: number;
@@ -20,4 +22,5 @@ export interface StackedBarChartProps {
     data: LayeredData[];
     colorIdx?: number;
     orientation?: 'vertical' | 'horizontal';
+    tooltipFormat?: tooltipFormat;
 }

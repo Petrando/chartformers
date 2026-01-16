@@ -6,7 +6,7 @@ import { BarChart, PieChart, StackedBarChart, GroupedBarChart, PercentageBarChar
 import { year1, year2, stackedData, stackedDataVar1, stackedDataVar2, stackData1, stackData2, stackData3 } from './data/constants';
 import { englishFreq, germanFreq, categoryDataV1, categoryDataV2, categoryDataV3 } from './data/constants';
 import { flightData, flightData1, energyData, brexitVoting } from './data/constants'
-import { loanData1, loanData2, flareData } from './data/loan-data';
+import { loanData1, loanData2, loanData3, loanData4, loanData4GPT, flareData } from './data/loan-data';
 import controlStyles from './controls.module.css'
 
 const App = () => {
@@ -34,7 +34,12 @@ const App = () => {
 
   const packData = selectedPackData === "loan 1"?loanData1:
     selectedPackData === "loan 2"?loanData2:
-      flareData
+      selectedPackData === "loan 3"?loanData3:
+        selectedPackData === "loan 4"?loanData4:
+          selectedPackData === "loan 4 GPT"?loanData4GPT:
+            flareData
+
+  const packTooltipFormat = selectedPackData.startsWith("loan")?{prefix: "US$ "}:{}
 
   const selectedStackedData = selectedData === "stack1" ? year1 : 
     selectedData === "stack2" ? year2:
@@ -61,7 +66,7 @@ const App = () => {
         <label htmlFor="choose-pack-data">Choose pack data:</label>
         <select id="choose-pack-data" value={selectedPackData} onChange={handlePackChange}>              
           {
-            ["loan 1", "loan 2", "flare"].map(s => (
+            ["loan 1", "loan 2", "loan 3", "loan 4", "loan 4 GPT", "flare"].map(s => (
               <option key={s} value={s}>{s}</option>
             ))
           }
@@ -72,7 +77,7 @@ const App = () => {
         height: '450px', display:"flex", flexDirection:"column", overflow:'hidden', 
         marginTop: '20px', border: '2px solid red'}}>
           
-          <CirclePack data={packData} />
+          <CirclePack data={packData} tooltipFormat={packTooltipFormat} />
     </div>
     <div id="select-sankey-data" className={`${controlStyles["select-optional"]}`}>
       <label htmlFor="choose-sankey-data">Choose sankey data:</label>

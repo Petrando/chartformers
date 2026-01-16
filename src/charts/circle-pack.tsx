@@ -3,6 +3,7 @@ import * as d3 from 'd3';
 import { useD3 } from '../hooks/useD3';
 import { useParentSize } from '../hooks/useParentSize';
 import { useContainerSize } from '../hooks/useContainerSize';
+import { basicFormat } from '../utils';
 import { circlePackData, tooltipFormat } from '../types';
 import styles from './global.module.css';
 import packStyles from './circle-pack.module.css'
@@ -12,11 +13,60 @@ type PackProps = {
     tooltipFormat?: tooltipFormat;
 }
 
+type hoveredData = {name: string, value: number}
+
 export function CirclePack({data, tooltipFormat}: PackProps) {
-    const [circlePackData, setPackData] = useState<circlePackData[] | null>(null);    
+    const [circlePackData, setPackData] = useState<circlePackData[] | null>(null);
+    const [ hoveredData, setHoveredData ] = useState<hoveredData>({name: "", value: 0})    
+    const [ prevHoveredData, setPrevHoveredData] = useState<hoveredData>({name: "", value: 0})
     const isFirstRender = useRef(true)
     const [ref, parentSize] = useParentSize<HTMLDivElement>();
     const { width:parentWidth, height: parentHeight} = parentSize;    
+
+    const pNameRef = useRef<HTMLParagraphElement | null>(null);
+    const pValueRef = useRef<HTMLParagraphElement | null>(null);
+
+    useEffect(() => {
+        if (!pValueRef.current) return;
+        if(!pNameRef.current) return
+
+        const elName = pNameRef.current        
+
+        function interpolateText(a: string, b: string) {            
+            const max = Math.max(a.length, b.length);
+            
+            return function (t: number) {
+                let result = "";
+                for (let i = 0; i < max; i++) {
+                    result += t < 0.5 ? a[i] ?? "" : b[i] ?? "";
+                }
+                return result;                
+            };            
+        }
+        d3.select(elName)
+            .transition()
+            .duration(250)
+            .tween("text", function () {
+                const i = interpolateText(prevHoveredData.name, hoveredData.name);
+                return function (t) {
+                    elName.textContent = i(t);
+                };
+            });
+
+        const elValue = pValueRef.current;
+
+        d3.select(elValue)
+            .transition()
+            .duration(250)
+            .ease(d3.easeCubicOut)
+            .tween("text", function () {                
+                const i = d3.interpolateNumber(prevHoveredData.value, hoveredData.value);
+
+                return function (t) {
+                    elValue.textContent = basicFormat(Math.round(i(t)), tooltipFormat).toLocaleString();
+                };
+            });
+    }, [ hoveredData, prevHoveredData ]);
 
     useEffect(()=>{
         setPackData((prev) => {            
@@ -46,35 +96,36 @@ export function CirclePack({data, tooltipFormat}: PackProps) {
             if(width === 0 || height === 0){
                 return
             }
-            const margin = { top: 20, right: 20, bottom: 20, left: 20 };            
+            const margin = 25;            
 
-            const baseHeight = height - (margin.top + margin.bottom)
-            const baseWidth = width - (margin.left + margin.right)
+            const baseHeight = height - (margin * 2)
+            const baseWidth = width - (margin * 2)
             
             const graphHeight = baseHeight            
             const graphWidth = baseWidth
 
-            const rootData:circlePackData = {'name':'branches', 'children':circlePackData} 
+            const rootData:circlePackData = {'name':'branches', 'children':circlePackData}                    
 
             const diameter = Math.min(graphWidth, graphHeight)
             
             const root = d3.hierarchy(rootData)
                 .sum(function(d) { return d.value!; })
-                .sort(function(a, b){return b.value! - a.value!;})
+                .sort(function(a, b){return a.value! - b.value!;})
 
             const pack = d3.pack<circlePackData>()
                 .size([diameter - 20, diameter - 20])
-                .padding(2)
+                .padding(2)                
 
             let focus = root, scale = 1, thicknessK = 1;    
             const packedRoot = pack(root)        
             const nodes = packedRoot.descendants();
-            const view = [packedRoot.x, packedRoot.y, packedRoot.r * 2 + margin.top];
+            const view = [packedRoot.x, packedRoot.y, packedRoot.r * 2 + margin];
 
+            const tooltip = d3.select("#tooltip").style("opacity", 0)
             const canvasSvg = container.select<SVGSVGElement>("svg")
             const svgNode = canvasSvg.node()
             const canvas = canvasSvg.select<SVGGElement>('.plot-area')
-                .attr("transform", "translate(" + graphWidth / 2 + "," + graphHeight / 2 + ")");
+                .attr("transform", "translate(" + width / 2 + "," + height / 2 + ")");
 
             const color = d3.scaleLinear<string>()
                 .domain([-1, 2])
@@ -166,6 +217,13 @@ export function CirclePack({data, tooltipFormat}: PackProps) {
                     if(d!=root){d3.select(this)
                         .style("stroke-width", CIRCLESTROKE * thicknessK * 2.5)
                         .style("stroke", "#e4e4e7");}
+
+                    tooltip.transition().duration(250).style("opacity", 1)
+                    setHoveredData(prev=>{
+                        setPrevHoveredData(prev)
+                        const name = d.data.name === "branches"?"Total":d.data.name
+                        return {name, value: d.value?d.value:0}
+                    })
                 })
                 .on('mouseout', function(e, d){
                     texts.filter(function(d) { return d.parent === focus || (this as SVGTextElement).style.display === "inline"; })	    	  
@@ -178,6 +236,8 @@ export function CirclePack({data, tooltipFormat}: PackProps) {
                         .style("stroke", function(d){
                             return "#737373";
                         });
+
+                    tooltip.transition().duration(250).style("opacity", 0)
                 })
                 .on("click", function(e, d){                 
                     const k = diameter / view[2];
@@ -226,11 +286,12 @@ export function CirclePack({data, tooltipFormat}: PackProps) {
                 )                                            
                     
             texts.raise()
+
             function clicked(d:d3.HierarchyCircularNode<circlePackData>) {	
                 const focus0 = focus; focus = d;
                                 
-                const myMaxRadius = (diameter/2) - margin.top;  
-                const centerX = graphWidth/2, centerY = graphHeight/2;//center, (diameter/2, diameter/2)
+                const myMaxRadius = (diameter/2) - margin;  
+                const centerX = width/2, centerY = height/2;//center, (diameter/2, diameter/2)
                 
                 const k = diameter / view[2];
                 const myR = /*currentData==="---"?Math.max((d.r * k),0.25):*/d.r * k;
@@ -253,28 +314,24 @@ export function CirclePack({data, tooltipFormat}: PackProps) {
                     .style("fill-opacity", function(d) { return d.parent === focus ? 1 : 0; })
                     .style("display", function(d){return (d.parent===focus? "inline":"none");})
                     //.each("start", function(d) { if (d.parent === focus) this.style.display = "inline"; })
-                    //.each("end", function(d) { if (d.parent !== focus) this.style.display = "none"; });
-            
-                
-                
-                
+                    //.each("end", function(d) { if (d.parent !== focus) this.style.display = "none"; });                                                            
                 //event.stopPropagation();
             }
             function reset(){
-                    canvas.transition().duration(1000)
-                        .attr("transform", "translate(" + (graphWidth/2) + ", " + (graphHeight/2) + ")scale(1)");
-                            
-                    focus = root;scale=1;thicknessK = 1;                    
-                                        
-                    texts
-                        .style("font-size", LABELFONTSIZE * thicknessK + 'px')
-                        .filter(function(d) { return d.parent === focus || (this as SVGTextElement).style.display === "inline"; })	  
-                            //.transition().duration(750)
-                        .style("fill-opacity", function(d) { return d.parent === focus ? 1 : 0; })
-                        .style("display", function(d){return (d.parent===focus? "inline":"none");});                                                                                                                 
-                    
-                    return;
-                }
+                canvas.transition().duration(1000)
+                    .attr("transform", "translate(" + (width/2) + ", " + (height/2) + ")scale(1)");
+                        
+                focus = root;scale=1;thicknessK = 1;                    
+                                    
+                texts
+                    .style("font-size", LABELFONTSIZE * thicknessK + 'px')
+                    .filter(function(d) { return d.parent === focus || (this as SVGTextElement).style.display === "inline"; })	  
+                        //.transition().duration(750)
+                    .style("fill-opacity", function(d) { return d.parent === focus ? 1 : 0; })
+                    .style("display", function(d){return (d.parent===focus? "inline":"none");});                                                                                                                 
+                
+                return;
+            }
                     
         }, 
         [circlePackData, parentWidth, parentHeight]
@@ -288,13 +345,25 @@ export function CirclePack({data, tooltipFormat}: PackProps) {
             <div
                 ref={chartRef} 
                 className={`${styles["fill-container"]}`}
-                style={{ display:"flex", flexDirection:"column", position: "relative",}}>
+                style={{ display:"flex", flexDirection:"column", position: "relative",}}>            
                 <svg                
                     className={`${styles["chart-svg"]} ${styles["fill-container"]}`}                    
                     viewBox={`0 0 ${parentWidth} ${parentHeight}`}
                 >
                     <g className="plot-area" />
                 </svg>
+                <div id="tooltip" 
+                    style={{
+                        position: "absolute", left: 2, top: 2, fontSize: 12, fontWeight: 600,
+                        display: "flex", alignItems: "center", gap: 2
+                    }}>                    
+                    <p ref={pNameRef} id="name">
+                        Test tooltip
+                    </p>
+                    <p ref={pValueRef} id="value" >
+                        Test tooltip
+                    </p>
+                </div>
             </div>            
         </div>  
     )

@@ -24557,6 +24557,587 @@ export const loanData2:circlePackData[] = [
     }
 ]
 
+export const loanData3: circlePackData[] = [
+    {
+        name: "Czech Republic",
+        children: [
+            { name: "Prague Main Branch", value: 693070 },
+            { name: "Ostrava Branch", value: 329040 },
+            { name: "Brno Branch", value: 127000 }
+        ]
+    },
+    {
+        name: "United Kingdom",
+        children: [
+            { name: "London Main Branch", value: 895000 },
+            { name: "Liverpool Branch", value: 673000 },
+            { name: "Bristol Branch", value: 427000 }
+        ]
+    },
+    {
+        name: "USA",
+        children: [
+            { name: "Houston Branch", value: 456000 },
+            { name: "New York Main Branch", value: 856000 }
+        ]
+    },
+    {
+        name: "Australia",
+        children: [
+            { name: "Canberra Main Branch", value: 520000 },
+            { name: "Sydney Branch", value: 940000 },
+            { name: "Melbourne Branch", value: 810000 }
+        ]
+    },
+    {
+        name: "Austria",
+        children: [
+            { name: "Vienna Main Branch", value: 760000 },
+            { name: "Salzburg Branch", value: 310000 },
+            { name: "Innsbruck Branch", value: 240000 }
+        ]
+    },
+    {
+        name: "Luxembourg",
+        children: [
+            { name: "Luxembourg City Main Branch", value: 980000 },
+            { name: "Esch-sur-Alzette Branch", value: 150000 }
+        ]
+    },
+    {
+        name: "Sweden",
+        children: [
+            { name: "Stockholm Main Branch", value: 880000 },
+            { name: "Gothenburg Branch", value: 420000 },
+            { name: "Malmö Branch", value: 310000 }
+        ]
+    },
+    {
+        name: "Monaco",
+        children: [
+            { name: "Monaco Main Branch", value: 1200000 },
+            { name: "Monte Carlo Branch", value: 950000 }
+        ]
+    },
+    {
+        name: "Romania",
+        children: [
+            { name: "Bucharest Main Branch", value: 540000 },
+            { name: "Cluj-Napoca Branch", value: 280000 },
+            { name: "Timișoara Branch", value: 210000 }
+        ]
+    },
+    {
+        name: "Ireland",
+        children: [
+            { name: "Dublin Main Branch", value: 870000 },
+            { name: "Cork Branch", value: 340000 },
+            { name: "Galway Branch", value: 190000 }
+        ]
+    },
+    {
+        name: "Lithuania",
+        children: [
+            { name: "Vilnius Main Branch", value: 430000 },
+            { name: "Kaunas Branch", value: 210000 }
+        ]
+    },
+    {
+        name: "Switzerland",
+        children: [
+            { name: "Bern Main Branch", value: 620000 },
+            { name: "Zurich Branch", value: 995000 },
+            { name: "Geneva Branch", value: 910000 },
+            { name: "Basel Branch", value: 450000 }
+        ]
+    },
+    {
+        name: "Montenegro",
+        children: [
+            { name: "Podgorica Main Branch", value: 310000 },
+            { name: "Budva Branch", value: 145000 }
+        ]
+    },
+    {
+        name: "Netherlands",
+        children: [
+            { name: "Amsterdam Main Branch", value: 920000 },
+            { name: "Rotterdam Branch", value: 580000 },
+            { name: "Utrecht Branch", value: 410000 }
+        ]
+    },
+    {
+        name: "Portugal",
+        children: [
+            { name: "Lisbon Main Branch", value: 740000 },
+            { name: "Porto Branch", value: 490000 }
+        ]
+    },
+    {
+        name: "Wakanda",
+        children: [
+            { name: "Birnin Zana Main Branch", value: 2500000 }
+        ]
+    },
+    {
+        name: "North Macedonia",
+        children: [
+            { name: "Skopje Main Branch", value: 320000 },
+            { name: "Ohrid Branch", value: 110000 }
+        ]
+    },
+    {
+        name: "New Asgard",
+        children: [
+            { name: "Tønsberg Main Branch", value: 1800000 }
+        ]
+    },
+    {
+        name: "Denmark",
+        children: [
+            { name: "Copenhagen Main Branch", value: 890000 },
+            { name: "Aarhus Branch", value: 360000 },
+            { name: "Odense Branch", value: 210000 }
+        ]
+    },
+    {
+        name: "Latvia",
+        children: [
+            { name: "Riga Main Branch", value: 410000 }
+        ]
+    },
+    {
+        name: "Poland",
+        children: [
+            { name: "Warsaw Main Branch", value: 780000 },
+            { name: "Kraków Branch", value: 420000 },
+            { name: "Wrocław Branch", value: 330000 },
+            { name: "Gdańsk Branch", value: 290000 }
+        ]
+    },
+    {
+        name: "Estonia",
+        children: [
+            { name: "Tallinn Main Branch", value: 450000 },
+            { name: "Tartu Branch", value: 160000 }
+        ]
+    },
+    {
+        name: "New Zealand",
+        children: [
+            { name: "Wellington Main Branch", value: 580000 },
+            { name: "Auckland Branch", value: 820000 },
+            { name: "Christchurch Branch", value: 310000 }
+        ]
+    }
+];
+
+export const loanData4: circlePackData[] = [
+    {
+        name: "Czech Republic",
+        children: [
+            { name: "Prague Main Branch", value: 760017 },
+            { name: "Ostrava Branch", value: 243589 },
+            { name: "Brno Branch", value: 139700 }
+        ]
+    },
+    {
+        name: "United Kingdom",
+        children: [
+            { name: "London Main Branch", value: 651350 },
+            { name: "Birmingham Branch", value: 380000 },
+            { name: "Manchester Branch", value: 290000 }
+        ]
+    },
+    {
+        name: "USA",
+        children: [
+            { name: "Houston Branch", value: 319200 },
+            { name: "New York Main Branch", value: 668880 }
+        ]
+    },
+    {
+        name: "Australia",
+        children: [
+            { name: "Canberra Main Branch", value: 364000 },
+            { name: "Sydney Branch", value: 987000 },
+            { name: "Melbourne Branch", value: 789000 }
+        ]
+    },
+    {
+        name: "Austria",
+        children: [
+            { name: "Vienna Main Branch", value: 684000 },
+            { name: "Salzburg Branch", value: 217000 },
+            { name: "Innsbruck Branch", value: 192000 }
+        ]
+    },
+    {
+        name: "Luxembourg",
+        children: [
+            { name: "Luxembourg City Main Branch", value: 882000 },
+            { name: "Esch-sur-Alzette Branch", value: 105000 }
+        ]
+    },
+    {
+        name: "Sweden",
+        children: [
+            { name: "Stockholm Main Branch", value: 616000 },
+            { name: "Gothenburg Branch", value: 462000 },
+            { name: "Malmö Branch", value: 248000 }
+        ]
+    },
+    {
+        name: "Monaco",
+        children: [
+            { name: "Monaco Main Branch", value: 1080000 },
+            { name: "Monte Carlo Branch", value: 712500 }
+        ]
+    },
+    {
+        name: "Romania",
+        children: [
+            { name: "Bucharest Main Branch", value: 432000 },
+            { name: "Cluj-Napoca Branch", value: 310000 },
+            { name: "Timișoara Branch", value: 147000 }
+        ]
+    },
+    {
+        name: "Ireland",
+        children: [
+            { name: "Dublin Main Branch", value: 652500 },
+            { name: "Cork Branch", value: 442000 },
+            { name: "Galway Branch", value: 133000 }
+        ]
+    },
+    {
+        name: "Lithuania",
+        children: [
+            { name: "Vilnius Main Branch", value: 387000 },
+            { name: "Kaunas Branch", value: 147000 },
+            { name: "Klaipėda Branch", value: 95000 }
+        ]
+    },
+    {
+        name: "Switzerland",
+        children: [
+            { name: "Bern Main Branch", value: 558000 },
+            { name: "Zurich Branch", value: 895500 },
+            { name: "Geneva Branch", value: 819000 },
+            { name: "Basel Branch", value: 405000 },
+            { name: "Lausanne Branch", value: 180000 }
+        ]
+    },
+    {
+        name: "Montenegro",
+        children: [
+            { name: "Podgorica Main Branch", value: 279000 },
+            { name: "Budva Branch", value: 116000 },
+            { name: "Kotor Branch", value: 75000 }
+        ]
+    },
+    {
+        name: "Netherlands",
+        children: [
+            { name: "Amsterdam Main Branch", value: 828000 },
+            { name: "Rotterdam Branch", value: 464000 },
+            { name: "Utrecht Branch", value: 328000 },
+            { name: "The Hague Branch", value: 210000 }
+        ]
+    },
+    {
+        name: "Portugal",
+        children: [
+            { name: "Lisbon Main Branch", value: 666000 },
+            { name: "Porto Branch", value: 343000 }
+        ]
+    },
+    {
+        name: "Wakanda",
+        children: [
+            { name: "Birnin Zana Main Branch", value: 2250000 }
+        ]
+    },
+    {
+        name: "North Macedonia",
+        children: [
+            { name: "Skopje Main Branch", value: 256000 },
+            { name: "Ohrid Branch", value: 77000 }
+        ]
+    },
+    {
+        name: "New Asgard",
+        children: [
+            { name: "Tønsberg Main Branch", value: 1620000 }
+        ]
+    },
+    {
+        name: "Denmark",
+        children: [
+            { name: "Copenhagen Main Branch", value: 712000 },
+            { name: "Aarhus Branch", value: 324000 },
+            { name: "Odense Branch", value: 147000 }
+        ]
+    },
+    {
+        name: "Latvia",
+        children: [
+            { name: "Riga Main Branch", value: 369000 }
+        ]
+    },
+    {
+        name: "Poland",
+        children: [
+            { name: "Warsaw Main Branch", value: 624000 },
+            { name: "Kraków Branch", value: 378000 },
+            { name: "Poznań Branch", value: 250000 },
+            { name: "Łódź Branch", value: 180000 }
+        ]
+    },
+    {
+        name: "Estonia",
+        children: [
+            { name: "Tallinn Main Branch", value: 405000 },
+            { name: "Tartu Branch", value: 128000 }
+        ]
+    },
+    {
+        name: "New Zealand",
+        children: [
+            { name: "Wellington Main Branch", value: 522000 },
+            { name: "Auckland Branch", value: 738000 },
+            { name: "Christchurch Branch", value: 217000 }
+        ]
+    },
+    {
+        name: "Japan",
+        children: [
+            { name: "Tokyo Main Branch", value: 1500000 },
+            { name: "Osaka Branch", value: 800000 },
+            { name: "Kyoto Branch", value: 450000 },
+            { name: "Yokohama Branch", value: 600000 }
+        ]
+    },
+    {
+        name: "Canada",
+        children: [
+            { name: "Ottawa Main Branch", value: 700000 },
+            { name: "Toronto Branch", value: 950000 },
+            { name: "Vancouver Branch", value: 850000 }
+        ]
+    },
+    {
+        name: "Brazil",
+        children: [
+            { name: "Brasília Main Branch", value: 400000 },
+            { name: "Rio de Janeiro Branch", value: 700000 },
+            { name: "São Paulo Branch", value: 900000 },
+            { name: "Salvador Branch", value: 300000 },
+            { name: "Fortaleza Branch", value: 250000 }
+        ]
+    }
+];
+
+export const loanData4GPT: circlePackData[] = [
+    {
+        name: "Czech Republic",
+        children: [
+            { name: "Prague Main Branch", value: 755000 },
+            { name: "Ostrava Branch", value: 295000 },
+            { name: "Brno Branch", value: 143000 }
+        ]
+    },
+    {
+        name: "United Kingdom",
+        children: [
+            { name: "London Main Branch", value: 895000 },
+            { name: "Liverpool Branch", value: 673000 },
+            { name: "Manchester Branch", value: 610000 },
+            { name: "Birmingham Branch", value: 540000 }
+        ]
+    },
+    {
+        name: "USA",
+        children: [
+            { name: "Houston Branch", value: 420000 },
+            { name: "New York Main Branch", value: 912000 }
+        ]
+    },
+    {
+        name: "Australia",
+        children: [
+            { name: "Canberra Main Branch", value: 468000 },
+            { name: "Sydney Branch", value: 1010000 },
+            { name: "Melbourne Branch", value: 860000 }
+        ]
+    },
+    {
+        name: "Austria",
+        children: [
+            { name: "Vienna Main Branch", value: 760000 },
+            { name: "Salzburg Branch", value: 310000 },
+            { name: "Innsbruck Branch", value: 240000 }
+        ]
+    },
+    {
+        name: "Luxembourg",
+        children: [
+            { name: "Luxembourg City Main Branch", value: 980000 },
+            { name: "Esch-sur-Alzette Branch", value: 150000 }
+        ]
+    },
+    {
+        name: "Sweden",
+        children: [
+            { name: "Stockholm Main Branch", value: 924000 },
+            { name: "Gothenburg Branch", value: 395000 },
+            { name: "Malmö Branch", value: 287000 }
+        ]
+    },
+    {
+        name: "Monaco",
+        children: [
+            { name: "Monaco Main Branch", value: 1200000 },
+            { name: "Monte Carlo Branch", value: 950000 }
+        ]
+    },
+    {
+        name: "Romania",
+        children: [
+            { name: "Bucharest Main Branch", value: 540000 },
+            { name: "Cluj-Napoca Branch", value: 280000 },
+            { name: "Timișoara Branch", value: 210000 }
+        ]
+    },
+    {
+        name: "Ireland",
+        children: [
+            { name: "Dublin Main Branch", value: 870000 },
+            { name: "Cork Branch", value: 340000 },
+            { name: "Galway Branch", value: 190000 }
+        ]
+    },
+    {
+        name: "Lithuania",
+        children: [
+            { name: "Vilnius Main Branch", value: 430000 },
+            { name: "Kaunas Branch", value: 210000 },
+            { name: "Šiauliai Branch", value: 160000 }
+        ]
+    },
+    {
+        name: "Switzerland",
+        children: [
+            { name: "Bern Main Branch", value: 620000 },
+            { name: "Zurich Branch", value: 995000 },
+            { name: "Geneva Branch", value: 910000 },
+            { name: "Basel Branch", value: 450000 },
+            { name: "Lausanne Branch", value: 520000 }
+        ]
+    },
+    {
+        name: "Montenegro",
+        children: [
+            { name: "Podgorica Main Branch", value: 310000 },
+            { name: "Budva Branch", value: 145000 },
+            { name: "Nikšić Branch", value: 175000 }
+        ]
+    },
+    {
+        name: "Netherlands",
+        children: [
+            { name: "Amsterdam Main Branch", value: 920000 },
+            { name: "Rotterdam Branch", value: 580000 },
+            { name: "Utrecht Branch", value: 410000 },
+            { name: "Eindhoven Branch", value: 360000 }
+        ]
+    },
+    {
+        name: "Portugal",
+        children: [
+            { name: "Lisbon Main Branch", value: 810000 },
+            { name: "Porto Branch", value: 455000 }
+        ]
+    },
+    {
+        name: "North Macedonia",
+        children: [
+            { name: "Skopje Main Branch", value: 320000 },
+            { name: "Ohrid Branch", value: 110000 }
+        ]
+    },
+    {
+        name: "Denmark",
+        children: [
+            { name: "Copenhagen Main Branch", value: 890000 },
+            { name: "Aarhus Branch", value: 360000 },
+            { name: "Odense Branch", value: 210000 }
+        ]
+    },
+    {
+        name: "Latvia",
+        children: [
+            { name: "Riga Main Branch", value: 410000 }
+        ]
+    },
+    {
+        name: "Poland",
+        children: [
+            { name: "Warsaw Main Branch", value: 780000 },
+            { name: "Kraków Branch", value: 420000 },
+            { name: "Wrocław Branch", value: 330000 },
+            { name: "Poznań Branch", value: 360000 },
+            { name: "Łódź Branch", value: 340000 }
+        ]
+    },
+    {
+        name: "Estonia",
+        children: [
+            { name: "Tallinn Main Branch", value: 450000 },
+            { name: "Tartu Branch", value: 160000 }
+        ]
+    },
+    {
+        name: "New Zealand",
+        children: [
+            { name: "Wellington Main Branch", value: 610000 },
+            { name: "Auckland Branch", value: 875000 },
+            { name: "Christchurch Branch", value: 295000 }
+        ]
+    },
+
+    // 🔹 New Countries
+    {
+        name: "Japan",
+        children: [
+            { name: "Tokyo Main Branch", value: 1250000 },
+            { name: "Osaka Branch", value: 820000 },
+            { name: "Nagoya Branch", value: 610000 },
+            { name: "Kyoto Branch", value: 430000 },
+            { name: "Fukuoka Branch", value: 390000 }
+        ]
+    },
+    {
+        name: "Norway",
+        children: [
+            { name: "Oslo Main Branch", value: 910000 },
+            { name: "Bergen Branch", value: 420000 },
+            { name: "Trondheim Branch", value: 310000 }
+        ]
+    },
+    {
+        name: "Spain",
+        children: [
+            { name: "Madrid Main Branch", value: 880000 },
+            { name: "Barcelona Branch", value: 840000 },
+            { name: "Valencia Branch", value: 510000 },
+            { name: "Seville Branch", value: 390000 }
+        ]
+    }
+];
+
+
+
 export const flareData: circlePackData[] = [
     {
       name: "analytics",

@@ -85,6 +85,7 @@
     "access": "public"
   },
   "dependencies": {
+    "D": "^1.0.0",
     "d3-interpolate": "^3.0.1",
     "d3-scale": "^4.0.2"
   }

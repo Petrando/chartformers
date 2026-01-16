@@ -8,6 +8,9 @@ importers:
 
   .:
     dependencies:
+      D:
+        specifier: ^1.0.0
+        version: 1.0.0
       d3-interpolate:
         specifier: ^3.0.1
         version: 3.0.1
@@ -662,6 +665,10 @@ packages:
 
   '@vue/shared@3.5.22':
     resolution: {integrity: sha512-F4yc6palwq3TT0u+FYf0Ns4Tfl9GRFURDN2gWG7L1ecIaS/4fCIuFOjMTnCyjsu/OK6vaDKLCrGAa+KvvH+h4w==}
+
+  D@1.0.0:
+    resolution: {integrity: sha512-nQvrCBu7K2pSSEtIM0EEF03FVjcczCXInMt3moLNFbjlWx6bZrX72uT6/1uAXDbnzGUAx9gTyDiQ+vrFi663oA==}
+    deprecated: Package no longer supported. Contact support@npmjs.com for more info.
 
   acorn@8.15.0:
     resolution: {integrity: sha512-NZyJarBfL7nWwIq+FDL6Zp/yHEhePMNnnJ0y3qfieCrmNvYct8uvtiV41UvlSe6apAfk0fY1FbWx+NwfmpvtTg==}
@@ -1852,6 +1859,8 @@ snapshots:
       typescript: 5.9.3
 
   '@vue/shared@3.5.22': {}
+
+  D@1.0.0: {}
 
   acorn@8.15.0: {}
 

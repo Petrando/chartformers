@@ -142,14 +142,27 @@ const App = () => {
           
         </div>
         <div style={{ flex:1, width: "100%", height: "100%", overflow:"hidden", border: "1px solid grey" }}>                 
-          <GroupedBarChart data={selectedStackedData} colorIdx={28}  />
+          <StackedBarChart data={selectedStackedData} colorIdx={28}  />
         </div>
       </div>
       <div style={{width: "80vw", maxWidth:"500px", height: "300px", position: "relative" }}>                 
-          <GroupedBarChart data={selectedStackedData} colorIdx={50} orientation='horizontal'  />
+          <PercentageBarChart data={selectedStackedData} colorIdx={50} orientation='horizontal'  />
       </div>
-      <div style={{width: "80vw", height: "600px", position: "relative" }}>                 
-          <BarChart data={languageData} color={{idx: 50, type:'colorful'}}   />
+      <div id="select-optional" className={`${controlStyles["select-optional"]}`}>
+            <label htmlFor="choose-data">Choose data:</label>
+            <select id="choose-data" value={selectedData} onChange={handleChange}>
+              <option value="english">English</option>
+              <option value="german">German</option>
+              <option value={"category1"}>Category 1</option>
+              <option value={"category2"}>Category 2</option>
+              <option value={"category3"}>Category 3</option>              
+            </select>
+          </div>
+      <div style={{width: "80vw", height: "500px", }}>                 
+          <BarChart data={pointData} color={{idx: 50, type:'colorful'}}   />
+      </div>
+      <div style={{width: "80vw", height: "500px", position: "relative" }}>                 
+          <PieChart data={pointData} colorIdx={50}   />
       </div>
     </div>
 )};

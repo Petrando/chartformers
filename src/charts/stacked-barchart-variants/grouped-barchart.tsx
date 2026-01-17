@@ -178,6 +178,9 @@ export function GroupedBarChart({ data, colorIdx = 0, orientation = 'vertical', 
                     
         chartData.forEach(function(d: LayeredData) {
             d.total = keys.reduce((acc, curr) => {
+                if(!(curr in d)){
+                    d[curr] = 0
+                }
                 const value = d[curr];
                 return acc + (typeof value === 'number' ? value : Number(value));
             }, 0);

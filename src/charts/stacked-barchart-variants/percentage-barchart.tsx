@@ -168,11 +168,14 @@ export function PercentageBarChart({ data, colorIdx = 0, orientation = 'vertical
         const margin = { top: 20, right: 30, bottom: 30, left: 40 };                              
         
         chartData.forEach(function(d: LayeredData) {
-                d.total = keys.reduce((acc, curr) => {
-                    const value = d[curr];
-                    return acc + (typeof value === 'number' ? value : Number(value));
-                }, 0);
-            });  
+            d.total = keys.reduce((acc, curr) => {
+                if(!(curr in d)){
+                    d[curr] = 0
+                }
+                const value = d[curr];
+                return acc + (typeof value === 'number' ? value : Number(value));
+            }, 0);
+        });  
                         
         const filteredData = chartData.filter((d: LayeredData) => {
             //return plotted === "all" ? (d?.total && d.total > 0) : (d[plotted as keyof LayeredData] as number) > 0;                

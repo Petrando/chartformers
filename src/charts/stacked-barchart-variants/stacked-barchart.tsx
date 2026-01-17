@@ -227,8 +227,11 @@ export function StackedBarChart({ data, focusOnPlot = false, colorIdx = 0, orien
         
         const selectedKeys = focusOnPlot?keys:keys.filter(k => !plotted.includes(k))
                 
-        chartData.forEach((row) => {
+        chartData.forEach((row, i) => {
             const total = selectedKeys.reduce((sum, key) => {
+                if(!(key in row)){
+                    row[key] = 0
+                } 
                 const value = row[key];
                 return sum + (typeof value === "number" ? value : 0);
             }, 0);

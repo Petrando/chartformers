@@ -1,12 +1,11 @@
 import React, {useState, useEffect, useRef} from 'react';
-import * as d3 from 'd3';
+import { select } from 'd3';
 import { sankey, sankeyLinkHorizontal, SankeyGraph, SankeyNode, SankeyLink } from "d3-sankey";
 import { useD3 } from '../hooks/useD3';
 import { useParentSize } from '../hooks/useParentSize';
-import { useContainerSize } from '../hooks/useContainerSize';
 import { useLayerIndex } from '../hooks/useLayerIndex';
 import { indexColor, basicFormat } from '../utils';
-import { Tooltip, getTooltip, moveTooltip, moveSankeyTooltip } from '../components/tooltip';
+import { Tooltip, getTooltip, moveSankeyTooltip } from '../components/tooltip';
 import { sankeyData, sankeyNode, sankeyLink, tooltipFormat } from '../types';
 import styles from './global.module.css';
 import sankeyStyles from './sankey.module.css'
@@ -227,7 +226,7 @@ export function SankeyChart({data, tooltipFormat}: SankeyProps) {
                             })                        
                         .attr("stroke-dashoffset", 0)                            
                         .on("end", function(){
-                            d3.select(this).attr("stroke-dasharray", `none`)
+                            select(this).attr("stroke-dasharray", `none`)
                         })
                     },
                     update=>{
@@ -237,7 +236,7 @@ export function SankeyChart({data, tooltipFormat}: SankeyProps) {
                             .attr("d", sankeyLinkHorizontal())                                                              
                             .attr("stroke-dashoffset", 0)
                             .on("end", function(){
-                                d3.select(this).attr("stroke-dasharray", `none`)
+                                select(this).attr("stroke-dasharray", `none`)
                             })
                         return update
                     },

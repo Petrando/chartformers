@@ -1,6 +1,6 @@
 import React, {useState, useEffect} from 'react';
 import { createPortal } from 'react-dom';
-import * as d3 from 'd3';
+import { axisBottom, axisLeft, format, max, ScaleBand, scaleBand, scaleLinear, select, Series, stack } from 'd3';
 import { useD3 } from '../../hooks/useD3';
 import { useParentSize } from '../../hooks/useParentSize';
 import { useContainerSize } from '../../hooks/useContainerSize';
@@ -219,7 +219,7 @@ export function GroupedBarChart({ data, colorIdx = 0, orientation = 'vertical', 
             stackedBarStyles.axisText;    
             
         const labels = sortedData.map(function(d: LayeredData) { return d.label; });                
-        const labelScale: d3.ScaleBand<string> = d3.scaleBand<string>()
+        const labelScale: ScaleBand<string> = scaleBand<string>()
             .domain(labels)
             .rangeRound(orientation === 'vertical'?[0, graphWidth]:[graphHeight, 0])
             .paddingInner(noPlot?0.15:isMediumScreen?0.4:0.25)
@@ -227,29 +227,29 @@ export function GroupedBarChart({ data, colorIdx = 0, orientation = 'vertical', 
             .align(0.2) 
 
         /*const yMax = plotted === "all"?
-                d3.max(chartData, d => d3.max(
+                max(chartData, d => max(
                     Object.entries(d)
                     .filter(d => d[0]!=="total" && d[0]!=="label"), d => (d as any)[1])):
-                        d3.max(chartData, d=>(d[plotted] as number));*/ 
+                        max(chartData, d=>(d[plotted] as number));*/ 
         const valueMax =
             plotted === "all"
-                ? d3.max(chartData, d =>
-                    d3.max(
+                ? max(chartData, d =>
+                    max(
                     Object.entries(d)
                         .filter(([key]) => key !== "total" && key !== "label")
                         .map(([, value]) => value as number)     // value is number | string | undefined
                     )
                 )
-                : d3.max(chartData, d => d[plotted] as number);
-        const valueScale = d3.scaleLinear()
+                : max(chartData, d => d[plotted] as number);
+        const valueScale = scaleLinear()
             .domain([0, valueMax ?? 0])
             .range(orientation === 'vertical'?[graphHeight, 0]:[0, graphWidth]);
                                                    
         const xAxis = orientation === 'vertical' 
-            ?d3.axisBottom(labelScale)
+            ?axisBottom(labelScale)
                 .tickValues(labelScale.domain())
                 .tickSizeOuter(0):
-                d3.axisBottom(valueScale)                
+                axisBottom(valueScale)                
                 .ticks(4, "s")
                 .tickSizeOuter(0)
                 .tickSize(-graphHeight);
@@ -269,8 +269,8 @@ export function GroupedBarChart({ data, colorIdx = 0, orientation = 'vertical', 
             .remove();                      
                                                                                                 
         const yAxis = orientation === 'vertical'
-            ? d3.axisLeft(valueScale).ticks(4, "s").tickSize(-graphWidth)
-            : d3.axisLeft(labelScale).tickSizeOuter(0);            
+            ? axisLeft(valueScale).ticks(4, "s").tickSize(-graphWidth)
+            : axisLeft(labelScale).tickSizeOuter(0);            
                                 
         canvas.select<SVGGElement>(".y-axis")  
             .attr("transform", `translate(0,0)`)                     
@@ -281,8 +281,8 @@ export function GroupedBarChart({ data, colorIdx = 0, orientation = 'vertical', 
             .select("line")
             .remove()
 
-        const dataLayers: d3.Series<LayeredData, string | string[]>[] =
-            d3.stack<LayeredData>().keys(keys)(sortedData);        
+        const dataLayers: Series<LayeredData, string | string[]>[] =
+            stack<LayeredData>().keys(keys)(sortedData);        
         
         const processedDataLayers:ExtendedSeries[] = dataLayers.map((series) => {
             const seriesKey = series.key
@@ -491,7 +491,7 @@ export function GroupedBarChart({ data, colorIdx = 0, orientation = 'vertical', 
                 .on("mouseover", function(e, d){
                     //unhoverLegend()
                     
-                    d3.select(orientation === "vertical"?".x-axis":".y-axis").selectAll("text")
+                    select(orientation === "vertical"?".x-axis":".y-axis").selectAll("text")
                         .filter(dText=>dText === d.data.label).attr("class", (orientation === "vertical"?xAxisTextClass:"") + " " + stackedBarStyles.hoveredAxisText)
 
                     tooltip.style("opacity", 1)
@@ -500,7 +500,7 @@ export function GroupedBarChart({ data, colorIdx = 0, orientation = 'vertical', 
                     const value = d.data[d.barKey]
                     const {total} = d.data
                     const percentage = (value as number/total!) * 100
-                    const percentText = d3.format(".1f")(percentage) + "%"
+                    const percentText = format(".1f")(percentage) + "%"
                     tooltip.select("p.top-label").text(d.barKey + " : " + basicFormat(value as number, tooltipFormat))
                     tooltip.select("p.bottom-label").text(
                         plotted === "all"?`Total : ${basicFormat(total!, tooltipFormat)}`:"~"
@@ -508,14 +508,14 @@ export function GroupedBarChart({ data, colorIdx = 0, orientation = 'vertical', 
                 })
                 .on("touch", function(e, d){
                     //unhoverLegend()
-                    d3.select(".x-axis").selectAll("text")
+                    select(".x-axis").selectAll("text")
                         .filter(dText=>dText === d.data.label).attr("class", xAxisTextClass)
                 })
                 .on("mousemove", (e, d)=>{
                     moveTooltip(tooltip, {e, svg:svgNode as SVGSVGElement, yScale: valueScale})
                 })
                 .on("mouseout", function(e, d){
-                    d3.select(orientation === "vertical"?".x-axis":".y-axis").selectAll("text")
+                    select(orientation === "vertical"?".x-axis":".y-axis").selectAll("text")
                         .filter(dText=>dText === d.data.label)
                         .attr("class", orientation === "vertical"?xAxisTextClass:"")
 

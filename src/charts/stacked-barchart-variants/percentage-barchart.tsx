@@ -1,6 +1,6 @@
 import React, {useState, useEffect} from 'react';
 import { createPortal } from 'react-dom';
-import * as d3 from 'd3';
+import { axisBottom, axisLeft, format, max, ScaleBand, scaleBand, scaleLinear, select, Series, stack, stackOffsetExpand, stackOrderNone } from 'd3';
 import { useD3 } from '../../hooks/useD3';
 import { useParentSize } from '../../hooks/useParentSize';
 import { useContainerSize } from '../../hooks/useContainerSize';
@@ -196,19 +196,19 @@ export function PercentageBarChart({ data, colorIdx = 0, orientation = 'vertical
             stackedBarStyles.axisText;
 
         const labels = sortedData.map(function(d: LayeredData) { return d.label; });
-        const labelScale = d3.scaleBand<string | number>()
+        const labelScale = scaleBand<string | number>()
             .domain(labels)
             .rangeRound(orientation === 'vertical'?[0, graphWidth]:[graphHeight, 0])
             .paddingInner(isMediumScreen?0.4:0.25)
             .paddingOuter(0.2)            
             .align(0.2)
 
-        const valueMax = d3.max(chartData, (d: LayeredData) => d.total)                                                                   
-        const valueScale = d3.scaleLinear()
+        const valueMax = max(chartData, (d: LayeredData) => d.total)                                                                   
+        const valueScale = scaleLinear()
             .domain([0, isPercentage?1:valueMax || 0]).nice()
             .range(orientation === 'vertical'?[graphHeight, 0]:[0, graphWidth]);
 
-        const x: d3.ScaleBand<string | number> = d3.scaleBand<string | number>()
+        const x: ScaleBand<string | number> = scaleBand<string | number>()
             .rangeRound([0, graphWidth])
             .paddingInner(0.1)
             .align(0.2)
@@ -219,10 +219,10 @@ export function PercentageBarChart({ data, colorIdx = 0, orientation = 'vertical
         const prevXLabels: string[] = [];
         
         const xAxis = orientation === 'vertical' 
-            ?d3.axisBottom(labelScale)
+            ?axisBottom(labelScale)
                 .tickValues(labelScale.domain())
                 .tickSizeOuter(0):
-            d3.axisBottom(valueScale)                
+            axisBottom(valueScale)                
                 .ticks(4, isPercentage?".0%":"s")
                 .tickSizeOuter(0)
                 .tickSize(-graphHeight);
@@ -241,15 +241,15 @@ export function PercentageBarChart({ data, colorIdx = 0, orientation = 'vertical
             .select("line")
             .remove();
 
-        const yMax = d3.max(chartData, (d: LayeredData) => d.total)                                                                   
+        const yMax = max(chartData, (d: LayeredData) => d.total)                                                                   
 
-        const y = d3.scaleLinear()
+        const y = scaleLinear()
             .domain([0, isPercentage?1:yMax || 0]).nice()
             .range([graphHeight, 0]);                                        
             
         const yAxis = orientation === 'vertical'
-            ? d3.axisLeft(valueScale).ticks(4, isPercentage?".0%":"s").tickSize(-graphWidth)
-            : d3.axisLeft(labelScale).tickSizeOuter(0);            
+            ? axisLeft(valueScale).ticks(4, isPercentage?".0%":"s").tickSize(-graphWidth)
+            : axisLeft(labelScale).tickSizeOuter(0);            
                                 
         canvas.select<SVGGElement>(".y-axis")  
             .attr("transform", `translate(0,0)`)                      
@@ -260,13 +260,13 @@ export function PercentageBarChart({ data, colorIdx = 0, orientation = 'vertical
             .select("line")
             .remove()
 
-        const stack = d3.stack<LayeredData>()
-            .order(d3.stackOrderNone)
-            .offset(d3.stackOffsetExpand);
+        const stackFn = stack<LayeredData>()
+            .order(stackOrderNone)
+            .offset(stackOffsetExpand);
 
-        const dataLayers: d3.Series<LayeredData, string>[] = !isPercentage?
-            d3.stack<LayeredData>().keys(keys)(sortedData):
-                stack.keys(keys)(sortedData);
+        const dataLayers: Series<LayeredData, string>[] = !isPercentage?
+            stack<LayeredData>().keys(keys)(sortedData):
+                stackFn.keys(keys)(sortedData);
 
         const extendedDataLayers: ExtendedSeries[] = dataLayers.map((series) => {
             const seriesKey = series.key;
@@ -479,7 +479,7 @@ export function PercentageBarChart({ data, colorIdx = 0, orientation = 'vertical
                 .on("mouseover", function(e, d){
                     //unhoverLegend()
                     
-                    d3.select(".x-axis").selectAll("text")
+                    select(".x-axis").selectAll("text")
                         .filter(dText=>dText === d.data.name).attr("class", xAxisTextClass + " " + styles.hoveredAxisText)
 
                     tooltip.style("opacity", 1)
@@ -488,7 +488,7 @@ export function PercentageBarChart({ data, colorIdx = 0, orientation = 'vertical
                     const value:number = d.data[d.barKey] as number || 0
                     const total = d.data.total || 0
                     const percentage = (value/total) * 100
-                    const percentText = d3.format(".1f")(percentage) + "%"
+                    const percentText = format(".1f")(percentage) + "%"
                     tooltip.select("p.top-label").text(d.barKey + " : " + (!isPercentage?
                         basicFormat(value, tooltipFormat):percentText))
                     tooltip.select("p.bottom-label").text(isPercentage?`(${basicFormat(value, tooltipFormat)} of ${basicFormat(total, tooltipFormat)})`:
@@ -497,14 +497,14 @@ export function PercentageBarChart({ data, colorIdx = 0, orientation = 'vertical
                 })
                 .on("touch", function(e, d){
                     //unhoverLegend()
-                    d3.select(".x-axis").selectAll("text")
+                    select(".x-axis").selectAll("text")
                         .filter(dText=>dText === d.data.label).attr("class", xAxisTextClass)
                 })
                 .on("mousemove", (e, d)=>{
                     moveTooltip(tooltip, {e, svg:svgNode as SVGSVGElement, yScale: y})
                 })
                 .on("mouseout", function(e, d){
-                    d3.select(".x-axis").selectAll("text")
+                    select(".x-axis").selectAll("text")
                         .filter(dText=>dText === d.data.name).attr("class", xAxisTextClass)
 
                     tooltip.style("opacity", 0);

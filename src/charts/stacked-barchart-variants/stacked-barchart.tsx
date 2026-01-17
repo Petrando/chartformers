@@ -1,6 +1,6 @@
 import React, {useState, useEffect} from 'react';
 import { createPortal } from 'react-dom';
-import * as d3 from 'd3';
+import { axisBottom, axisLeft, max, ScaleBand, scaleBand, scaleLinear, ScaleLinear, select, Series, SeriesPoint, stack } from 'd3';
 import { useD3 } from '../../hooks/useD3';
 import { useParentSize } from '../../hooks/useParentSize';
 import { useContainerSize } from '../../hooks/useContainerSize';
@@ -271,7 +271,7 @@ export function StackedBarChart({ data, focusOnPlot = false, colorIdx = 0, orien
         }                       
 
         const labels = sortedData.map(function(d: LayeredData) { return d.label; });
-        const labelScale: d3.ScaleBand<string> = d3.scaleBand<string>()
+        const labelScale: ScaleBand<string> = scaleBand<string>()
             .domain(labels)
             .rangeRound(orientation === 'vertical'?[0, graphWidth]:[graphHeight, 0])
             .paddingInner(isMediumScreen?0.4:0.25)
@@ -279,11 +279,11 @@ export function StackedBarChart({ data, focusOnPlot = false, colorIdx = 0, orien
             .align(0.2)
 
         const valueMax = focusOnPlot?(plotted[0] === "all"?
-                d3.max(chartData, (d: LayeredData) => d.total):
-                    d3.max(chartData, (d: LayeredData) => (d[plotted[0]] as number))):
-                d3.max(chartData, (d: LayeredData) => d.total); 
+                max(chartData, (d: LayeredData) => d.total):
+                    max(chartData, (d: LayeredData) => (d[plotted[0]] as number))):
+                max(chartData, (d: LayeredData) => d.total); 
 
-        const valueScale: d3.ScaleLinear<number, number> = d3.scaleLinear()
+        const valueScale: ScaleLinear<number, number> = scaleLinear()
             .domain([0, valueMax ?? 0])
             .range(orientation === 'vertical'?[graphHeight, 0]:[0, graphWidth]);
             
@@ -293,10 +293,10 @@ export function StackedBarChart({ data, focusOnPlot = false, colorIdx = 0, orien
         const prevXLabels: string[] = [];
         
         const xAxis = orientation === 'vertical' 
-            ?d3.axisBottom(labelScale)
+            ?axisBottom(labelScale)
                 .tickValues(labelScale.domain())
                 .tickSizeOuter(0):
-             d3.axisBottom(valueScale)                
+             axisBottom(valueScale)                
                 .ticks(4, "s")
                 .tickSizeOuter(0)
                 .tickSize(-graphHeight);
@@ -316,8 +316,8 @@ export function StackedBarChart({ data, focusOnPlot = false, colorIdx = 0, orien
             .remove()                           
             
         const yAxis = orientation === 'vertical'
-            ? d3.axisLeft(valueScale).ticks(4, "s").tickSize(-graphWidth)
-            : d3.axisLeft(labelScale).tickSizeOuter(0);                    
+            ? axisLeft(valueScale).ticks(4, "s").tickSize(-graphWidth)
+            : axisLeft(labelScale).tickSizeOuter(0);                    
                                         
         canvas.select<SVGGElement>(".y-axis")            
             .attr("transform", `translate(0,0)`)               
@@ -328,8 +328,8 @@ export function StackedBarChart({ data, focusOnPlot = false, colorIdx = 0, orien
             .select("line")
             .remove()                        
 
-        const dataLayers: d3.Series<LayeredData, string>[] =
-            d3.stack<LayeredData>().keys(selectedKeys)(sortedData);
+        const dataLayers: Series<LayeredData, string>[] =
+            stack<LayeredData>().keys(selectedKeys)(sortedData);
         
         const extendedDataLayers: ExtendedSeries[] = dataLayers.map((series) => {
             const seriesKey = series.key;
@@ -436,7 +436,7 @@ export function StackedBarChart({ data, focusOnPlot = false, colorIdx = 0, orien
                     .transition().duration(animDuration)
                     .attr("fill", inactiveColor)
                     .style("opacity", 0)                    
-                    .selectAll<SVGRectElement, d3.SeriesPoint<LayeredData>>("rect")
+                    .selectAll<SVGRectElement, SeriesPoint<LayeredData>>("rect")
                     .attr("y", graphHeight)
                     .attr("height", 0)
                     .remove()
@@ -614,7 +614,7 @@ export function StackedBarChart({ data, focusOnPlot = false, colorIdx = 0, orien
                     //unhoverLegend()
                     //console.log("hovered on ", d);
                     
-                    d3.select(orientation === "vertical"?".x-axis":".y-axis").selectAll("text")
+                    select(orientation === "vertical"?".x-axis":".y-axis").selectAll("text")
                         .filter(dText=>dText === d.data.label)
                         .attr("class", (orientation === "vertical"?xAxisTextClass:"") + " " + stackedBarStyles.hoveredAxisText)
 
@@ -631,7 +631,7 @@ export function StackedBarChart({ data, focusOnPlot = false, colorIdx = 0, orien
                 })
                 .on("touch", function(e, d){
                     //unhoverLegend()
-                    d3.select(orientation === "vertical"?".x-axis":".y-axis").selectAll("text")
+                    select(orientation === "vertical"?".x-axis":".y-axis").selectAll("text")
                         .filter(dText=>dText === d.data.label)
                         //.attr("class", xAxisTextClass)
                 })
@@ -639,7 +639,7 @@ export function StackedBarChart({ data, focusOnPlot = false, colorIdx = 0, orien
                     moveTooltip(tooltip, {e, svg:svgNode as SVGSVGElement, yScale: valueScale})
                 })
                 .on("mouseout", function(e, d){
-                    d3.select(orientation === 'vertical'?".x-axis":".y-axis").selectAll("text")
+                    select(orientation === 'vertical'?".x-axis":".y-axis").selectAll("text")
                         .filter(dText=>dText === d.data.label)
                         .attr("class", orientation==='vertical'?xAxisTextClass:"")
 

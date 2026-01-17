@@ -1,5 +1,5 @@
-import React, {useState, useEffect} from 'react';
-import * as d3 from 'd3';
+import React, {useState} from 'react';
+import {pie, arc, format, PieArcDatum, interpolate, ascending} from 'd3';
 import { useD3 } from '../hooks/useD3';
 import { useParentSize } from '../hooks/useParentSize';
 import { useContainerSize } from '../hooks/useContainerSize';
@@ -24,7 +24,7 @@ export function PieChart({data, innerRadius = 0, sortWithLegends = false, colorI
     const { width: pieWidth, height: pieHeight } = size    
     const layersRef = useLayerIndex(data.map(d => d.label))
 
-    const [prevData, setPrevData] = useState<d3.PieArcDatum<pointData>[]>([])
+    const [prevData, setPrevData] = useState<PieArcDatum<pointData>[]>([])
     const [isSorted, setIsSorted] = useState<boolean>(false);
     const [hovered, setHovered] = useState("")    
     
@@ -137,19 +137,19 @@ export function PieChart({data, innerRadius = 0, sortWithLegends = false, colorI
         const canvas = svg.select<SVGGElement>(".plot-area")
             .attr("transform", "translate(" + center.x + "," + center.y + ")");
 
-        const pie = d3.pie<pointData>()
+        const pieFn = pie<pointData>()
             .value(function(d) {return d.value; })
             .sort(function(a, b) {  
                 if(!isSorted){
                     return 0
                 }
-                return d3.ascending(a.value, b.value);
+                return ascending(a.value, b.value);
             })
                 
         const pieData = cloneObj(piechartData)            
-        const dataReady = pie(pieData)
+        const dataReady = pieFn(pieData)
         const prevPieData = cloneObj(pieData)
-        setPrevData(pie(prevPieData))
+        setPrevData(pieFn(prevPieData))
 
         let isExit = prevPieData.length > pieData.length?true:false
         const prevLabels = prevData.map(d => d.data.label)
@@ -169,16 +169,16 @@ export function PieChart({data, innerRadius = 0, sortWithLegends = false, colorI
         const firstTimeRender = prevData.length === 0
 
         const padding = 12
-        const arc = d3.arc<d3.PieArcDatum<pointData>>()
+        const arcFn = arc<PieArcDatum<pointData>>()
             .innerRadius(innerRadius * radius)
             .outerRadius(radius - padding);
-        const fullArc = d3.arc<d3.PieArcDatum<pointData>>()
+        const fullArc = arc<PieArcDatum<pointData>>()
             .innerRadius(innerRadius * radius)
             .outerRadius(radius);
 
-        const angleInterpolation = (d: d3.PieArcDatum<pointData>, direction: string) => {
+        const angleInterpolation = (d: PieArcDatum<pointData>, direction: string) => {
                 
-            const i = d3.interpolate(
+            const i = interpolate(
                 direction==="exit"?d.endAngle:d.startAngle, 
                 direction==="exit"?d.startAngle:d.endAngle
             );
@@ -186,11 +186,11 @@ export function PieChart({data, innerRadius = 0, sortWithLegends = false, colorI
             const isHovered = d.data.label === hovered
             return function(this: SVGPathElement, t: number): string {
                 d.endAngle = i(t);                     
-                return isHovered?fullArc(d) || "":arc(d) || ""
+                return isHovered?fullArc(d) || "":arcFn(d) || ""
             }
         }        
 
-        const pieSlices = canvas.selectAll<SVGPathElement, d3.PieArcDatum<pointData>>("path")
+        const pieSlices = canvas.selectAll<SVGPathElement, PieArcDatum<pointData>>("path")
                 .data(dataReady, function(d){ return d.data.label })
                 .join(
                     enter=>{
@@ -204,20 +204,20 @@ export function PieChart({data, innerRadius = 0, sortWithLegends = false, colorI
                         slices//.merge(slices)                                                                        
                             .transition().duration(animDuration)
                             .delay(firstTimeRender?0:(animDuration/* + exitDelay*/) )                        
-                        .attr('d', arc)                            
+                        .attr('d', arcFn)                            
                         .attrTween('d', function(this: SVGPathElement, d){
                             
                             if(!firstTimeRender){
                                 return angleInterpolation(d, "not exit")
                             }
-                            const startAngleI = d3.interpolate(0, d.startAngle)
-                            const endAngleI = d3.interpolate(0, d.endAngle)
+                            const startAngleI = interpolate(0, d.startAngle)
+                            const endAngleI = interpolate(0, d.endAngle)
 
                             const isHovered = d.data.label === hovered
                             return function(this: SVGPathElement, t: number): string {
                                 d.startAngle = startAngleI(t)
                                 d.endAngle = endAngleI(t)
-                                return isHovered?fullArc(d) as string:arc(d) as string;
+                                return isHovered?fullArc(d) as string:arcFn(d) as string;
                             }
                         })
 
@@ -232,20 +232,20 @@ export function PieChart({data, innerRadius = 0, sortWithLegends = false, colorI
                                 const layerIndex = layersRef.current.findIndex(l => l ===_.data.label) + colorIdx                                                                                                                                                         
                                 return indexSelectedColor(layerIndex)
                              })                        
-                            //.attr('d', arc)                            
+                            //.attr('d', arcFn)                            
                             .attrTween('d', function(this: SVGPathElement, d){
-                                const myPrev = prevData.find((prevD:d3.PieArcDatum<pointData>) => prevD.data.label === d.data.label)
+                                const myPrev = prevData.find((prevD:PieArcDatum<pointData>) => prevD.data.label === d.data.label)
                                 const prevStartAngle = !myPrev?0:myPrev.startAngle?myPrev.startAngle:0
-                                const startAngleI = d3.interpolate(prevStartAngle, d.startAngle)
+                                const startAngleI = interpolate(prevStartAngle, d.startAngle)
                                 const prevEndAngle = !myPrev?0:myPrev.endAngle?myPrev.endAngle:0
-                                const endAngleI = d3.interpolate(prevEndAngle, d.endAngle)
+                                const endAngleI = interpolate(prevEndAngle, d.endAngle)
                                 
                                 const isHovered = d.data.label === hovered
                                 return function(this: SVGPathElement, t: number): string {
                                     d.startAngle = startAngleI(t)
                                     d.endAngle = endAngleI(t)
     
-                                    return isHovered?fullArc(d) || "":arc(d) || ""
+                                    return isHovered?fullArc(d) || "":arcFn(d) || ""
                                 }
                             })
 
@@ -268,19 +268,19 @@ export function PieChart({data, innerRadius = 0, sortWithLegends = false, colorI
             })
             .on("mouseout", ()=>{setHovered("")})
 
-        const labelPosition = (d:d3.PieArcDatum<pointData>) => {
+        const labelPosition = (d:PieArcDatum<pointData>) => {
             if(piechartData.length === 1){
                 return `translate(0, 0)`
             }
-            return `translate(${arc.centroid(d)})`
+            return `translate(${arcFn.centroid(d)})`
         }
 
-        const percentageLabel = (d:d3.PieArcDatum<pointData>) => {
+        const percentageLabel = (d:PieArcDatum<pointData>) => {
             const percentage = (d.value/total)// * 100
-            return d3.format(".1%")(percentage)
+            return format(".1%")(percentage)
         }
 
-        const pieLabels =  canvas.selectAll<SVGTextElement, d3.PieArcDatum<pointData>>("text")
+        const pieLabels =  canvas.selectAll<SVGTextElement, PieArcDatum<pointData>>("text")
             .data(dataReady, function(d){return d.data.label})
             .join(
                 enter=>{

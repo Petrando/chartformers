@@ -1,8 +1,7 @@
 import React, {useState, useEffect, useRef} from 'react';
-import * as d3 from 'd3';
+import {select, easeCubicOut, interpolateNumber, hierarchy, pack, scaleLinear, interpolateHcl, HierarchyCircularNode} from 'd3';
 import { useD3 } from '../hooks/useD3';
 import { useParentSize } from '../hooks/useParentSize';
-import { useContainerSize } from '../hooks/useContainerSize';
 import { basicFormat } from '../utils';
 import { circlePackData, tooltipFormat } from '../types';
 import styles from './global.module.css';
@@ -43,7 +42,7 @@ export function CirclePack({data, tooltipFormat}: PackProps) {
                 return result;                
             };            
         }
-        d3.select(elName)
+        select(elName)
             .transition()
             .duration(250)
             .tween("text", function () {
@@ -55,12 +54,12 @@ export function CirclePack({data, tooltipFormat}: PackProps) {
 
         const elValue = pValueRef.current;
 
-        d3.select(elValue)
+        select(elValue)
             .transition()
             .duration(250)
-            .ease(d3.easeCubicOut)
+            .ease(easeCubicOut)
             .tween("text", function () {                
-                const i = d3.interpolateNumber(prevHoveredData.value, hoveredData.value);
+                const i = interpolateNumber(prevHoveredData.value, hoveredData.value);
 
                 return function (t) {
                     elValue.textContent = basicFormat(Math.round(i(t)), tooltipFormat).toLocaleString();
@@ -108,32 +107,32 @@ export function CirclePack({data, tooltipFormat}: PackProps) {
 
             const diameter = Math.min(graphWidth, graphHeight)
             
-            const root = d3.hierarchy(rootData)
+            const root = hierarchy(rootData)
                 .sum(function(d) { return d.value!; })
                 .sort(function(a, b){return a.value! - b.value!;})
 
-            const pack = d3.pack<circlePackData>()
+            const packFn = pack<circlePackData>()
                 .size([diameter - 20, diameter - 20])
                 .padding(2)                
 
             let focus = root, scale = 1, thicknessK = 1;    
-            const packedRoot = pack(root)        
+            const packedRoot = packFn(root)        
             const nodes = packedRoot.descendants();
             const view = [packedRoot.x, packedRoot.y, packedRoot.r * 2 + margin];
 
-            const tooltip = d3.select("#tooltip").style("opacity", 0)
+            const tooltip = select("#tooltip").style("opacity", 0)
             const canvasSvg = container.select<SVGSVGElement>("svg")
             const svgNode = canvasSvg.node()
             const canvas = canvasSvg.select<SVGGElement>('.plot-area')
                 .attr("transform", "translate(" + width / 2 + "," + height / 2 + ")");
 
-            const color = d3.scaleLinear<string>()
+            const color = scaleLinear<string>()
                 .domain([-1, 2])
                 .range(["hsl(152,80%,80%)", "hsl(228,30%,40%)"])
-                .interpolate(d3.interpolateHcl);
+                .interpolate(interpolateHcl);
             
             const circles = canvas
-                .selectAll<SVGCircleElement, d3.HierarchyCircularNode<circlePackData>>("circle")
+                .selectAll<SVGCircleElement, HierarchyCircularNode<circlePackData>>("circle")
                 .data(nodes,(d) => d.data.name)
                 .join(
                     enter =>
@@ -212,9 +211,9 @@ export function CirclePack({data, tooltipFormat}: PackProps) {
                         }
                     }
                     
-                    //console.log(d3.select(this).style('stroke'));		 
-                    let myStroke = d3.select(this).style('stroke');
-                    if(d!=root){d3.select(this)
+                    //console.log(select(this).style('stroke'));		 
+                    let myStroke = select(this).style('stroke');
+                    if(d!=root){select(this)
                         .style("stroke-width", CIRCLESTROKE * thicknessK * 2.5)
                         .style("stroke", "#e4e4e7");}
 
@@ -231,7 +230,7 @@ export function CirclePack({data, tooltipFormat}: PackProps) {
                         .style("fill-opacity", function(d) { return d.parent === focus ? 1 : 0; })
                         .style("display", function(d){return (d.parent===focus? "inline":"none");});
             
-                    d3.select(this)
+                    select(this)
                         .style("stroke-width", CIRCLESTROKE * thicknessK)
                         .style("stroke", function(d){
                             return "#737373";
@@ -252,7 +251,7 @@ export function CirclePack({data, tooltipFormat}: PackProps) {
                 })                
                                     
             const texts = canvas
-                .selectAll<SVGTextElement, d3.HierarchyCircularNode<circlePackData>>("text")
+                .selectAll<SVGTextElement, HierarchyCircularNode<circlePackData>>("text")
                 .data(nodes, function(d){return d.data.name})
                 .join(
                     enter=>enter.append("text")  
@@ -287,7 +286,7 @@ export function CirclePack({data, tooltipFormat}: PackProps) {
                     
             texts.raise()
 
-            function clicked(d:d3.HierarchyCircularNode<circlePackData>) {	
+            function clicked(d:HierarchyCircularNode<circlePackData>) {	
                 const focus0 = focus; focus = d;
                                 
                 const myMaxRadius = (diameter/2) - margin;  

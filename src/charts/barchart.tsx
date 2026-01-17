@@ -1,6 +1,6 @@
-import React, {useState, useEffect} from 'react';
+import React, {useState} from 'react';
 import { createPortal } from "react-dom";
-import * as d3 from 'd3';
+import {select, scaleBand, scaleLinear, axisLeft, axisBottom, max, format} from 'd3';
 import { useD3 } from '../hooks/useD3';
 import { useParentSize } from '../hooks/useParentSize';
 import { useUIControls } from '../hooks/useUIControls';
@@ -89,7 +89,7 @@ export function BarChart({
 
         const graphWidth = width - margin.left - margin.right
         const graphHeight = height - margin.top - margin.bottom
-        const labelScale = d3.scaleBand()
+        const labelScale = scaleBand()
             .domain(barchartData.map(d => d.label))
             .rangeRound(orientation === 'vertical'?
                 [0, graphWidth]:[graphHeight, 0])
@@ -97,19 +97,16 @@ export function BarChart({
             .paddingOuter(0.1)            
             //.align(0.2)
 
-        const valueScale = d3
-            .scaleLinear()
-            .domain([0, d3.max(barchartData, (d) => d.value) ?? 0])
+        const valueScale = scaleLinear()
+            .domain([0, max(barchartData, (d) => d.value) ?? 0])
             .rangeRound(orientation === 'vertical'?
                 [graphHeight, 0]:[0, graphWidth])        
 
-        const xAxis = orientation === 'vertical'?
-            d3
-                .axisBottom(labelScale)
+        const xAxis = orientation === 'vertical'?axisBottom(labelScale)
                 .tickValues(labelScale.domain())
                 .scale(labelScale)
                 .tickSizeOuter(0):
-            d3.axisBottom(valueScale)
+            axisBottom(valueScale)
                 .ticks(5, "s")
                 .tickSizeOuter(0)
                 .tickSize(-graphHeight);        
@@ -121,8 +118,8 @@ export function BarChart({
             .attr("class", xAxisTextClass);                         
 
         const y1Axis = orientation === 'vertical'?
-            d3.axisLeft(valueScale).ticks(5, "s").tickSize(-graphWidth):
-            d3.axisLeft(labelScale).tickSizeOuter(0)                 
+            axisLeft(valueScale).ticks(5, "s").tickSize(-graphWidth):
+            axisLeft(labelScale).tickSizeOuter(0)                 
                     
         canvas.select<SVGGElement>(".y-axis")
             .attr("transform", `translate(0, 0)`)
@@ -213,10 +210,10 @@ export function BarChart({
                 tooltip.style("opacity", 1)
                     .select("p").text(d.label + ` : 
                         ${prefix}
-                        ${d3.format(formatType === "long"?",":"~s")(d.value)}
+                        ${format(formatType === "long"?",":"~s")(d.value)}
                         ${suffix}`);              
                 
-                d3.select(".x-axis").selectAll("text")
+                select(".x-axis").selectAll("text")
                     .filter(dText=>dText === d.label).style("font-weight", "bold")
                 }
             )      
@@ -231,7 +228,7 @@ export function BarChart({
 
                     tooltip.style("opacity", 0);
 
-                    d3.select(".x-axis").selectAll("text")
+                    select(".x-axis").selectAll("text")
                     .filter(dText=>dText === d.label).style("font-weight", "normal")
                 }
             )

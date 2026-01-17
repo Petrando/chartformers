@@ -23,6 +23,7 @@ type SankeyProps = {
     data: sankeyData;
     tooltipFormat?: tooltipFormat;
 }
+
 export function SankeyChart({data, tooltipFormat}: SankeyProps) {
     const [sankeyData, setSankeyData] = useState<sankeyData | null>(null);
     const [ sortLink, setSortLink ] = useState(false)
@@ -74,7 +75,6 @@ export function SankeyChart({data, tooltipFormat}: SankeyProps) {
 
     }, [parentWidth, parentHeight])
     
-
     const isMidSmallScreen = parentWidth <= 768;
     const animDuration = 1000
     const chartRef = useD3<HTMLDivElement>(
@@ -253,7 +253,7 @@ export function SankeyChart({data, tooltipFormat}: SankeyProps) {
                         return pathData.id !== d.id
                     })                        
                         .style("stroke", "#1f2937")
-                        .style("stroke-opacity", 0.15)
+                        .style("stroke-opacity", 0.05)
 
                     /*canvas.selectAll("path.link").filter(dPath => {
                         const pathData = dPath as SankeyLink<sankeyNode, sankeyLink>
@@ -387,7 +387,15 @@ export function SankeyChart({data, tooltipFormat}: SankeyProps) {
                         return true;
                     })
                     .style("stroke", "#1f2937")
-                    .style("stroke-opacity", 0.1);                                        
+                    .style("stroke-opacity", 0.05);
+                    
+                    const targets = d.sourceLinks?.map(dLink => dLink.targetName) ?? []
+                    const sources = d.targetLinks?.map(dLink => dLink.sourceName) ?? []
+
+                    const chains = [...sources, ...targets, d.name]
+                    
+                    canvas.selectAll("text.label").filter(dLabel => !chains.includes((dLabel as SankeyNode<sankeyNode, sankeyLink>).name))
+                        .style("opacity", 0.0625)                                        
                     
                     const { enteringValue, exitingValue, nodeState, stateColor } = getNodeStateStyle(d)                   
                     
@@ -400,7 +408,6 @@ export function SankeyChart({data, tooltipFormat}: SankeyProps) {
                         .style("display", "block")
                         .text("out " + basicFormat(exitingValue!, tooltipFormat))
                                         
-
                     tooltip.select("p.small-text")
                         .style("display", "block")
                         .text(`${nodeState}`)
@@ -424,6 +431,14 @@ export function SankeyChart({data, tooltipFormat}: SankeyProps) {
                         .style("stroke-opacity", 0.5)
                         .style("fill", "none")                      
                         .attr("class", `link ${styles.sankeyEnergyLink}`)
+
+                    const targets = d.sourceLinks?.map(dLink => dLink.targetName) ?? []
+                    const sources = d.targetLinks?.map(dLink => dLink.sourceName) ?? []
+
+                    const chains = [...sources, ...targets, d.name]
+
+                    canvas.selectAll("text.label").filter(dLabel => !chains.includes((dLabel as SankeyNode<sankeyNode, sankeyLink>).name))
+                        .style("opacity", 1)
                 })
                 .transition().duration(animDuration)
                     .delay(nodeDelay)
@@ -469,7 +484,7 @@ export function SankeyChart({data, tooltipFormat}: SankeyProps) {
                 .attr("y", d => (d.y1! + d.y0!) / 2)
                 .attr("dy", "0.35em")
                 .attr("text-anchor", d => d.x0! < graphWidth / 2 ? "start" : "end")
-                .attr("opacity", 1);
+                .attr("opacity", 1)                
                         
         }, 
         [sankeyData, sortLink, sortNode, parentWidth, parentHeight, tooltipFormat]

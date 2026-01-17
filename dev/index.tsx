@@ -142,11 +142,11 @@ const App = () => {
           
         </div>
         <div style={{ flex:1, width: "100%", height: "100%", overflow:"hidden", border: "1px solid grey" }}>                 
-          <StackedBarChart data={selectedStackedData} colorIdx={28}  />
+          <GroupedBarChart data={selectedStackedData} colorIdx={28}  />
         </div>
       </div>
       <div style={{width: "80vw", maxWidth:"500px", height: "300px", position: "relative" }}>                 
-          <PercentageBarChart data={selectedStackedData} colorIdx={50} orientation='horizontal'  />
+          <StackedBarChart data={selectedStackedData} colorIdx={50} orientation='horizontal'  />
       </div>
       <div id="select-optional" className={`${controlStyles["select-optional"]}`}>
             <label htmlFor="choose-data">Choose data:</label>

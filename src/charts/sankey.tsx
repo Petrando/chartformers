@@ -29,7 +29,8 @@ export function SankeyChart({data, tooltipFormat}: SankeyProps) {
     const [ sortLink, setSortLink ] = useState(false)
     const [ sortNode, setSortNode ] = useState(false)
     const isFreshData = useRef(true)
-    const isFirstRender = useRef(true)    
+    const isFirstRender = useRef(true)
+    const reRenderedBy = useRef("data")    
     const [ref, parentSize] = useParentSize<HTMLDivElement>();
     const { width:parentWidth, height: parentHeight} = parentSize;    
     const layersRef = useLayerIndex(sankeyData?sankeyData.nodes.map(n => n.name):[]);
@@ -49,6 +50,8 @@ export function SankeyChart({data, tooltipFormat}: SankeyProps) {
             if(prev !== null){
                 isFirstRender.current = false
             }
+
+            reRenderedBy.current = "data"
             return data
         })
 
@@ -60,6 +63,18 @@ export function SankeyChart({data, tooltipFormat}: SankeyProps) {
         }
         
     }, [data])
+
+    useEffect(()=>{
+        if(parentWidth === 0){
+            return
+        }
+        if(parentHeight === 0){
+            return
+        }
+        reRenderedBy.current = "dimension"
+
+    }, [parentWidth, parentHeight])
+    
 
     const isMidSmallScreen = parentWidth <= 768;
     const animDuration = 1000
@@ -127,7 +142,7 @@ export function SankeyChart({data, tooltipFormat}: SankeyProps) {
                     (a, b)=> a.value - b.value:
                     null
                 )
-                .nodeWidth(graphWidth<=540?12:15)
+                .nodeWidth(graphWidth<=540?8:(graphWidth > 540 && graphWidth <= 768)?12:15)
                 .nodePadding(graphWidth<=540?5:8)                
                 .extent([[0, 0], [graphWidth, graphHeight]])    
             
@@ -179,7 +194,7 @@ export function SankeyChart({data, tooltipFormat}: SankeyProps) {
                 if(!isFreshData.current){
                     return 0
                 }
-                if(sortLink || sortNode){
+                if(reRenderedBy.current !== "data"){
                     return 0
                 }
 
@@ -205,7 +220,7 @@ export function SankeyChart({data, tooltipFormat}: SankeyProps) {
                         .attr("stroke-width", d => Math.max(1, d.width!))                         
                             .transition().duration(animDuration)
                             .delay(function(d){                                
-                                if(!isFreshData.current && !sortLink && !sortNode){                                    
+                                if(!isFreshData.current){                                    
                                     return animDuration
                                 }
                                 return linkDelay(d)
@@ -284,14 +299,13 @@ export function SankeyChart({data, tooltipFormat}: SankeyProps) {
                     canvas.selectAll("text.label")
                         .style("opacity", 1)
                         
-                });
-                        
+                });                        
 
             const nodeDelay = (d:SankeyNode<sankeyNode, sankeyLink>) => {
                 if(!isFreshData.current || d.depth === 0){
                     return 0
                 }
-                if(sortLink || sortNode){
+                if(reRenderedBy.current !== "data"){
                     return 0
                 }
                 return (d.depth! * animDuration) + animDuration/4
@@ -414,7 +428,7 @@ export function SankeyChart({data, tooltipFormat}: SankeyProps) {
                 })
                 .transition().duration(animDuration)
                     .delay(nodeDelay)
-                .attr("stroke-width", 2.5)
+                .attr("stroke-width", isMidSmallScreen?2:2.5)
                 .style("stroke", function(d){
                     const { stateColor, nodeState } = getNodeStateStyle(d)
                     return (nodeState === "surplus" || nodeState === "minus")? stateColor:"#52525b"
@@ -490,7 +504,11 @@ export function SankeyChart({data, tooltipFormat}: SankeyProps) {
                             type="checkbox" 
                             className={styles["controls-checkbox"]}                         
                             checked={sortLink}
-                            onChange={(e) => setSortLink(e.target.checked)}
+                            onChange={(e) => {
+                                const checked = e.target.checked
+                                if(checked){ reRenderedBy.current = "sort link"}
+                                setSortLink(checked)
+                            }}
                         />
                             Sort link
                     </label>
@@ -501,7 +519,11 @@ export function SankeyChart({data, tooltipFormat}: SankeyProps) {
                             type="checkbox" 
                             className={styles["controls-checkbox"]}                         
                             checked={sortNode}
-                            onChange={(e) => setSortNode(e.target.checked)}
+                            onChange={(e) => {
+                                const checked = e.target.checked
+                                if(checked){ reRenderedBy.current = "sort node"}
+                                setSortNode(checked)
+                            }}
                         />
                             Sort node
                     </label>

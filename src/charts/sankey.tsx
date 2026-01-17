@@ -193,7 +193,7 @@ export function SankeyChart({data, tooltipFormat}: SankeyProps) {
                 if(!isFreshData.current){
                     return 0
                 }
-                if(reRenderedBy.current !== "data"){
+                if(reRenderedBy.current !== "data" && !isFirstRender.current){
                     return 0
                 }
 
@@ -304,7 +304,7 @@ export function SankeyChart({data, tooltipFormat}: SankeyProps) {
                 if(!isFreshData.current || d.depth === 0){
                     return 0
                 }
-                if(reRenderedBy.current !== "data"){
+                if(reRenderedBy.current !== "data" && !isFirstRender.current){
                     return 0
                 }
                 return (d.depth! * animDuration) + animDuration/4

@@ -14,7 +14,7 @@ type PackProps = {
 
 type hoveredData = {name: string, value: number}
 
-export function CirclePack({data, tooltipFormat}: PackProps) {
+export function CirclePacks({data, tooltipFormat}: PackProps) {
     const [circlePackData, setPackData] = useState<circlePackData[] | null>(null);
     const [ hoveredData, setHoveredData ] = useState<hoveredData>({name: "", value: 0})    
     const [ prevHoveredData, setPrevHoveredData] = useState<hoveredData>({name: "", value: 0})

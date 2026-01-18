@@ -6,8 +6,7 @@ export type pointData = {
 }
 
 export type sankeyNode = {
-    name: string;
-    color?: string;
+    name: string;    
 }
 
 export type sankeyLink = {

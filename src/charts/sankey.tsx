@@ -24,7 +24,7 @@ type SankeyProps = {
     tooltipFormat?: tooltipFormat;
 }
 
-export function SankeyChart({data, tooltipFormat}: SankeyProps) {
+export function Sankey({data, tooltipFormat}: SankeyProps) {
     const [sankeyData, setSankeyData] = useState<sankeyData | null>(null);
     const [ sortLink, setSortLink ] = useState(false)
     const [ sortNode, setSortNode ] = useState(false)

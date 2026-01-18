@@ -1,7 +1,7 @@
 import React, { useState} from 'react';
 import { createRoot } from 'react-dom/client';
 import { BarChart, PieChart, StackedBarChart, GroupedBarChart, PercentageBarChart,
-  SankeyChart, CirclePacks
+  Sankey, CirclePacks
  } from '../src';
 import { year1, year2, stackedData, stackedDataVar1, stackedDataVar2, stackData1, stackData2, stackData3 } from './data/constants';
 import { englishFreq, germanFreq, categoryDataV1, categoryDataV2, categoryDataV3 } from './data/constants';
@@ -93,7 +93,7 @@ const App = () => {
         width: '80vw',
         height: '450px', display:"flex", flexDirection:"column", overflow:'hidden', 
         marginTop: '20px', border: '2px solid #047857'}}>
-          <SankeyChart data={sankeyData} tooltipFormat={sankeyFormat} />
+          <Sankey data={sankeyData} tooltipFormat={sankeyFormat} />
       </div>
       <h2>Testing BarChart Component</h2>
       <div style={{

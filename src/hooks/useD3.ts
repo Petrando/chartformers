@@ -1,5 +1,5 @@
 import React, { useEffect, useRef } from "react";
-import * as d3 from "d3";
+import { select } from "d3";
 
 // T = type of the DOM element (default to HTMLDivElement)
 export const useD3 = <T extends HTMLElement | SVGSVGElement>(
@@ -10,7 +10,7 @@ export const useD3 = <T extends HTMLElement | SVGSVGElement>(
 
   useEffect(() => {
     if (dependencies !== undefined && ref.current) {
-      renderChartFn(d3.select(ref.current));
+      renderChartFn(select(ref.current));
     }
   }, dependencies === null ? undefined : dependencies); // eslint-disable-line react-hooks/exhaustive-deps
 

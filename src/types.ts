@@ -12,8 +12,7 @@ export type sankeyNode = {
 export type sankeyLink = {
     source: any;
     target: any;
-    value: number;
-    _id?: string;
+    value: number;    
     sourceName?: string;
     targetName?: string;
     id?: string;

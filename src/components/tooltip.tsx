@@ -9,7 +9,7 @@ type ITooltip = {
 
 export const Tooltip:FunctionComponent<ITooltip> = ({pCount}) => {
     return (
-        <div id="tooltip" className={`${styles.tooltip}`}>
+        <div id="tooltip" className={`${styles.tooltip}`} style={{opacity: 0}}>
             {
                 !pCount &&
                     <p className={`top-label ${styles["text-small"]}`} />

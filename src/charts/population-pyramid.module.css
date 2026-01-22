@@ -1,0 +1,55 @@
+.male, .maleTotal {
+    /*fill: #0099ff;*/
+    transition: all;
+    transition-duration: .25s;
+    stroke: wheat;
+    stroke-width: 1.5;    
+}
+
+.male:hover {
+    fill: #2563EB;
+}
+
+.totalMale{
+    /*fill: #0099ff;*/
+    stroke: wheat;
+    stroke-width: 1.5;
+    animation-name: totalMale;
+    animation-duration: .25s;
+    animation-fill-mode: forwards;
+}
+
+@keyframes totalMale {
+    from {fill: #0099ff}
+    to {fill:#059669}
+}
+
+.female, .femaleTotal {
+    /*fill: #ff6699;*/
+    stroke: wheat;
+    stroke-width: 1.5;
+    transition: all;
+    transition-duration: .25s;
+}
+
+.female:hover{
+    fill: #DB2777;
+}
+
+.totalFemale{
+    /*fill: #ff6699;*/
+    stroke: wheat;
+    stroke-width: 1.5;
+    animation-name: totalFemale;
+    animation-duration: .25s;
+    animation-fill-mode: forwards;
+}
+
+@keyframes totalFemale {
+    from {fill: #ff6699}
+    to {fill:#059669}
+}
+
+.maleTotal:hover, .femaleTotal:hover {
+    fill:#059669;
+}

@@ -7,7 +7,7 @@
     "name": "Petrando Richard",
     "email": "petrandorichard@gmail.com"
   },
-  "main": "dist/chartformers.umd.js",
+  "main": "dist/chartformers.es.js",
   "module": "dist/chartformers.es.js",
   "types": "dist/src/index.d.ts",
   "files": [

@@ -4,4 +4,5 @@ export { StackedBarChart } from './charts/stacked-barchart-variants/stacked-barc
 export { GroupedBarChart } from './charts/stacked-barchart-variants/grouped-barchart';
 export { PercentageBarChart } from './charts/stacked-barchart-variants/percentage-barchart';
 export { Sankey } from './charts/sankey';
-export { CirclePacks } from './charts/circle-pack'
+export { CirclePacks } from './charts/circle-pack';
+export { PopulationPyramid } from './charts/population-pyramid'

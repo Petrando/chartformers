@@ -1,12 +1,13 @@
 import React, { useState} from 'react';
 import { createRoot } from 'react-dom/client';
 import { BarChart, PieChart, StackedBarChart, GroupedBarChart, PercentageBarChart,
-  Sankey, CirclePacks
+  Sankey, CirclePacks, PopulationPyramid
  } from '../src';
 import { year1, year2, stackedData, stackedDataVar1, stackedDataVar2, stackData1, stackData2, stackData3 } from './data/constants';
 import { englishFreq, germanFreq, categoryDataV1, categoryDataV2, categoryDataV3 } from './data/constants';
 import { flightData, flightData1, energyData, brexitVoting } from './data/constants'
 import { loanData1, loanData2, loanData3, loanData4, loanData4GPT, flareData } from './data/loan-data';
+import { population1, population2 } from './data/population-data';
 import controlStyles from './controls.module.css'
 
 const App = () => {
@@ -62,6 +63,13 @@ const App = () => {
   return(
   
     <div style={{paddingBottom: "20px"}}>    
+      <div style={{
+        width: '80vw',
+        height: '450px', display:"flex", flexDirection:"column", overflow:'hidden', 
+        marginTop: '20px', border: '2px solid red'}}>
+          
+          <PopulationPyramid data={population1} />
+    </div>
       <div id="select-sankey-data" className={`${controlStyles["select-optional"]}`}>
         <label htmlFor="choose-pack-data">Choose pack data:</label>
         <select id="choose-pack-data" value={selectedPackData} onChange={handlePackChange}>              

@@ -1,13 +1,13 @@
 {
   "name": "chartformers",
   "license": "SEE LICENSE IN LICENSE",
-  "version": "1.0.51",
+  "version": "1.0.50",
   "description": "Animated React charting library powered by D3 with smooth data transitions and interactive features",
   "author": {
     "name": "Petrando Richard",
     "email": "petrandorichard@gmail.com"
   },
-  "main": "dist/chartformers.es.js",
+  "main": "dist/chartformers.umd.js",
   "module": "dist/chartformers.es.js",
   "types": "dist/src/index.d.ts",
   "files": [

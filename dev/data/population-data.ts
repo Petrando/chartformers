@@ -1,8 +1,5 @@
-export type ageRangeGroup = {
-    ageRange: string;
-    male: number;
-    female: number;
-}
+import { ageRangeGroup } from "../../src/types";
+
 export const population1:ageRangeGroup[] = [
     {
         "ageRange": "0-4",

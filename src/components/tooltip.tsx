@@ -102,7 +102,7 @@ export function moveTooltip(tooltip:any, positionProps:PositioningProps){
                 (e.y + 30)  + "px")                
 }
 
-export function moveSankeyTooltip(e:any, tooltip:any){
+export function tooltipMove(e:any, tooltip:any){
     const { offsetWidth, offsetHeight } = tooltip.node() || {};
               
     const clientWidth = document.documentElement.clientWidth

@@ -42,6 +42,16 @@ const App = () => {
 
   const packTooltipFormat = selectedPackData.startsWith("loan")?{prefix: "US$ "}:{}
 
+  const [selectedPopulationData, setSelectedPopulationData] = useState<string>("population 1")
+
+  const handlePopulationChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    setSelectedPopulationData(e.target.value)
+    e.stopPropagation()
+    e.preventDefault()
+  }
+
+  const populationData = selectedPopulationData ===  "population 1"?population1:population2
+
   const selectedStackedData = selectedData === "stack1" ? year1 : 
     selectedData === "stack2" ? year2:
       selectedData === "stack3" ? stackData1:
@@ -63,14 +73,27 @@ const App = () => {
   return(
   
     <div style={{paddingBottom: "20px"}}>    
+      <div id="select-population-data" className={`${controlStyles["select-optional"]}`}>
+        <label htmlFor="choose-population-data">Choose population data:</label>
+        <select id="choose-population-data" 
+          value={selectedPopulationData} 
+          onChange={handlePopulationChange}
+        >              
+          {
+            ["population 1", "population 2"].map(s => (
+              <option key={s} value={s}>{s}</option>
+            ))
+          }
+        </select>
+      </div>
       <div style={{
         width: '80vw',
         height: '450px', display:"flex", flexDirection:"column", overflow:'hidden', 
         marginTop: '20px', border: '2px solid red'}}>
           
-          <PopulationPyramid data={population1} />
+          <PopulationPyramid data={populationData} />
     </div>
-      <div id="select-sankey-data" className={`${controlStyles["select-optional"]}`}>
+      <div id="select-pack-data" className={`${controlStyles["select-optional"]}`}>
         <label htmlFor="choose-pack-data">Choose pack data:</label>
         <select id="choose-pack-data" value={selectedPackData} onChange={handlePackChange}>              
           {

@@ -5,7 +5,7 @@ import { useD3 } from '../hooks/useD3';
 import { useParentSize } from '../hooks/useParentSize';
 import { useLayerIndex } from '../hooks/useLayerIndex';
 import { indexColor, basicFormat } from '../utils';
-import { Tooltip, getTooltip, moveSankeyTooltip } from '../components/tooltip';
+import { Tooltip, getTooltip, tooltipMove } from '../components/tooltip';
 import { sankeyData, sankeyNode, sankeyLink, tooltipFormat } from '../types';
 import styles from './global.module.css';
 import sankeyStyles from './sankey.module.css'
@@ -279,7 +279,7 @@ export function Sankey({data, tooltipFormat}: SankeyProps) {
                         
                 })
                 .on("mousemove", (e, d) => {                     
-                    moveSankeyTooltip(e, tooltip)                    
+                    tooltipMove(e, tooltip)                    
                 })
                 .on("mouseout", (e, d)=>{                    
                     tooltip.style("opacity", 0);                    
@@ -414,7 +414,7 @@ export function Sankey({data, tooltipFormat}: SankeyProps) {
                         .style("color", `${stateColor}`)
                 })
                 .on("mousemove", (e, d) => {                    
-                    moveSankeyTooltip(e, tooltip)
+                    tooltipMove(e, tooltip)
                 })
                 .on("mouseout", (e, d)=>{                                    
                     tooltip.style("opacity", 0);                         

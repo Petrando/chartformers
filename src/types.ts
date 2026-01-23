@@ -29,6 +29,13 @@ export type circlePackData = {
     children?: circlePackData[];
 }
 
+export type ageRangeGroup = {
+    ageRange: string;
+    male: number;
+    female: number;
+    Total?: number;
+}
+
 export type tooltipFormat = {
     formatType?: "long" | "short";
     prefix?: string;

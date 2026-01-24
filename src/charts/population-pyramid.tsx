@@ -103,10 +103,12 @@ export function PopulationPyramid({
       
             let xAxisMale = d3.axisBottom(xMale)
               .ticks(12)
+              .tickSize(-graphHeight)
               .tickFormat(d3.format(isPercentage?"~%":".2s"));
       
             let xAxisFemale = d3.axisBottom(xFemale)
               .ticks(12)
+              .tickSize(-graphHeight)
               .tickFormat(d3.format(".2s"));
       
             let yAxisMale = d3.axisLeft(yMale);
@@ -157,22 +159,26 @@ export function PopulationPyramid({
 
             if(canvas.select('g.yMale.axis').node() === null){
                 canvas.append("g")	
-                    .attr("class", "yMale axis")                      
+                    .attr("class", `yMale axis ${pyramidStyles["value-axis"]}`)                      
                     .call(yAxisMale)
                     .attr("pointer-events", "none"); 
             }    
                 
             if(canvas.select('g.xMale.axis').node() === null){
                 canvas.append("g")
-                    .attr("class", "xMale axis")
+                    .attr("class", `xMale axis ${pyramidStyles["value-axis"]}`)
                     .attr("transform", "translate(0," + graphHeight + ")")
                     .call(xAxisMale)
-                    .attr("pointer-events", "none");	 
+                    .attr("pointer-events", "none")
+                    .selectAll(".tick")
+                    .filter(d => d === 0)
+                    .select("line")
+                    .remove();	 
             }                    
             
             if(canvas.select('g.yFemale.axis').node() === null){
                 canvas.append("g")	
-                    .attr("class", "yFemale axis")
+                    .attr("class", `yFemale axis ${pyramidStyles["value-axis"]}`)
                     .attr("transform", "translate(" + graphWidth + ",0)")            
                     .call(yAxisFemale)
                     .attr("pointer-events", "none");  
@@ -180,10 +186,14 @@ export function PopulationPyramid({
                 
             if(canvas.select('g.xFemale.axis').node() === null){
                 canvas.append("g")
-                    .attr("class", "xFemale axis")
+                    .attr("class", `xFemale axis ${pyramidStyles["value-axis"]}`)
                     .attr("transform", "translate(0," + graphHeight + ")")
                     .call(xAxisFemale)
-                    .attr("pointer-events", "none");  
+                    .attr("pointer-events", "none")
+                    .selectAll(".tick")
+                    .filter(d => d === 0)
+                    .select("line")
+                    .remove();  
             }
 
             const populationData = cloneObj(data);
@@ -541,7 +551,7 @@ export function PopulationPyramid({
                         if(isPercentage){
                             const myPercentage = d.data[gender]/d.data.Total!
                             return `${d3.format("~%")(myPercentage)} (${d3.format(",d")(d.data[gender])} 
-                            from total ${d3.format(",d")(d.data.Total!)} of people)`
+                                of ${d3.format(",d")(d.data.Total!)} people)`
                         }                        
                         return `${gender} ${d3.format(",d")(d.data[gender])} people`
                     })

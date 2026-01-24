@@ -2,7 +2,8 @@
 
 [![npm version](https://img.shields.io/npm/v/chartformers)](https://www.npmjs.com/package/chartformers)
 [![npm downloads](https://img.shields.io/npm/dw/chartformers)](https://www.npmjs.com/package/chartformers)
-[![bundlephobia](https://img.shields.io/bundlephobia/minzip/chartformers)](https://bundlephobia.com/package/chartformers)
+[![packagephobia](https://packagephobia.com/badge?p=chartformers)](https://packagephobia.com/result?p=chartformers)
+[![bundlejs](https://img.shields.io/badge/bundlejs-minzipped-brightgreen)](https://bundlejs.com/?q=chartformers)
 [![GitHub stars](https://img.shields.io/github/stars/petrando/chartformers)](https://github.com/petrando/chartformers)
 [![license](https://img.shields.io/npm/l/chartformers)](./LICENSE)
 
@@ -14,11 +15,11 @@ It is designed to simplify chart creation in modern React apps while retaining t
 ## ✨ Features
 - Easy-to-use React components for common chart types  
 - Smooth animated transitions  
-- Small bundle size
+- Performance First: Tiny footprint (~46kB gzipped) with full tree-shaking support.
 - Full typescript
 - Responsive charts that auto-fit their containers  
 - Simple styling with the included CSS  
-- Powered by D3.js + React
+- Powered by D3.js + React 19
 n
 ## 📦 Installation
 
@@ -44,60 +45,60 @@ import { StackedBarChart } from "chartformers";
 import 'chartformers/dist/chartformers.css';
 
 export default function StackedBarChartExample() {  
-  export const stackData2 = [
+  const companyData = [
     {
-      label: "Initech",
-      alpha: 14900,
-      beta: 8800,
-      delta: 9600,
-      epsilon: 5400,
-      theta: 6100,
+      "label": "TechStream",
+      "Hardware": 5409,
+      "Software": 8200,
+      "Services": 10390,
+      "Consulting": 21500,
+      "Maintenance": 7506
     },
     {
-      label: "Umbrella",
-      alpha: 6800,
-      beta: 7400,
-      delta: 17100,
-      epsilon: 9300,
-      theta: 5200,
+      "label": "InnovateX",
+      "Hardware": 11265,
+      "Software": 8657,
+      "Services": 18200,
+      "Consulting": 9400,
+      "Maintenance": 5286
     },
     {
-      label: "Hooli",
-      alpha: 6900,
-      beta: 10400,
-      delta: 7400,
-      epsilon: 16200,
-      theta: 5700,
-    },  
-    {
-      label: "Aperture Labs",
-      alpha: 8200,
-      beta: 9100,
-      delta: 14300,
-      epsilon: 7600,
-      theta: 4600,
-    },  
-    {
-      label: "Cyberdyne Systems",
-      alpha: 18800,
-      beta: 9700,
-      delta: 6900,
-      epsilon: 8300,
-      theta: 6200,
+      "label": "CloudSphere",
+      "Hardware": 16087,
+      "Software": 14200,
+      "Services": 22400,
+      "Consulting": 19423,
+      "Maintenance": 11935
     },
     {
-      label: "Massive Dynamic",
-      alpha: 9600,
-      beta: 7800,
-      delta: 4900,
-      epsilon: 7200,
-      theta: 15500,
+      "label": "DataVantage",
+      "Hardware": 9912,
+      "Software": 15900,
+      "Services": 14674,
+      "Consulting": 13322,
+      "Maintenance": 11500
     },
+    {
+      "label": "CyberCore",
+      "Hardware": 3488,
+      "Software": 5520,
+      "Services": 6685,
+      "Consulting": 7433,
+      "Maintenance": 5769
+    },
+    {
+      "label": "AetherSystems",
+      "Hardware": 6811,
+      "Software": 8900,
+      "Services": 8582,
+      "Consulting": 24100,
+      "Maintenance": 6700
+    }
   ];
 
   return (
     <div className="w-full h-60 md:h-96">
-      <StackedBarChart data={stackData2} />
+      <StackedBarChart data={companyData} />
     </div>
   );
 }
@@ -105,7 +106,7 @@ export default function StackedBarChartExample() {
 ![Demo](https://raw.githubusercontent.com/Petrando/chartformers/master/media/StackedBarChart.gif)
 
 For full explanations on the options and properties, with live demo:
-## Visit the [chartformers documentation](https://chartformers-docs.vercel.app/).  
+## Visit the [chartformers documentation](https://chartformers-doc.vercel.app/).  
 
 
 Or you can grab the source code at:

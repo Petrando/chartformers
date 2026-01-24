@@ -5,4 +5,4 @@ export { GroupedBarChart } from './charts/stacked-barchart-variants/grouped-barc
 export { PercentageBarChart } from './charts/stacked-barchart-variants/percentage-barchart';
 export { Sankey } from './charts/sankey';
 export { CirclePacks } from './charts/circle-pack';
-export { PopulationPyramid } from './charts/population-pyramid'
+//export { PopulationPyramid } from './charts/population-pyramid'

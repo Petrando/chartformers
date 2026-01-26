@@ -5,6 +5,12 @@ export type pointData = {
     value: number;
 }
 
+export type rawLink = {
+  source: string
+  target: string
+  value: number
+}
+
 export type sankeyNode = {
     name: string;    
 }

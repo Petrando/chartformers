@@ -1,12 +1,14 @@
 import React, {useState, useEffect, useRef} from 'react';
 import { select } from 'd3';
-import { sankey, sankeyLinkHorizontal, SankeyGraph, SankeyNode, SankeyLink } from "d3-sankey";
+import { sankey, sankeyLinkHorizontal, SankeyGraph, SankeyNode, SankeyLink,
+    sankeyLeft, sankeyRight, sankeyCenter, sankeyJustify
+ } from "d3-sankey";
 import { useD3 } from '../hooks/useD3';
 import { useParentSize } from '../hooks/useParentSize';
 import { useLayerIndex } from '../hooks/useLayerIndex';
 import { indexColor, basicFormat } from '../utils';
 import { Tooltip, getTooltip, tooltipMove } from '../components/tooltip';
-import { sankeyData, sankeyNode, sankeyLink, tooltipFormat } from '../types';
+import { rawLink, sankeyData, sankeyNode, sankeyLink, tooltipFormat } from '../types';
 import styles from './global.module.css';
 import sankeyStyles from './sankey.module.css'
 
@@ -20,7 +22,7 @@ export type LayoutGraph =
   SankeyGraph<sankeyNode, sankeyLink>;
 
 type SankeyProps = {
-    data: sankeyData;
+    data: rawLink[];
     tooltipFormat?: tooltipFormat;
 }
 
@@ -35,10 +37,35 @@ export function Sankey({data, tooltipFormat}: SankeyProps) {
     const { width:parentWidth, height: parentHeight} = parentSize;    
     const layersRef = useLayerIndex(sankeyData?sankeyData.nodes.map(n => n.name):[]);
 
+    function formatData(rawData: rawLink[]): sankeyData {
+        const nodeIndexMap = new Map<string, number>()
+        const nodes: sankeyNode[] = []
+        const links: sankeyLink[] = []
+
+        const getNodeIndex = (name: string): number => {
+            if (!nodeIndexMap.has(name)) {
+                nodeIndexMap.set(name, nodes.length)
+                nodes.push({ name })
+            }
+            return nodeIndexMap.get(name)!
+        }
+
+        for (const { source, target, value } of rawData) {
+            links.push({
+                source: getNodeIndex(source),
+                target: getNodeIndex(target),
+                value
+            })
+        }
+
+        return { nodes, links }
+    }
+
     useEffect(()=>{
         setSankeyData((prev) => {
+            const sankeyData = formatData(data)
             const prevNames = prev === null?[]:prev.nodes.map(node =>  node.name)
-            const currentNames = data.nodes.map(node => node.name)
+            const currentNames = sankeyData.nodes.map(node => node.name)
 
             isFreshData.current = currentNames.every(name => {
                 if(prevNames.includes(name)){
@@ -52,7 +79,7 @@ export function Sankey({data, tooltipFormat}: SankeyProps) {
             }
 
             reRenderedBy.current = "data"
-            return data
+            return sankeyData
         })
 
         if(sortNode){
@@ -140,7 +167,7 @@ export function Sankey({data, tooltipFormat}: SankeyProps) {
                 .linkSort(sortLink?
                     (a, b)=> a.value - b.value:
                     null
-                )
+                )                
                 .nodeWidth(graphWidth<=540?8:(graphWidth > 540 && graphWidth <= 768)?12:15)
                 .nodePadding(graphWidth<=540?5:8)                
                 .extent([[0, 0], [graphWidth, graphHeight]])    
@@ -191,6 +218,9 @@ export function Sankey({data, tooltipFormat}: SankeyProps) {
             
             const linkDelay = (d: SankeyLink<sankeyNode, sankeyLink>) => {                
                 if(!isFreshData.current){
+                    return 0
+                }
+                if(reRenderedBy.current === "sort node" || reRenderedBy.current === "sort link"){
                     return 0
                 }
                 if(reRenderedBy.current !== "data" && !isFirstRender.current){
@@ -302,6 +332,9 @@ export function Sankey({data, tooltipFormat}: SankeyProps) {
 
             const nodeDelay = (d:SankeyNode<sankeyNode, sankeyLink>) => {
                 if(!isFreshData.current || d.depth === 0){
+                    return 0
+                }
+                if(reRenderedBy.current === "sort node" || reRenderedBy.current === "sort link"){
                     return 0
                 }
                 if(reRenderedBy.current !== "data" && !isFirstRender.current){

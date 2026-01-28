@@ -1,10 +1,11 @@
 import React, {useState, useEffect, useRef} from 'react';
 import {select, easeCubicOut, interpolateNumber, hierarchy, pack, scaleLinear, interpolateHcl, HierarchyCircularNode} from 'd3';
-import { useD3 } from '../hooks/useD3';
-import { useParentSize } from '../hooks/useParentSize';
-import { basicFormat } from '../utils';
-import { circlePackData, tooltipFormat } from '../types';
-import styles from './global.module.css';
+import { useD3 } from '../../hooks/useD3';
+import { useParentSize } from '../../hooks/useParentSize';
+import { basicFormat } from '../../utils';
+import { d3v3packs } from './utils-in-js.js'
+import { circlePackData, tooltipFormat } from '../../types';
+import styles from '../global.module.css';
 import packStyles from './circle-pack.module.css'
 
 type PackProps = {
@@ -24,6 +25,8 @@ export function CirclePacks({data, tooltipFormat}: PackProps) {
 
     const pNameRef = useRef<HTMLParagraphElement | null>(null);
     const pValueRef = useRef<HTMLParagraphElement | null>(null);
+
+    console.log(d3v3packs)
 
     useEffect(() => {
         if (!pValueRef.current) return;

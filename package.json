@@ -17,7 +17,7 @@
     "type": "git",
     "url": "git+https://github.com/petrando/chartformers.git"
   },
-  "homepage": "https://chartformers-docs.vercel.app/",
+  "homepage": "https://chartformers-doc.vercel.app/",
   "bugs": {
     "url": "https://github.com/petrando/chartformers/issues"
   },

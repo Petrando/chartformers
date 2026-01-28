@@ -24953,7 +24953,9 @@ export const loanData4GPT: circlePackData[] = [
             { name: "London Main Branch", value: 895000 },
             { name: "Liverpool Branch", value: 673000 },
             { name: "Manchester Branch", value: 610000 },
-            { name: "Birmingham Branch", value: 540000 }
+            { name: "Birmingham Branch", value: 540000 },
+            { name: "Leeds Branch", value: 487321 },
+            { name: "Bristol Branch", value: 562918 }
         ]
     },
     {
@@ -25025,6 +25027,8 @@ export const loanData4GPT: circlePackData[] = [
             { name: "Šiauliai Branch", value: 160000 }
         ]
     },
+
+    // 🔹 10 children
     {
         name: "Switzerland",
         children: [
@@ -25032,9 +25036,15 @@ export const loanData4GPT: circlePackData[] = [
             { name: "Zurich Branch", value: 995000 },
             { name: "Geneva Branch", value: 910000 },
             { name: "Basel Branch", value: 450000 },
-            { name: "Lausanne Branch", value: 520000 }
+            { name: "Lausanne Branch", value: 520000 },
+            { name: "Lucerne Branch", value: 684731 },
+            { name: "St. Gallen Branch", value: 598214 },
+            { name: "Lugano Branch", value: 742956 },
+            { name: "Winterthur Branch", value: 469883 },
+            { name: "Chur Branch", value: 533617 }
         ]
     },
+
     {
         name: "Montenegro",
         children: [
@@ -25043,15 +25053,19 @@ export const loanData4GPT: circlePackData[] = [
             { name: "Nikšić Branch", value: 175000 }
         ]
     },
+
     {
         name: "Netherlands",
         children: [
             { name: "Amsterdam Main Branch", value: 920000 },
             { name: "Rotterdam Branch", value: 580000 },
             { name: "Utrecht Branch", value: 410000 },
-            { name: "Eindhoven Branch", value: 360000 }
+            { name: "Eindhoven Branch", value: 360000 },
+            { name: "Groningen Branch", value: 447912 },
+            { name: "Tilburg Branch", value: 512683 }
         ]
     },
+
     {
         name: "Portugal",
         children: [
@@ -25059,6 +25073,7 @@ export const loanData4GPT: circlePackData[] = [
             { name: "Porto Branch", value: 455000 }
         ]
     },
+
     {
         name: "North Macedonia",
         children: [
@@ -25066,6 +25081,7 @@ export const loanData4GPT: circlePackData[] = [
             { name: "Ohrid Branch", value: 110000 }
         ]
     },
+
     {
         name: "Denmark",
         children: [
@@ -25074,12 +25090,15 @@ export const loanData4GPT: circlePackData[] = [
             { name: "Odense Branch", value: 210000 }
         ]
     },
+
     {
         name: "Latvia",
         children: [
             { name: "Riga Main Branch", value: 410000 }
         ]
     },
+
+    // 🔹 9 children
     {
         name: "Poland",
         children: [
@@ -25087,9 +25106,14 @@ export const loanData4GPT: circlePackData[] = [
             { name: "Kraków Branch", value: 420000 },
             { name: "Wrocław Branch", value: 330000 },
             { name: "Poznań Branch", value: 360000 },
-            { name: "Łódź Branch", value: 340000 }
+            { name: "Łódź Branch", value: 340000 },
+            { name: "Gdańsk Branch", value: 601374 },
+            { name: "Szczecin Branch", value: 498261 },
+            { name: "Bydgoszcz Branch", value: 452907 },
+            { name: "Lublin Branch", value: 389146 }
         ]
     },
+
     {
         name: "Estonia",
         children: [
@@ -25097,6 +25121,7 @@ export const loanData4GPT: circlePackData[] = [
             { name: "Tartu Branch", value: 160000 }
         ]
     },
+
     {
         name: "New Zealand",
         children: [
@@ -25106,7 +25131,7 @@ export const loanData4GPT: circlePackData[] = [
         ]
     },
 
-    // 🔹 New Countries
+    // 🔹 8 children
     {
         name: "Japan",
         children: [
@@ -25114,9 +25139,13 @@ export const loanData4GPT: circlePackData[] = [
             { name: "Osaka Branch", value: 820000 },
             { name: "Nagoya Branch", value: 610000 },
             { name: "Kyoto Branch", value: 430000 },
-            { name: "Fukuoka Branch", value: 390000 }
+            { name: "Fukuoka Branch", value: 390000 },
+            { name: "Kobe Branch", value: 714529 },
+            { name: "Hiroshima Branch", value: 556842 },
+            { name: "Sendai Branch", value: 483197 }
         ]
     },
+
     {
         name: "Norway",
         children: [
@@ -25125,13 +25154,16 @@ export const loanData4GPT: circlePackData[] = [
             { name: "Trondheim Branch", value: 310000 }
         ]
     },
+
+    // 🔹 5 children
     {
         name: "Spain",
         children: [
             { name: "Madrid Main Branch", value: 880000 },
             { name: "Barcelona Branch", value: 840000 },
             { name: "Valencia Branch", value: 510000 },
-            { name: "Seville Branch", value: 390000 }
+            { name: "Seville Branch", value: 390000 },
+            { name: "Bilbao Branch", value: 468502 }
         ]
     }
 ];

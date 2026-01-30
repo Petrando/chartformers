@@ -47,3 +47,35 @@ export type tooltipFormat = {
     prefix?: string;
     suffix?: string;
 }
+
+export interface HierarchyNode {
+    value?: number
+    depth?: number
+    parent?: HierarchyNode
+    children?: HierarchyNode[]
+
+    x?: number
+    y?: number
+    r?: number
+
+    _pack_next?: HierarchyNode
+    _pack_prev?: HierarchyNode
+}
+
+export interface PackNode {
+    value: number;
+    x: number;
+    y: number;
+    r: number;
+    depth?: number;
+    parent?: PackNode;
+    children?: PackNode[];
+    // Internal properties used by the packing algorithm
+    _pack_next?: PackNode;
+    _pack_prev?: PackNode;
+}
+
+export interface PackLink {
+    source: PackNode;
+    target: PackNode;
+}

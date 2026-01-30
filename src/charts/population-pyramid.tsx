@@ -36,6 +36,12 @@ export function PopulationPyramid({
         setIsTotal(isPercentage)        
     }, [isPercentage])
 
+    useEffect(()=>{
+        setIsPercentage(false)
+        setIsSorted(false)
+        setIsTotal(false)
+    }, [data])
+
     const isMediumScreen = width > 576
     const controls = (
         <div             
@@ -102,12 +108,12 @@ export function PopulationPyramid({
               .rangeRound([graphWidth/2, graphWidth]);
       
             let xAxisMale = d3.axisBottom(xMale)
-              .ticks(12)
+              .ticks(isMediumScreen?12:5)
               .tickSize(-graphHeight)
               .tickFormat(d3.format(isPercentage?"~%":".2s"));
       
             let xAxisFemale = d3.axisBottom(xFemale)
-              .ticks(12)
+              .ticks(isMediumScreen?12:5)
               .tickSize(-graphHeight)
               .tickFormat(d3.format(".2s"));
       
@@ -120,40 +126,24 @@ export function PopulationPyramid({
             const canvas = canvasSvg.select<SVGGElement>('.plot-area')
                 .attr("fill", "steelblue")
                 .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+            
 
-            const tipLine = canvas.select("line.tipLine")
-
-            function hideTipLine(){
-              tipLine.attr("x1", 0).attr("y1", 0).attr("x2", 0).attr("y2", 0)
-            }
-
-            hideTipLine()
-
-            const tooltip = getTooltip(container as any);
-
-            function moveTheTooltip(
-                //e
-            ){
-              //moveTooltip(e, tooltip)
-            }
+            const tooltip = getTooltip(container as any);            
 
             function hideTheTooltip(){              
               hideTooltip(tooltip)
             }
 
             canvas  
-                .on("mouseout", function(){
-                    hideTipLine()
+                .on("mouseout", function(){                    
                     hideTheTooltip()
                 })
 
             canvasSvg.select("rect.bgRect")
-                .on("mouseover", function(){
-                    hideTipLine()
+                .on("mouseover", function(){                    
                     hideTheTooltip()
                 })
-                .on("mousemove", function(){
-                    hideTipLine()
+                .on("mousemove", function(){                    
                     hideTheTooltip()
                 })
 
@@ -256,8 +246,8 @@ export function PopulationPyramid({
                 const yFemaleDomain: string[] = layers[0].sort(
                     isSorted? 
                         function(a, b) { 
-                            const bValue = isTotal?(b.data.Total ?? 0):b.data.male
-                            const aValue = isTotal?(a.data.Total ?? 0):a.data.male                            
+                            const bValue = isTotal?(b.data.Total ?? 0):b.data.female
+                            const aValue = isTotal?(a.data.Total ?? 0):a.data.female                            
                             return bValue - aValue; 
                         } : 
                         function(a, b) {                             
@@ -275,7 +265,7 @@ export function PopulationPyramid({
                         .transition().duration(animDuration)
                     .attr("transform", "translate(" + graphWidth + ", 0)")
                     .call(yAxisFemale)
-                    .style("opacity", showAllAxis);
+                    .style("opacity", showAllAxis?1:0);
               
             }
 
@@ -328,7 +318,7 @@ export function PopulationPyramid({
             setupYAxises(canvas, ageRanges);
             setupXAxises(canvas, xMale, xAxisMale, xFemale, xAxisFemale, maxPopulation);
 
-            const maleStyles = isTotal?pyramidStyles.maleTotal:pyramidStyles.male
+            const maleStyles = (isTotal && !isPercentage)?pyramidStyles.maleTotal:pyramidStyles.male
 
             const maleStrokeDashArray = (d: d3.SeriesPoint<ageRangeGroup>) => {
                 if(!isTotal){
@@ -377,7 +367,7 @@ export function PopulationPyramid({
                     exit=>exit.remove()
                 )
                 .on('mouseover', function(d,i){                                      
-                    if(isTotal){
+                    if(isTotal && !isPercentage){
                         canvas.selectAll<SVGGElement, d3.SeriesPoint<ageRangeGroup>>(".femaleBars")
                             .filter(d => d.data.ageRange === i.data.ageRange)                      
                             .attr("class", "femaleBars" + " " + pyramidStyles.totalFemale)
@@ -385,9 +375,8 @@ export function PopulationPyramid({
                 
                     canvas.select('g.yMale.axis').selectAll('text')
                         .filter(function(dText){return i.data.ageRange===dText})
-                    .style('font-weight', 'bold');   
-                  
-                    //showTipLine("male", i)
+                    .style('font-weight', 'bold');                       
+                                   
                     showTooltip("male", i)
                 })
                 .on("mousemove", function(e){
@@ -400,12 +389,11 @@ export function PopulationPyramid({
                         .filter(function(dText){return i.data.ageRange === dText})
                         .style('font-weight', 'normal');                       
                     
-                    if(isTotal){
+                    if(isTotal && !isPercentage){
                         canvas.selectAll<SVGGElement, d3.SeriesPoint<ageRangeGroup>>(".femaleBars")
                             .filter(d => d.data.ageRange === i.data.ageRange)                    
                             .attr("class", "femaleBars" + " " + pyramidStyles.femaleTotal)
-                    }
-                    hideTipLine()
+                    }                    
                     hideTheTooltip()
                 })
                 .attr("class", "maleBars" + " " + maleStyles)
@@ -431,7 +419,7 @@ export function PopulationPyramid({
                     return isNaN(baseWidth)?0:baseWidth 
                 });
 
-            const femaleStyles = isTotal?pyramidStyles.femaleTotal:pyramidStyles.female
+            const femaleStyles = (isTotal && !isPercentage)?pyramidStyles.femaleTotal:pyramidStyles.female
 
             const femaleStrokeDashArray = (d: d3.SeriesPoint<ageRangeGroup>) => {
                 if(!isTotal){
@@ -488,9 +476,7 @@ export function PopulationPyramid({
                         .selectAll('text').filter(function(dText){return i.data.ageRange===dText})
                         .style('font-weight', 'bold');  
 
-                        //showTipLine("female", i)
-
-                    if(isTotal){                  
+                    if(isTotal && !isPercentage){                  
                         canvas.selectAll<SVGGElement, d3.SeriesPoint<ageRangeGroup>>(".maleBars")
                             .filter(d => d.data.ageRange === i.data.ageRange)                                      
                             .attr("class", "maleBars" + " " + pyramidStyles.totalMale)
@@ -507,13 +493,12 @@ export function PopulationPyramid({
                         .filter(function(dText){return i.data.ageRange===dText})
                         .style('font-weight', 'normal');                                  
 
-                    if(isTotal){
+                    if(isTotal && !isPercentage){
                         canvas.selectAll<SVGGElement, d3.SeriesPoint<ageRangeGroup>>(".maleBars")
                             .filter(d => d.data.ageRange === i.data.ageRange)                    
                             .attr("class", "maleBars" + " " + pyramidStyles.maleTotal)
                     }
-
-                    hideTipLine()
+                    
                     hideTheTooltip()
                 })
                 .attr("class", "femaleBars" + " " + femaleStyles)                
@@ -546,14 +531,14 @@ export function PopulationPyramid({
                 tooltip.style("opacity", 1)
                     .select("p").text(function(){
                         if(isTotal && !isPercentage){
-                            return `${d3.format(",d")(d.data.Total!)} people`
+                            return `${d.data.ageRange} y.o: ${d3.format(",d")(d.data.Total!)} people`
                         }
                         if(isPercentage){
                             const myPercentage = d.data[gender]/d.data.Total!
-                            return `${d3.format("~%")(myPercentage)} (${d3.format(",d")(d.data[gender])} 
+                            return `${d3.format(".1%")(myPercentage)} (${d3.format(",d")(d.data[gender])} 
                                 of ${d3.format(",d")(d.data.Total!)} people)`
                         }                        
-                        return `${gender} ${d3.format(",d")(d.data[gender])} people`
+                        return `${gender} ${d.data.ageRange} y.o: ${d3.format(",d")(d.data[gender])}`
                     })
             }
                               
@@ -581,10 +566,7 @@ export function PopulationPyramid({
                         width={width} height={height} 
                         className={`bgRect opacity-0`} 
                         style={{fill: "white"}} />
-                    <g className="plot-area"/>
-                    <line className="tipLine stroke-[#F5DEB3] stroke-1" x1="0" y1="0" x2="0" y2="0" 
-                        strokeDasharray="4 1 2 3"
-                    />
+                    <g className="plot-area"/>                    
                 </svg>
                 <Tooltip />
             </div>                        

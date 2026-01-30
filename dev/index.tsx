@@ -1,13 +1,13 @@
 import React, { useState} from 'react';
 import { createRoot } from 'react-dom/client';
 import { BarChart, PieChart, StackedBarChart, GroupedBarChart, PercentageBarChart,
-  Sankey, CirclePacks, //PopulationPyramid
+  Sankey, CirclePacks, PopulationPyramid
  } from '../src';
 import { year1, year2, stackedData, stackedDataVar1, stackedDataVar2, stackData1, stackData2, stackData3 } from './data/constants';
 import { englishFreq, germanFreq, categoryDataV1, categoryDataV2, categoryDataV3 } from './data/constants';
 import { flightData, flightData1, energyData, brexitVoting } from './data/constants'
 import { loanData1, loanData2, loanData3, loanData4, loanData4GPT, flareData } from './data/loan-data';
-import { population1, population2 } from './data/population-data';
+import { population1, population2, indonesia, australia, japan, usa, brazil } from './data/population-data';
 import controlStyles from './controls.module.css'
 
 const App = () => {
@@ -42,7 +42,7 @@ const App = () => {
 
   const packTooltipFormat = selectedPackData.startsWith("loan")?{prefix: "US$ "}:{}
 
-  const [selectedPopulationData, setSelectedPopulationData] = useState<string>("population 1")
+  const [selectedPopulationData, setSelectedPopulationData] = useState<string>("indonesia")
 
   const handlePopulationChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     setSelectedPopulationData(e.target.value)
@@ -50,7 +50,11 @@ const App = () => {
     e.preventDefault()
   }
 
-  const populationData = selectedPopulationData ===  "population 1"?population1:population2
+  const populationData = selectedPopulationData ===  "indonesia"?indonesia:
+    selectedPopulationData === "australia"?australia:
+      selectedPopulationData === "japan"?japan:
+        selectedPopulationData === "usa"?usa:
+          brazil
 
   const selectedStackedData = selectedData === "stack1" ? year1 : 
     selectedData === "stack2" ? year2:
@@ -80,7 +84,7 @@ const App = () => {
           onChange={handlePopulationChange}
         >              
           {
-            ["population 1", "population 2"].map(s => (
+            ["indonesia", "australia", "japan", "usa", "brazil"].map(s => (
               <option key={s} value={s}>{s}</option>
             ))
           }
@@ -91,7 +95,7 @@ const App = () => {
         height: '450px', display:"flex", flexDirection:"column", overflow:'hidden', 
         marginTop: '20px', border: '2px solid red'}}>
           
-          {/*<PopulationPyramid data={populationData} />*/}
+          <PopulationPyramid data={populationData} />
     </div>
       <div id="select-pack-data" className={`${controlStyles["select-optional"]}`}>
         <label htmlFor="choose-pack-data">Choose pack data:</label>

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import * as d3 from "d3"
+import { scaleBand, scaleLinear, axisBottom, format, axisLeft, axisRight, stack, stackOrderNone, stackOffsetNone, max, sum, Selection, ScaleLinear, Axis, NumberValue, SeriesPoint } from "d3"
 import { Tooltip, getTooltip, tooltipMove, hideTooltip  } from "../components/tooltip";
 import { ManIcon, WomanIcon } from "../components/icons";
 import { useD3 } from "../hooks/useD3";
@@ -113,30 +113,30 @@ export function PopulationPyramid({
         const graphWidth = width - margin.left - margin.right
         const graphHeight = height - margin.top - margin.bottom
 
-        let yMale = d3.scaleBand()	      
+        let yMale = scaleBand()	      
             .range([graphHeight, 0]);
 
-        let yFemale = d3.scaleBand()	      
+        let yFemale = scaleBand()	      
             .range([graphHeight, 0]);     
 
-        let xMale = d3.scaleLinear()	
+        let xMale = scaleLinear()	
             .rangeRound([0, graphWidth/2]);
-        let xFemale	= d3.scaleLinear()
+        let xFemale	= scaleLinear()
             .rangeRound([graphWidth/2, graphWidth]);
     
-        let xAxisMale = d3.axisBottom(xMale)
+        let xAxisMale = axisBottom(xMale)
             .ticks(isMediumScreen?8:4)
             .tickSize(-graphHeight)
-            .tickFormat(d3.format(isPercentage?"~%":".2s"));
+            .tickFormat(format(isPercentage?"~%":".2s"));
     
-        let xAxisFemale = d3.axisBottom(xFemale)
+        let xAxisFemale = axisBottom(xFemale)
             .ticks(isMediumScreen?8:4)
             .tickSize(-graphHeight)
-            .tickFormat(d3.format(".2s"));
+            .tickFormat(format(".2s"));
     
-        let yAxisMale = d3.axisLeft(yMale);
+        let yAxisMale = axisLeft(yMale);
     
-        let yAxisFemale = d3.axisRight(yFemale);
+        let yAxisFemale = axisRight(yFemale);
 
         const canvasSvg = container.select<SVGSVGElement>("svg")
         const svgNode = canvasSvg.node()
@@ -207,26 +207,26 @@ export function PopulationPyramid({
 
         const genders: Array<keyof ageRangeGroup> = ['male', 'female'];            
 
-        const stack = d3.stack<ageRangeGroup>()
+        const stackFn = stack<ageRangeGroup>()
                 .keys(genders)
-                .order(d3.stackOrderNone)
-                .offset(d3.stackOffsetNone);
+                .order(stackOrderNone)
+                .offset(stackOffsetNone);
     
-        const layers = stack(populationData);            
+        const layers = stackFn(populationData);            
 
         const showAllAxis = (isPercentage || isTotal)?false:true
 
-        const totalMax = d3.max(layers[0], function(d){return d.data.Total;}) ?? 0
+        const totalMax = max(layers[0], function(d){return d.data.Total;}) ?? 0
     
-        const maleMax = d3.max(layers[0], function(d){return d.data.male;}) ?? 0;
-        const maleSum = d3.sum(layers[0], function(d){return d.data.male;});
-        const femaleMax = d3.max(layers[1], function(d){return d.data.female;}) ?? 0;
-        const femaleSum = d3.sum(layers[1], function(d){return d.data.female;});
+        const maleMax = max(layers[0], function(d){return d.data.male;}) ?? 0;
+        const maleSum = sum(layers[0], function(d){return d.data.male;});
+        const femaleMax = max(layers[1], function(d){return d.data.female;}) ?? 0;
+        const femaleSum = sum(layers[1], function(d){return d.data.female;});
         const totalPopulation = maleSum + femaleSum;
         const maxPopulation = showAllAxis?Math.max(maleMax, femaleMax):totalMax;
         
         const setupYAxises = (
-            canvas: d3.Selection<SVGGElement, unknown, null, undefined>, 
+            canvas: Selection<SVGGElement, unknown, null, undefined>, 
             ageRanges: string[]) => {
                                                 
             const yMaleDomain: string[] = layers[0].sort(
@@ -270,11 +270,11 @@ export function PopulationPyramid({
         }
 
         const setupXAxises = (
-            canvas: d3.Selection<SVGGElement, unknown, null, undefined>,  
-            xMale: d3.ScaleLinear<number, number>, 
-            xAxisMale: d3.Axis<d3.NumberValue>, 
-            xFemale: d3.ScaleLinear<number, number>, 
-            xAxisFemale: d3.Axis<d3.NumberValue>, 
+            canvas: Selection<SVGGElement, unknown, null, undefined>,  
+            xMale: ScaleLinear<number, number>, 
+            xAxisMale: Axis<NumberValue>, 
+            xFemale: ScaleLinear<number, number>, 
+            xAxisFemale: Axis<NumberValue>, 
             maxPopulation: number) => {
 
             const xMaleDomain = !showAllAxis?[0, isPercentage?1:maxPopulation]:[maxPopulation, 0]
@@ -320,7 +320,7 @@ export function PopulationPyramid({
 
         const maleStyles = (isTotal && !isPercentage)?pyramidStyles.maleTotal:pyramidStyles.male
 
-        const maleStrokeDashArray = (d: d3.SeriesPoint<ageRangeGroup>) => {
+        const maleStrokeDashArray = (d: SeriesPoint<ageRangeGroup>) => {
             if(!isTotal){
                 return "none"
             }
@@ -331,7 +331,7 @@ export function PopulationPyramid({
             return `${rectWidth} ${rectHeight} ${rectWidth + rectHeight}`
         }
 
-        canvas.selectAll<SVGGElement, d3.SeriesPoint<ageRangeGroup>>(".maleBars")		
+        canvas.selectAll<SVGGElement, SeriesPoint<ageRangeGroup>>(".maleBars")		
             .data(layers[0], function(d){return d.data.ageRange;})
             .join(
                 enter => enter.append("rect")
@@ -368,7 +368,7 @@ export function PopulationPyramid({
             )
             .on('mouseover', function(d,i){                                      
                 if(isTotal && !isPercentage){
-                    canvas.selectAll<SVGGElement, d3.SeriesPoint<ageRangeGroup>>(".femaleBars")
+                    canvas.selectAll<SVGGElement, SeriesPoint<ageRangeGroup>>(".femaleBars")
                         .filter(d => d.data.ageRange === i.data.ageRange)                      
                         .attr("class", "femaleBars" + " " + pyramidStyles.totalFemale)
                 }                
@@ -390,7 +390,7 @@ export function PopulationPyramid({
                     .style('font-weight', 'normal');                       
                 
                 if(isTotal && !isPercentage){
-                    canvas.selectAll<SVGGElement, d3.SeriesPoint<ageRangeGroup>>(".femaleBars")
+                    canvas.selectAll<SVGGElement, SeriesPoint<ageRangeGroup>>(".femaleBars")
                         .filter(d => d.data.ageRange === i.data.ageRange)                    
                         .attr("class", "femaleBars" + " " + pyramidStyles.femaleTotal)
                 }                    
@@ -421,7 +421,7 @@ export function PopulationPyramid({
 
             const femaleStyles = (isTotal && !isPercentage)?pyramidStyles.femaleTotal:pyramidStyles.female
 
-            const femaleStrokeDashArray = (d: d3.SeriesPoint<ageRangeGroup>) => {
+            const femaleStrokeDashArray = (d: SeriesPoint<ageRangeGroup>) => {
                 if(!isTotal){
                     return "none"
                 }
@@ -432,7 +432,7 @@ export function PopulationPyramid({
                 return `${rectWidth + rectHeight + rectWidth} ${rectHeight}`
             }
 
-            canvas.selectAll<SVGGElement, d3.SeriesPoint<ageRangeGroup>>(".femaleBars")		
+            canvas.selectAll<SVGGElement, SeriesPoint<ageRangeGroup>>(".femaleBars")		
                 .data(layers[1], function(d){return d.data.ageRange;})
                 .join(
                     enter => enter.append("rect")
@@ -477,7 +477,7 @@ export function PopulationPyramid({
                         .style('font-weight', 'bold');  
 
                     if(isTotal && !isPercentage){                  
-                        canvas.selectAll<SVGGElement, d3.SeriesPoint<ageRangeGroup>>(".maleBars")
+                        canvas.selectAll<SVGGElement, SeriesPoint<ageRangeGroup>>(".maleBars")
                             .filter(d => d.data.ageRange === i.data.ageRange)                                      
                             .attr("class", "maleBars" + " " + pyramidStyles.totalMale)
                     }
@@ -494,7 +494,7 @@ export function PopulationPyramid({
                         .style('font-weight', 'normal');                                  
 
                     if(isTotal && !isPercentage){
-                        canvas.selectAll<SVGGElement, d3.SeriesPoint<ageRangeGroup>>(".maleBars")
+                        canvas.selectAll<SVGGElement, SeriesPoint<ageRangeGroup>>(".maleBars")
                             .filter(d => d.data.ageRange === i.data.ageRange)                    
                             .attr("class", "maleBars" + " " + pyramidStyles.maleTotal)
                     }
@@ -527,18 +527,18 @@ export function PopulationPyramid({
                     return isNaN(baseWidth)?0:baseWidth 
                 })
 
-            function showTooltip(gender: "male" | "female", d: d3.SeriesPoint<ageRangeGroup>){
+            function showTooltip(gender: "male" | "female", d: SeriesPoint<ageRangeGroup>){
                 tooltip.style("opacity", 1)
                     .select("p").text(function(){
                         if(isTotal && !isPercentage){
-                            return `${d.data.ageRange} y.o: ${d3.format(",d")(d.data.Total!)} people`
+                            return `${d.data.ageRange} y.o: ${format(",d")(d.data.Total!)} people`
                         }
                         if(isPercentage){
                             const myPercentage = d.data[gender]/d.data.Total!
-                            return `${d3.format(".1%")(myPercentage)} (${d3.format(",d")(d.data[gender])} 
-                                of ${d3.format(",d")(d.data.Total!)} people)`
+                            return `${format(".1%")(myPercentage)} (${format(",d")(d.data[gender])} 
+                                of ${format(",d")(d.data.Total!)} people)`
                         }                        
-                        return `${gender} ${d.data.ageRange} y.o: ${d3.format(",d")(d.data[gender])}`
+                        return `${gender} ${d.data.ageRange} y.o: ${format(",d")(d.data[gender])}`
                     })
             }
                                             
@@ -561,15 +561,15 @@ export function PopulationPyramid({
                     style={{transform:`translateX(${(isTotal || isPercentage)?60:(width - legendWidth)/2}px)`}}
                 >
                     <p style={{display:(isTotal || isPercentage)?"none":"block"}}>
-                        {d3.format(",d")(totalMale)} male
+                        {format(",d")(totalMale)} male
                     </p>
                     <ManIcon />
                     <WomanIcon />
                     <p>
                         {
                             (isTotal || isPercentage)?
-                            `${d3.format(",d")(totalPeople)} people`:
-                            `${d3.format(",d")(totalFemale)} female`
+                            `${format(",d")(totalPeople)} people`:
+                            `${format(",d")(totalFemale)} female`
                         }
                         
                     </p>

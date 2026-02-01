@@ -25438,7 +25438,7 @@ export const flareData: circlePackData[] = [
           ]
         },
         {
-          name: "data",
+          name: "vis data",
           children: [
             { name: "Data", value: 20544 },
             { name: "DataList", value: 19788 },

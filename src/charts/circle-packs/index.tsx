@@ -178,8 +178,10 @@ export function CirclePacks({data, tooltipFormat}: PackProps) {
             const tooltip = select("#tooltip").style("opacity", 0)
             const canvasSvg = container.select<SVGSVGElement>("svg")
             const svgNode = canvasSvg.node()
-            const canvas = canvasSvg.select<SVGGElement>('.plot-area')
-                .attr("transform", "translate(" + width / 2 + "," + height / 2 + ")");
+            const canvas = canvasSvg.select<SVGGElement>('.plot-area')                
+                
+            //canvas.transition().duration(animDuration)
+                //.attr("transform", "translate(" + width / 2 + "," + height / 2 + ")");
 
             const color = scaleLinear<string>()
                 .domain([-1, 2])
@@ -285,8 +287,7 @@ export function CirclePacks({data, tooltipFormat}: PackProps) {
                                 .style("display", "inline");
                         }
                     }
-                    
-                    //console.log(select(this).style('stroke'));		 
+                                        		 
                     let myStroke = select(this).style('stroke');
                     if(d!=root){select(this)
                         .style("stroke-width", CIRCLESTROKE * thicknessK * 2.5)
@@ -340,7 +341,7 @@ export function CirclePacks({data, tooltipFormat}: PackProps) {
                     enter=>enter.append("text")  
                         .attr("class", packStyles["circle_pack_label"])                          
                         .text(d=>d.data.name)
-                        .style("font-size", 12)
+                        .style("font-size", LABELFONTSIZE)
                         .style("text-anchor", "middle")                                                        
                         .style("fill-opacity", 0)
                         .style("stroke-opacity", 0)
@@ -348,12 +349,12 @@ export function CirclePacks({data, tooltipFormat}: PackProps) {
                         .style("pointer-events", "none")
                         .style("text-shadow", "0 1px 0 lightblue, 1px 0 0 lightblue, -1px 0 0 lightblue, 0 -1px 0 lightblue")                            
                             .transition().duration(animDuration)
-                        .attr("transform", textTransform)
+                        .attr("transform", textTransform)                    
                         .style("fill-opacity", function(d) { return d.parent === root ? 1 : 0; })	  
                         .style("display", function(d) { return d.parent === root ? "inline" : "none"; }),
                     update=>update.attr("class", packStyles["circle_pack_label"])
                             .transition().duration(animDuration)                        
-                        .attr("transform", textTransform)
+                        .attr("transform", textTransform)                        
                         .style("fill-opacity", function(d) { return d.parent === root ? 1 : 0; })	  
                         .style("display", function(d) { return d.parent === root ? "inline" : "none"; }),
                     exit=>exit.transition().duration(animDuration).style("opacity", 0).remove()
@@ -394,7 +395,7 @@ export function CirclePacks({data, tooltipFormat}: PackProps) {
                 //event.stopPropagation();
             }
             function reset(){
-                canvas.transition().duration(1000)
+                canvas.transition().duration(animDuration)
                     .attr("transform", "translate(" + (width/2) + ", " + (height/2) + ")scale(1)");
                         
                 focus = root;scale=1;thicknessK = 1;                    
@@ -408,6 +409,8 @@ export function CirclePacks({data, tooltipFormat}: PackProps) {
                 
                 return;
             }
+
+            reset()
         }, 
         [circlePackData, parentWidth, parentHeight, isSorted]
     );

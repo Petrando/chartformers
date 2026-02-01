@@ -63,3 +63,35 @@
   stroke-width: 1.5px;
   shape-rendering: crispEdges;
 }
+
+.container {    
+    position: relative; 
+    height: 30px;
+}
+
+.inner {
+    display: flex;
+    justify-content: flex-start;
+    align-items: center;
+    gap: 2px;
+    padding: 0px;
+    position: absolute;
+    top: 2px;
+    transition: transform 1000ms ease; 
+}
+
+.inner p{
+    margin: 0px;
+    padding: 0px;
+    font-size: 14px;
+}
+
+@media (max-width: 768px) {
+    .inner p {
+        font-size: 12px;
+    }
+}
+
+.containerCenter .inner {
+    transform: translateX(-50%);
+}

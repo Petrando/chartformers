@@ -25,7 +25,7 @@ const App = () => {
     e.preventDefault()
   }
 
-  const [selectedPackData, setSelectedPackData] = useState<string>("loan 1")
+  const [selectedPackData, setSelectedPackData] = useState<string>("flare")
 
   const handlePackChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     setSelectedPackData(e.target.value)

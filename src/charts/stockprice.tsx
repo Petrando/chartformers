@@ -1,0 +1,439 @@
+import React, {useState, useEffect} from 'react';
+import { createPortal } from 'react-dom';
+import * as d3 from 'd3';
+import { useD3 } from '../hooks/useD3';
+import { useParentSize } from '../hooks/useParentSize';
+import { useContainerSize } from '../hooks/useContainerSize';
+import { useLayerIndex } from '../hooks/useLayerIndex';
+import { Tooltip, getTooltip, moveTooltip } from '../components/tooltip';
+import { cloneObj, indexColor, basicFormat } from '../utils';
+import { inactiveColor } from '../../dev/data/constants';
+import styles from './global.module.css';
+import { useUIControls } from '../hooks/useUIControls';
+import { lineDatum, stockData, stockDataFormatted, tooltipFormat } from '../types';
+
+type stockPriceProps = {
+    data: stockData[];
+    mode: "daily" | "weekly" | "monthly";
+    tooltipFormat?: tooltipFormat;
+}
+
+export function StockPriceChart({ data, mode, tooltipFormat }: stockPriceProps) {
+    const [ref, parentSize] = useParentSize<HTMLDivElement>();
+    const { width: parentWidth, height: parentHeight } = parentSize;
+    const [controlsRef, controlsSize] = useContainerSize<HTMLDivElement>();
+    const { height: controlsHeight } = controlsSize;
+    const [ chartContainerRef, chartSize] = useContainerSize<HTMLDivElement>()
+    const { width, height } = chartSize
+        
+    const uiControls = useUIControls();          
+    
+    const animDuration = 750;    
+        
+    const renderDeps = [ data, mode, parentWidth, parentHeight, tooltipFormat]    
+
+    const legendRef = useD3<HTMLDivElement>((container) => {         
+                        
+    }, [...renderDeps]);
+
+    // Define the controls element (checkbox)
+    const controls = (
+        <div 
+            ref={controlsRef}            
+        >            
+        </div>
+    );
+
+    const chartRef = useD3<HTMLDivElement>((container) => {
+        const width = parentWidth, height = parentHeight
+        if (width === 0 || height === 0) return;
+        const  margin = {top: 10, right: 30, bottom: 20, left: 60}
+                                     
+        const miniSectionHeight = 40//there are 2 mini-section: volume group and brush group
+        const miniSectionTotalHeight = miniSectionHeight + margin.bottom
+
+        const chartWidth = width - margin.left - margin.right
+        const visualHeight = height - margin.top - margin.bottom
+        const chartHeight = visualHeight - (2 * miniSectionTotalHeight)
+
+        const svg = container.select<SVGSVGElement>("svg")
+        const svgNode = svg.node()
+        const canvas = svg.select<SVGGElement>('.plot-area')  
+            .attr("transform", "translate(" + margin.left + "," + margin.top + ")");  
+            
+        const dayFormat = d3.timeFormat("%A"),dayIndexFormat = d3.timeFormat("%w"), monthFormat = d3.timeFormat("%B");
+
+        svg.selectAll("defs").remove()
+        svg.append("defs").append("clipPath")
+            .attr("id", "clip")
+        .append("rect")
+            .attr("width", chartWidth)
+            .attr("height", visualHeight);
+
+        const volumeCanvas = svg.select(".volume-area")
+            .attr("transform", "translate(" + margin.left + "," + (chartHeight + margin.top + margin.bottom) + ")");
+        
+        const brushCanvas = svg.select(".brush-area")
+            .attr("transform", "translate(" + margin.left + "," + (chartHeight + margin.top + margin.bottom + miniSectionTotalHeight) + ")");
+
+        const color = d3.schemeCategory10
+
+        type ValueKey = 'open' | 'hi' | 'low' | 'close' | 'adj_close';
+        const colorDomain: ValueKey[] = Object.keys(data[0])
+            .filter((key): key is ValueKey => key !== "date" && key !== "volume") as ValueKey[];
+        //color.domain(d3.keys(JKSEData[0]).filter(function(key) { return key !== "date" && key !== "volume"; }));
+        
+        const formatData = (d:stockData) => {
+            const parsedDate = d3.timeParse("%Y-%m-%d")(d.date);
+            return { 
+                date : new Date(parsedDate || new Date()),
+                open: +d.open,
+                hi: +d.hi,
+                low: +d.low,
+                close: +d.close,
+                adj_close: +d.adj_close,
+                volume: +d.volume 
+            }
+        }
+
+        const formattedData:stockDataFormatted[] = data.map(d => formatData(d))
+
+        const candleData = formattedData//mode === "daily"?formattedData:
+                //mode === "weekly"?createWeeklyData():
+                    //mode === "monthly"?createMonthlyData():
+                        //[]
+
+        const sources = colorDomain.map(function(name: ValueKey) {                
+            return {
+                name: name,
+                values: formattedData.map(function(d) {
+                    return {date: d.date, value: +d[name]};
+                })
+            };
+        });
+
+        const baseXDomain = d3.extent(formattedData, function(d) { return d.date; }) as [Date, Date]
+        const x = d3.scaleTime()
+            .domain(baseXDomain)
+            .range([ 0, chartWidth ]);        
+
+        canvas.select<SVGGElement>(".x-axis")
+            .attr("transform", "translate(0," + chartHeight + ")")
+            .call(d3.axisBottom(x));
+
+        const max = d3.max(sources, function(c) { return d3.max(c.values, function(v) { return v.value; }); }) || 0
+        const min = d3.min(sources, function(c) { return d3.min(c.values, function(v) { return v.value; }); }) || 0                        
+        const y = d3.scaleLinear()
+            .domain([min, max])
+            .range([ chartHeight, 0 ]);
+        
+        canvas.select<SVGGElement>(".y-axis")
+            .call(d3.axisLeft(y));
+
+        canvas.selectAll("path.line").remove()
+        const priceLine = d3.line<lineDatum>()
+            .x(function(d) { return x(d.date) })
+            .y(function(d) { return y(d.value) })
+
+        sources.forEach((d, i) => {
+            canvas.insert("path", "g.tooltip")
+                .attr("class", "line")  
+                .datum(d.values)
+                .attr("fill", "none")
+                .attr("stroke", color[i] )
+                .attr("stroke-width", 1)
+                .attr("d", priceLine)
+                .attr("clip-path", "url(#clip)");
+        })
+
+        /*
+        canvas.selectAll("path.candle").remove()
+
+        const candleFill = (d: stockDataFormatted) => {
+            if(d.open >= d.close)return "#047857";
+            else return "#be123c";
+        }
+
+        canvas.selectAll<SVGGElement, stockDataFormatted>("path.candle")
+            .data(candleData)
+            .join(
+                enter=>enter.insert("path", "g.tooltip")
+                    .attr("class", "candle")
+                    .attr("d", function(d){
+                        return drawCandle(d, y);
+                    })		
+                    .style("fill", candleFill)
+                    .attr("clip-path", "url(#clip)"),
+                    null,
+                    exit=>exit.remove()
+            )
+            .attr("d", function(d){
+                return drawCandle(d, y);
+            })		
+            .style("fill", candleFill)*/
+
+        const tooltip = canvas.select("g.tooltip").style("pointer-events", "none")
+        const volumeTooltip = volumeCanvas.select("g.tooltip").style("pointer-events", "none")
+
+        canvas.select("rect.overlay")
+            .attr("width", chartWidth).attr("height", chartHeight)
+            .style("fill", "none").style("pointer-events", "all")
+            .on("pointerenter pointermove", pointermoved)
+            .on("pointerleave", pointerleft)
+            .on("touchstart", event => event.preventDefault())
+        
+        function formatDate(date: Date) {
+            return date.toLocaleString("en", {
+                month: "short",
+                day: "numeric",
+                year: "numeric",
+                timeZone: "UTC"
+            });
+        }
+            
+        function pointermoved(e: PointerEvent){
+
+            const bisect = d3.bisector((d: typeof formattedData[0]) => d.date).center;
+            const i = bisect(formattedData, x.invert(d3.pointer(e)[0]));                
+
+            const {date, open, hi, low, close, volume} = formattedData[i]                
+            
+            tooltip.style("display", null);
+            tooltip.attr("transform", `translate(${x(date)},${y(low as number)})`);
+
+            const tooltipPath = tooltip.selectAll("path")
+                .data([null])
+                .join("path")
+                    .attr("fill", "white")
+                    .attr("stroke", "black");
+            
+            const tooplipText = tooltip.selectAll<SVGTextElement, unknown>("text")
+                .data([null] as unknown[])
+                .join("text")
+                .call(text => text
+                    .selectAll("tspan")
+                    .data([formatDate(date), basicFormat(open as number), basicFormat(hi as number), basicFormat(low as number), basicFormat(close as number)])
+                    .join("tspan")
+                    .attr("x", 0)
+                    .attr("y", (_, i) => `${i * 1.1}em`)
+                    .attr("font-weight", (_, i) => i ? null : "bold")
+                    .text(d => d));
+
+            size(tooplipText, tooltipPath as d3.Selection<SVGPathElement | null, unknown, null, undefined>);
+
+            volumeTooltip.style("display", null);
+            volumeTooltip.attr("transform", `translate(${x(date)},${yVolumeScale(volume as number)})`);
+
+            const volTooltipPath = volumeTooltip.selectAll("path")
+                .data([null] as unknown[])
+                .join("path")
+                    .attr("fill", "white")
+                    .attr("stroke", "black");
+            
+            const volTooplipText = volumeTooltip.selectAll<SVGTextElement, unknown>("text")
+                .data([null] as unknown[])
+                .join("text")
+                .call(text => text
+                    .selectAll("tspan")
+                    .data(["Trading Volume", basicFormat(volume as number)])
+                    .join("tspan")                        
+                    .attr("x", 0)
+                    .attr("y", (_, i) => `${i * 1.1}em`)
+                    .attr("font-weight", (_, i) => i ? null : "bold")
+                    .text(d => d));
+            
+            size(volTooplipText, volTooltipPath as d3.Selection<SVGPathElement | null, unknown, null, undefined>)
+
+            brushCanvas.transition().duration(animDuration/4).style("opacity", 0)
+        }
+
+        function pointerleft(e: PointerEvent){
+            //console.log('pointerleft : ', e)
+            tooltip.style("display", "none");
+            volumeTooltip.style("display", "none")
+
+            brushCanvas.transition().duration(animDuration/4).style("opacity", 1)
+        }
+
+        function size(text: d3.Selection<SVGTextElement, unknown, d3.BaseType, unknown>, path: d3.Selection<SVGPathElement | null, unknown, null, undefined>) {
+            const {x, y, width: w, height: h} = text.node()!.getBBox();
+            text.attr("transform", `translate(${-w / 2},${15 - y})`);
+            path.attr("d", `M${-w / 2 - 10},5H-5l5,-5l5,5H${w / 2 + 10}v${h + 20}h-${w + 20}z`);
+        }
+
+        const yVolumeScale = d3.scaleLinear()
+            .domain([
+                0, 
+                d3.max(data, 
+                    function(d){return typeof d.volume === "string"?
+                        parseInt(d.volume):d.volume;}) as number
+            ])
+            .range([miniSectionHeight, 0]);
+
+        const areaVolume = d3.area<stockDataFormatted>()
+            .x(function(d){return x(new Date(d.date));})
+            .y0(yVolumeScale(0))
+            .y1(function(d){return yVolumeScale(typeof d.volume === "string" ? parseInt(d.volume) : d.volume);});
+
+        volumeCanvas.selectAll("path.area").remove()
+        volumeCanvas.insert("path", "g.tooltip")
+            .datum(formattedData)      
+            .attr("class", "area")
+            .attr("d", areaVolume)	  
+            .style("fill", "lightgray")
+            .style("stroke", "none")
+            //.style("opacity", 0)
+            .attr("clip-path", "url(#clip)");
+
+        volumeCanvas.select<SVGGElement>(".x-axis")
+            .attr("transform", "translate(0," + miniSectionHeight + ")")
+            .call(d3.axisBottom(x));
+
+        const xBrush = d3.scaleTime()
+            .domain(baseXDomain as [Date, Date])
+            .range([0, chartWidth])
+            
+        const yBrush = d3.scaleLinear()
+            .domain([min, max])
+            .range([ miniSectionHeight, 0 ]);
+
+        const brushLine = d3.line<{ date: Date; value: number }>()
+                .x(function(d) { return xBrush(d.date) })
+                .y(function(d) { return yBrush(d.value) })
+
+        brushCanvas.selectAll("path.line").remove()
+        brushCanvas.selectAll("g.brush").remove()
+        
+        sources.forEach((d, i) => {
+            brushCanvas.append("path")
+                .attr("class", "line")  
+                .datum(d.values)
+                .attr("fill", "none")
+                .attr("stroke", color[i] )
+                .attr("stroke-width", 1)
+                .attr("d", brushLine)
+                .attr("clip-path", "url(#clip)");
+        })
+
+        brushCanvas.select<SVGGElement>(".x-axis")
+            .attr("transform", "translate(0," + miniSectionHeight + ")")
+            .call(d3.axisBottom(xBrush));
+
+        const brush = d3.brushX()                   // Add the brush feature using the d3.brush function
+            .extent( [ [0,0], [width,miniSectionHeight] ] )  // initialise the brush area: start at 0,0 and finishes at width,height: it means I select the whole graph area                            
+            .on("brush", updateChart)  
+        
+        brushCanvas.append("g")
+            .attr("class", "brush")
+            .call(brush);            
+
+        function updateChart(e: d3.D3BrushEvent<unknown>) {
+
+            // What are the selected boundaries?
+            //const extent = d3.event.selection                
+            const extent = e.selection
+        
+            if(extent){                    
+                x.domain([ xBrush.invert(extent[0] as number), xBrush.invert(extent[1] as number) ])
+                
+            }                
+            else if(!extent || extent === null){                    
+                x.domain(baseXDomain)
+            }            
+            
+            // Update axis and line position
+            redraw()
+            
+        }
+
+        svg.on("dblclick",function(){
+            x.domain(baseXDomain as [Date, Date])
+
+            brushCanvas.select<SVGGElement>(".brush").call(brush.move, null) // This remove the grey brush area as soon as the selection has been done
+            redraw()
+        });
+
+        const redraw = () => {
+            canvas.select<SVGGElement>(".x-axis")                   
+                .call(d3.axisBottom(x));
+                
+            canvas
+                .selectAll<SVGPathElement, lineDatum[]>('path.line')
+                .attr("d", priceLine)
+
+            volumeCanvas.select<SVGGElement>(".x-axis")                   
+                .call(d3.axisBottom(x));
+
+            volumeCanvas
+                .selectAll<SVGPathElement, stockDataFormatted[]>('path.area')
+                .attr("d", areaVolume)
+        }
+
+        /*
+        function calculateBarNShoulderWidth(){
+                const barWidth = mode==="daily"?x(formattedData[1].date) - x(formattedData[0].date)
+                    :(mode==="weekly"?x(candleData[0].endDate) - x(candleData[0].date)
+                        :x(candleData[0].endDate) - x(candleData[0].date));
+  
+                const shoulderWidth = (barWidth - (barWidth * 0.2))/2;
+
+                return {barWidth, shoulderWidth}
+            }
+            function drawCandle(d, scale){
+                var pathStart, pathEnd;
+                if(d.open >= d.close){
+                    pathStart = d.open;pathEnd = d.close;
+                }else{pathStart = d.close; pathEnd = d.open;}
+
+                const {barWidth, shoulderWidth} = calculateBarNShoulderWidth()
+                    
+                var barHeight = scale(pathStart) - scale(pathEnd);
+                var hiHeight = scale(d.hi) - scale(pathStart);//..candle to hi distance....
+                var loHeight = scale(d.low) - scale(pathEnd);//...candle to low distance....    
+                                                        
+                return "M " + x(d.date) + "," + scale(pathStart) + " " + (x(d.date) + shoulderWidth) + "," + scale(pathStart)
+                    + " " + (x(d.date) + shoulderWidth) + "," + (scale(pathStart) + hiHeight) + " " + ((x(d.date) + shoulderWidth) + (barWidth * 0.2)) + "," + (scale(pathStart) + hiHeight)
+                    + " " + ((x(d.date) + shoulderWidth) + (barWidth * 0.2)) + "," + scale(pathStart)+ " " + (x(d.date) + barWidth) + "," + scale(pathStart)
+                    + " " + (x(d.date) + barWidth) + "," + scale(pathEnd) + " " + (x(d.date) + shoulderWidth + (barWidth * 0.2)) + "," + scale(pathEnd)
+                    + " " + (x(d.date) + shoulderWidth + (barWidth * 0.2)) + "," + (scale(pathEnd) + loHeight)
+                    + " " + (x(d.date) + shoulderWidth) + "," + (scale(pathEnd) + loHeight)+ " " + (x(d.date) + shoulderWidth) + "," + scale(pathEnd) 
+                    + " " + x(d.date) + "," + scale(pathEnd) + "z";	
+            }*/
+    }, [ ...renderDeps, tooltipFormat ]);
+    
+    return (
+        <div 
+            ref={ref} 
+            style={{ width: parentWidth, height: parentHeight, display:'flex', flexDirection:'column' }}
+        >                        
+            <div
+                ref={chartRef} 
+                className={`${styles["fill-container"]}`}
+                style={{ display:"flex", flexDirection:"column"}}>
+            <svg
+                className={`${styles["chart-svg"]} ${styles["fill-container"]}`}        
+                viewBox={`0 0 ${parentWidth} ${parentHeight}`}
+            >
+                {
+                    parentWidth > 0 &&
+                    <>
+                        <g className="plot-area">
+                            <g className="x-axis" />
+                            <g className="y-axis" /> 
+                            <rect className="overlay" />        
+                            <g className="tooltip" />                     
+                        </g>
+                        <g className="volume-area">
+                            <g className="x-axis" />
+                            <g className="tooltip" />
+                        </g>
+                        <g className="brush-area">
+                            <g className="x-axis" />
+                        </g>
+                    </>
+                }                                        
+            </svg>                
+            </div>            
+        </div>
+    );
+}

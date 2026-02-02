@@ -175,7 +175,7 @@ export function CirclePacks({data, tooltipFormat}: PackProps) {
             // Start traversal from the root node
             assignSortedGeometry(nodes[0], oldNodeMap);
             
-            const tooltip = select("#tooltip").style("opacity", 0)
+            const tooltip = container.select("#tooltip").style("opacity", 0)
             const canvasSvg = container.select<SVGSVGElement>("svg")
             const svgNode = canvasSvg.node()
             const canvas = canvasSvg.select<SVGGElement>('.plot-area')                

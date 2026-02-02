@@ -1,13 +1,14 @@
 import React, { useState} from 'react';
 import { createRoot } from 'react-dom/client';
 import { BarChart, PieChart, StackedBarChart, GroupedBarChart, PercentageBarChart,
-  Sankey, CirclePacks, PopulationPyramid
+  Sankey, CirclePacks, PopulationPyramid, StockPriceChart
  } from '../src';
 import { year1, year2, stackedData, stackedDataVar1, stackedDataVar2, stackData1, stackData2, stackData3 } from './data/constants';
 import { englishFreq, germanFreq, categoryDataV1, categoryDataV2, categoryDataV3 } from './data/constants';
 import { flightData, flightData1, energyData, brexitVoting } from './data/constants'
 import { loanData1, loanData2, loanData3, loanData4, loanData4GPT, flareData } from './data/loan-data';
 import { population1, population2, indonesia, australia, japan, usa, brazil } from './data/population-data';
+import { JKSEData } from './data/stockprice';
 import controlStyles from './controls.module.css'
 
 const App = () => {
@@ -77,6 +78,13 @@ const App = () => {
   return(
   
     <div style={{paddingBottom: "20px"}}>    
+      <div style={{
+          width: '80vw',
+          height: '450px', display:"flex", flexDirection:"column", overflow:'hidden', 
+          marginTop: '20px', border: '2px solid red'}}>
+            
+            <StockPriceChart data={JKSEData} mode='daily' />
+      </div>
       <div id="select-population-data" className={`${controlStyles["select-optional"]}`}>
         <label htmlFor="choose-population-data">Choose population data:</label>
         <select id="choose-population-data" 

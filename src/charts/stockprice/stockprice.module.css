@@ -14,6 +14,10 @@
 
 .value-axis line {
   stroke: #d6d3d1;  
-  stroke-width: 1.5px;
+  stroke-width: 0.75px;
   shape-rendering: crispEdges;
+}
+
+.time-axis path, .time-axis line {
+    stroke: #a1a1aa;
 }

@@ -454,17 +454,17 @@ export function StockPriceChart({ data, timeframe = "daily", mode = "linechart",
                     parentWidth > 0 &&
                     <>
                         <g className="plot-area">
-                            <g className="x-axis" />
+                            <g className={`x-axis ${stockStyles["time-axis"]}`} />
                             <g className={`y-axis ${stockStyles["value-axis"]}`} /> 
                             <rect className="overlay" />        
                             <g className="tooltip" />                     
                         </g>
                         <g className="volume-area">
-                            <g className="x-axis" />
+                            <g className={`x-axis ${stockStyles["time-axis"]}`} />
                             <g className="tooltip" />
                         </g>
                         <g className="brush-area">
-                            <g className="x-axis" />
+                            <g className={`x-axis ${stockStyles["time-axis"]}`} />
                         </g>
                     </>
                 }                                        

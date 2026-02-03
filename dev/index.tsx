@@ -83,7 +83,7 @@ const App = () => {
           height: '450px', display:"flex", flexDirection:"column", overflow:'hidden', 
           marginTop: '20px', border: '2px solid red'}}>
             
-            <StockPriceChart data={JKSEData} mode='daily' />
+            <StockPriceChart data={JKSEData} timeframe='monthly' />
       </div>
       <div id="select-population-data" className={`${controlStyles["select-optional"]}`}>
         <label htmlFor="choose-population-data">Choose population data:</label>

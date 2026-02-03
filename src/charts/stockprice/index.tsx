@@ -1,48 +1,33 @@
 import React, {useState, useEffect} from 'react';
 import { createPortal } from 'react-dom';
 import * as d3 from 'd3';
-import { useD3 } from '../hooks/useD3';
-import { useParentSize } from '../hooks/useParentSize';
-import { useContainerSize } from '../hooks/useContainerSize';
-import { useLayerIndex } from '../hooks/useLayerIndex';
-import { Tooltip, getTooltip, moveTooltip } from '../components/tooltip';
-import { cloneObj, indexColor, basicFormat } from '../utils';
-import { inactiveColor } from '../../dev/data/constants';
-import styles from './global.module.css';
-import { useUIControls } from '../hooks/useUIControls';
-import { lineDatum, stockData, stockDataFormatted, tooltipFormat } from '../types';
+import { useD3 } from '../../hooks/useD3';
+import { useParentSize } from '../../hooks/useParentSize';
+import { useContainerSize } from '../../hooks/useContainerSize';
+import { useLayerIndex } from '../../hooks/useLayerIndex';
+import { Tooltip, getTooltip, moveTooltip } from '../../components/tooltip';
+import { cloneObj, indexColor, basicFormat } from '../../utils';
+import { inactiveColor } from '../../../dev/data/constants';
+import styles from '../global.module.css';
+import { useUIControls } from '../../hooks/useUIControls';
+import { createWeeklyData, createWeeklyDataD3, createMonthlyData } from './utils';
+import { tooltipFormat } from '../../types';
+import { lineDatum, stockData, stockDataFormatted } from './types'
 
 type stockPriceProps = {
     data: stockData[];
-    mode: "daily" | "weekly" | "monthly";
+    timeframe?: "daily" | "weekly" | "monthly";
+    mode?: "linechart" | "candlestick";
     tooltipFormat?: tooltipFormat;
 }
 
-export function StockPriceChart({ data, mode, tooltipFormat }: stockPriceProps) {
+export function StockPriceChart({ data, timeframe = "daily", mode = "linechart", tooltipFormat }: stockPriceProps) {
     const [ref, parentSize] = useParentSize<HTMLDivElement>();
-    const { width: parentWidth, height: parentHeight } = parentSize;
-    const [controlsRef, controlsSize] = useContainerSize<HTMLDivElement>();
-    const { height: controlsHeight } = controlsSize;
-    const [ chartContainerRef, chartSize] = useContainerSize<HTMLDivElement>()
-    const { width, height } = chartSize
-        
-    const uiControls = useUIControls();          
+    const { width: parentWidth, height: parentHeight } = parentSize;    
     
     const animDuration = 750;    
         
-    const renderDeps = [ data, mode, parentWidth, parentHeight, tooltipFormat]    
-
-    const legendRef = useD3<HTMLDivElement>((container) => {         
-                        
-    }, [...renderDeps]);
-
-    // Define the controls element (checkbox)
-    const controls = (
-        <div 
-            ref={controlsRef}            
-        >            
-        </div>
-    );
+    const renderDeps = [ data, timeframe, mode, parentWidth, parentHeight, tooltipFormat]                
 
     const chartRef = useD3<HTMLDivElement>((container) => {
         const width = parentWidth, height = parentHeight
@@ -60,9 +45,7 @@ export function StockPriceChart({ data, mode, tooltipFormat }: stockPriceProps) 
         const svgNode = svg.node()
         const canvas = svg.select<SVGGElement>('.plot-area')  
             .attr("transform", "translate(" + margin.left + "," + margin.top + ")");  
-            
-        const dayFormat = d3.timeFormat("%A"),dayIndexFormat = d3.timeFormat("%w"), monthFormat = d3.timeFormat("%B");
-
+                
         svg.selectAll("defs").remove()
         svg.append("defs").append("clipPath")
             .attr("id", "clip")
@@ -97,11 +80,13 @@ export function StockPriceChart({ data, mode, tooltipFormat }: stockPriceProps) 
         }
 
         const formattedData:stockDataFormatted[] = data.map(d => formatData(d))
-
-        const candleData = formattedData//mode === "daily"?formattedData:
-                //mode === "weekly"?createWeeklyData():
-                    //mode === "monthly"?createMonthlyData():
-                        //[]
+        
+        const weeklyData = timeframe === "weekly"?createWeeklyData(formattedData):[]        
+        const monthlyData = timeframe === "monthly"?createMonthlyData(formattedData):[]
+        const chartData = timeframe === "daily"?formattedData:
+                timeframe === "weekly"?weeklyData:
+                    timeframe === "monthly"?monthlyData:
+                        []
 
         const sources = colorDomain.map(function(name: ValueKey) {                
             return {
@@ -135,43 +120,46 @@ export function StockPriceChart({ data, mode, tooltipFormat }: stockPriceProps) 
             .x(function(d) { return x(d.date) })
             .y(function(d) { return y(d.value) })
 
-        sources.forEach((d, i) => {
-            canvas.insert("path", "g.tooltip")
-                .attr("class", "line")  
-                .datum(d.values)
-                .attr("fill", "none")
-                .attr("stroke", color[i] )
-                .attr("stroke-width", 1)
-                .attr("d", priceLine)
-                .attr("clip-path", "url(#clip)");
-        })
-
-        /*
+        if(mode === "linechart"){
+            sources.forEach((d, i) => {
+                canvas.insert("path", "g.tooltip")
+                    .attr("class", "line")  
+                    .datum(d.values)
+                    .attr("fill", "none")
+                    .attr("stroke", color[i] )
+                    .attr("stroke-width", 1)
+                    .attr("d", priceLine)
+                    .attr("clip-path", "url(#clip)");
+            })
+        }        
+        
         canvas.selectAll("path.candle").remove()
 
         const candleFill = (d: stockDataFormatted) => {
             if(d.open >= d.close)return "#047857";
             else return "#be123c";
         }
-
-        canvas.selectAll<SVGGElement, stockDataFormatted>("path.candle")
-            .data(candleData)
-            .join(
-                enter=>enter.insert("path", "g.tooltip")
-                    .attr("class", "candle")
-                    .attr("d", function(d){
-                        return drawCandle(d, y);
-                    })		
-                    .style("fill", candleFill)
-                    .attr("clip-path", "url(#clip)"),
-                    null,
+        if(mode === "candlestick"){                        
+            canvas.selectAll<SVGGElement, stockDataFormatted>("path.candle")
+                .data(chartData)
+                .join(
+                    enter=>enter.insert("path", "g.tooltip")
+                        .attr("class", "candle")
+                        .attr("d", function(d){
+                            return drawCandle(d, y);
+                        })		
+                        .style("fill", candleFill)
+                        .attr("clip-path", "url(#clip)"),
+                    undefined,
                     exit=>exit.remove()
-            )
-            .attr("d", function(d){
-                return drawCandle(d, y);
-            })		
-            .style("fill", candleFill)*/
-
+                )
+                .attr("d", function(d){
+                    return drawCandle(d, y);
+                })		
+                .style("fill", candleFill)
+            
+        }
+        
         const tooltip = canvas.select("g.tooltip").style("pointer-events", "none")
         const volumeTooltip = volumeCanvas.select("g.tooltip").style("pointer-events", "none")
 
@@ -192,11 +180,12 @@ export function StockPriceChart({ data, mode, tooltipFormat }: stockPriceProps) 
         }
             
         function pointermoved(e: PointerEvent){
+            const tooltipData = mode === "linechart"? formattedData:chartData
 
-            const bisect = d3.bisector((d: typeof formattedData[0]) => d.date).center;
-            const i = bisect(formattedData, x.invert(d3.pointer(e)[0]));                
+            const bisect = d3.bisector((d: typeof tooltipData[0]) => d.date).center;
+            const i = bisect(tooltipData, x.invert(d3.pointer(e)[0]));                
 
-            const {date, open, hi, low, close, volume} = formattedData[i]                
+            const {date, open, hi, low, close, volume} = tooltipData[i]                
             
             tooltip.style("display", null);
             tooltip.attr("transform", `translate(${x(date)},${y(low as number)})`);
@@ -304,17 +293,41 @@ export function StockPriceChart({ data, mode, tooltipFormat }: stockPriceProps) 
         brushCanvas.selectAll("path.line").remove()
         brushCanvas.selectAll("g.brush").remove()
         
-        sources.forEach((d, i) => {
-            brushCanvas.append("path")
-                .attr("class", "line")  
-                .datum(d.values)
-                .attr("fill", "none")
-                .attr("stroke", color[i] )
-                .attr("stroke-width", 1)
-                .attr("d", brushLine)
-                .attr("clip-path", "url(#clip)");
-        })
+        if(mode === "linechart"){
+            sources.forEach((d, i) => {
+                brushCanvas.append("path")
+                    .attr("class", "line")  
+                    .datum(d.values)
+                    .attr("fill", "none")
+                    .attr("stroke", color[i] )
+                    .attr("stroke-width", 1)
+                    .attr("d", brushLine)
+                    .attr("clip-path", "url(#clip)");
+            })
+        }
+        
+        brushCanvas.selectAll("path.candle").remove()
 
+        if(mode === "candlestick"){                        
+            brushCanvas.selectAll<SVGGElement, stockDataFormatted>("path.candle")
+                .data(chartData)
+                .join(
+                    enter=>enter.insert("path", "g.tooltip")
+                        .attr("class", "candle")
+                        .attr("d", function(d){
+                            return drawCandle(d, yBrush);
+                        })		
+                        .style("fill", candleFill)
+                        .attr("clip-path", "url(#clip)"),
+                    undefined,
+                    exit=>exit.remove()
+                )
+                .attr("d", function(d){
+                    return drawCandle(d, yBrush);
+                })		
+                .style("fill", candleFill)
+            
+        }
         brushCanvas.select<SVGGElement>(".x-axis")
             .attr("transform", "translate(0," + miniSectionHeight + ")")
             .call(d3.axisBottom(xBrush));
@@ -356,10 +369,17 @@ export function StockPriceChart({ data, mode, tooltipFormat }: stockPriceProps) 
         const redraw = () => {
             canvas.select<SVGGElement>(".x-axis")                   
                 .call(d3.axisBottom(x));
-                
-            canvas
-                .selectAll<SVGPathElement, lineDatum[]>('path.line')
-                .attr("d", priceLine)
+            if(mode === "candlestick"){
+                canvas.selectAll<SVGGElement, stockDataFormatted>("path.candle")
+                    .attr("d", function(d){
+                        return drawCandle(d, y);
+                    })
+            }
+            else if(mode === "linechart"){
+                canvas
+                    .selectAll<SVGPathElement, lineDatum[]>('path.line')
+                    .attr("d", priceLine)
+            }                            
 
             volumeCanvas.select<SVGGElement>(".x-axis")                   
                 .call(d3.axisBottom(x));
@@ -368,37 +388,34 @@ export function StockPriceChart({ data, mode, tooltipFormat }: stockPriceProps) 
                 .selectAll<SVGPathElement, stockDataFormatted[]>('path.area')
                 .attr("d", areaVolume)
         }
-
-        /*
+        
         function calculateBarNShoulderWidth(){
-                const barWidth = mode==="daily"?x(formattedData[1].date) - x(formattedData[0].date)
-                    :(mode==="weekly"?x(candleData[0].endDate) - x(candleData[0].date)
-                        :x(candleData[0].endDate) - x(candleData[0].date));
-  
-                const shoulderWidth = (barWidth - (barWidth * 0.2))/2;
+            const barWidth = x(chartData[1].date) - x(chartData[0].date)
 
-                return {barWidth, shoulderWidth}
-            }
-            function drawCandle(d, scale){
-                var pathStart, pathEnd;
-                if(d.open >= d.close){
-                    pathStart = d.open;pathEnd = d.close;
-                }else{pathStart = d.close; pathEnd = d.open;}
+            const shoulderWidth = (barWidth - (barWidth * 0.2))/2;
 
-                const {barWidth, shoulderWidth} = calculateBarNShoulderWidth()
-                    
-                var barHeight = scale(pathStart) - scale(pathEnd);
-                var hiHeight = scale(d.hi) - scale(pathStart);//..candle to hi distance....
-                var loHeight = scale(d.low) - scale(pathEnd);//...candle to low distance....    
-                                                        
-                return "M " + x(d.date) + "," + scale(pathStart) + " " + (x(d.date) + shoulderWidth) + "," + scale(pathStart)
-                    + " " + (x(d.date) + shoulderWidth) + "," + (scale(pathStart) + hiHeight) + " " + ((x(d.date) + shoulderWidth) + (barWidth * 0.2)) + "," + (scale(pathStart) + hiHeight)
-                    + " " + ((x(d.date) + shoulderWidth) + (barWidth * 0.2)) + "," + scale(pathStart)+ " " + (x(d.date) + barWidth) + "," + scale(pathStart)
-                    + " " + (x(d.date) + barWidth) + "," + scale(pathEnd) + " " + (x(d.date) + shoulderWidth + (barWidth * 0.2)) + "," + scale(pathEnd)
-                    + " " + (x(d.date) + shoulderWidth + (barWidth * 0.2)) + "," + (scale(pathEnd) + loHeight)
-                    + " " + (x(d.date) + shoulderWidth) + "," + (scale(pathEnd) + loHeight)+ " " + (x(d.date) + shoulderWidth) + "," + scale(pathEnd) 
-                    + " " + x(d.date) + "," + scale(pathEnd) + "z";	
-            }*/
+            return {barWidth, shoulderWidth}
+        }
+        function drawCandle(d:stockDataFormatted, scale: (value: number) => number){
+            let pathStart, pathEnd;
+            if(d.open >= d.close){
+                pathStart = d.open;pathEnd = d.close;
+            }else{ pathStart = d.close; pathEnd = d.open; }
+
+            const {barWidth, shoulderWidth} = calculateBarNShoulderWidth()
+                
+            const barHeight = scale(pathStart) - scale(pathEnd);
+            const hiHeight = scale(d.hi) - scale(pathStart);//..candle to hi distance....
+            const loHeight = scale(d.low) - scale(pathEnd);//...candle to low distance....    
+                                                    
+            return "M " + x(d.date) + "," + scale(pathStart) + " " + (x(d.date) + shoulderWidth) + "," + scale(pathStart)
+                + " " + (x(d.date) + shoulderWidth) + "," + (scale(pathStart) + hiHeight) + " " + ((x(d.date) + shoulderWidth) + (barWidth * 0.2)) + "," + (scale(pathStart) + hiHeight)
+                + " " + ((x(d.date) + shoulderWidth) + (barWidth * 0.2)) + "," + scale(pathStart)+ " " + (x(d.date) + barWidth) + "," + scale(pathStart)
+                + " " + (x(d.date) + barWidth) + "," + scale(pathEnd) + " " + (x(d.date) + shoulderWidth + (barWidth * 0.2)) + "," + scale(pathEnd)
+                + " " + (x(d.date) + shoulderWidth + (barWidth * 0.2)) + "," + (scale(pathEnd) + loHeight)
+                + " " + (x(d.date) + shoulderWidth) + "," + (scale(pathEnd) + loHeight)+ " " + (x(d.date) + shoulderWidth) + "," + scale(pathEnd) 
+                + " " + x(d.date) + "," + scale(pathEnd) + "z";	
+        }
     }, [ ...renderDeps, tooltipFormat ]);
     
     return (

@@ -6,4 +6,4 @@ export { PercentageBarChart } from './charts/stacked-barchart-variants/percentag
 export { Sankey } from './charts/sankey';
 export { CirclePacks } from './charts/circle-packs';
 export { PopulationPyramid } from './charts/population-pyramid';
-export { StockPriceChart } from './charts/stockprice'
+export { StockPriceChart} from './charts/stockprice'

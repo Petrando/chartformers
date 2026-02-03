@@ -3,6 +3,7 @@ import { schemeCategory10, timeParse, extent, scaleTime, scaleLinear, axisBottom
 import { useD3 } from '../../hooks/useD3';
 import { useParentSize } from '../../hooks/useParentSize';
 import styles from '../global.module.css';
+import stockStyles from './stockprice.module.css'
 import { createWeeklyData, createMonthlyData } from './utils';
 import { basicFormat } from '../../utils';
 import { tooltipFormat } from '../../types';
@@ -15,7 +16,7 @@ type stockPriceProps = {
     tooltipFormat?: tooltipFormat;
 }
 
-export function StockPriceChart({ data, timeframe = "daily", mode = "linechart", tooltipFormat }: stockPriceProps) {
+export function StockPriceChart({ data, timeframe = "daily", mode = "linechart", tooltipFormat = { prefix: "", suffix: ""} }: stockPriceProps) {
     const [ref, parentSize] = useParentSize<HTMLDivElement>();
     const { width: parentWidth, height: parentHeight } = parentSize;    
     
@@ -27,6 +28,8 @@ export function StockPriceChart({ data, timeframe = "daily", mode = "linechart",
         const width = parentWidth, height = parentHeight
         if (width === 0 || height === 0) return;
         const  margin = {top: 10, right: 30, bottom: 20, left: 60}
+
+        const isMediumScreen = width > 576;
                                      
         const miniSectionHeight = 40//there are 2 mini-section: volume group and brush group
         const miniSectionTotalHeight = miniSectionHeight + margin.bottom
@@ -96,9 +99,14 @@ export function StockPriceChart({ data, timeframe = "daily", mode = "linechart",
             .domain(baseXDomain)
             .range([ 0, chartWidth ]);        
 
+        const xAxisTextClass = !isMediumScreen?stockStyles.rotatedAxisText:
+            stockStyles.axisText;
+
         canvas.select<SVGGElement>(".x-axis")
             .attr("transform", "translate(0," + chartHeight + ")")
-            .call(axisBottom(x));
+            .call(axisBottom(x))
+            .selectAll("text")
+            .attr("class", xAxisTextClass);;
 
         const maxValue = max(sources, function(c) { return max(c.values, function(v) { return v.value; }); }) || 0
         const minValue = min(sources, function(c) { return min(c.values, function(v) { return v.value; }); }) || 0                        
@@ -106,10 +114,11 @@ export function StockPriceChart({ data, timeframe = "daily", mode = "linechart",
             .domain([minValue, maxValue])
             .range([ chartHeight, 0 ]);
         
+        const yAxis = axisLeft(y).tickSize(-chartWidth)
         canvas.select<SVGGElement>(".y-axis")
-            .call(axisLeft(y));
+            .call(yAxis);
 
-        canvas.selectAll("path.line").remove()
+        canvas.selectAll("path.chartline").remove()
         const priceLine = line<lineDatum>()
             .x(function(d) { return x(d.date) })
             .y(function(d) { return y(d.value) })
@@ -117,7 +126,7 @@ export function StockPriceChart({ data, timeframe = "daily", mode = "linechart",
         if(mode === "linechart"){
             sources.forEach((d, i) => {
                 canvas.insert("path", "g.tooltip")
-                    .attr("class", "line")  
+                    .attr("class", "chartline")  
                     .datum(d.values)
                     .attr("fill", "none")
                     .attr("stroke", color[i] )
@@ -175,6 +184,7 @@ export function StockPriceChart({ data, timeframe = "daily", mode = "linechart",
             
         function pointermoved(e: PointerEvent){
             const tooltipData = mode === "linechart"? formattedData:chartData
+            const { prefix, suffix } = tooltipFormat
 
             const bisect = bisector((d: typeof tooltipData[0]) => d.date).center;
             const i = bisect(tooltipData, x.invert(pointer(e)[0]));                
@@ -195,7 +205,13 @@ export function StockPriceChart({ data, timeframe = "daily", mode = "linechart",
                 .join("text")
                 .call(text => text
                     .selectAll("tspan")
-                    .data([formatDate(date), basicFormat(open as number), basicFormat(hi as number), basicFormat(low as number), basicFormat(close as number)])
+                    .data([
+                        formatDate(date), 
+                        basicFormat(open as number, { prefix, suffix }), 
+                        basicFormat(hi as number, { prefix, suffix }), 
+                        basicFormat(low as number, { prefix, suffix }), 
+                        basicFormat(close as number, { prefix, suffix })
+                    ])
                     .join("tspan")
                     .attr("x", 0)
                     .attr("y", (_, i) => `${i * 1.1}em`)
@@ -270,7 +286,9 @@ export function StockPriceChart({ data, timeframe = "daily", mode = "linechart",
 
         volumeCanvas.select<SVGGElement>(".x-axis")
             .attr("transform", "translate(0," + miniSectionHeight + ")")
-            .call(axisBottom(x));
+            .call(axisBottom(x))
+            .selectAll("text")
+            .attr("class", xAxisTextClass);;
 
         const xBrush = scaleTime()
             .domain(baseXDomain as [Date, Date])
@@ -324,7 +342,9 @@ export function StockPriceChart({ data, timeframe = "daily", mode = "linechart",
         }
         brushCanvas.select<SVGGElement>(".x-axis")
             .attr("transform", "translate(0," + miniSectionHeight + ")")
-            .call(axisBottom(xBrush));
+            .call(axisBottom(xBrush))
+            .selectAll("text")
+            .attr("class", xAxisTextClass);;
 
         const brush = brushX()                   // Add the brush feature using the brush function
             .extent( [ [0,0], [width,miniSectionHeight] ] )  // initialise the brush area: start at 0,0 and finishes at width,height: it means I select the whole graph area                            
@@ -362,7 +382,9 @@ export function StockPriceChart({ data, timeframe = "daily", mode = "linechart",
 
         const redraw = () => {
             canvas.select<SVGGElement>(".x-axis")                   
-                .call(axisBottom(x));
+                .call(axisBottom(x))
+                .selectAll("text")
+                .attr("class", xAxisTextClass);;
             if(mode === "candlestick"){
                 canvas.selectAll<SVGGElement, stockDataFormatted>("path.candle")
                     .attr("d", function(d){
@@ -376,7 +398,9 @@ export function StockPriceChart({ data, timeframe = "daily", mode = "linechart",
             }                            
 
             volumeCanvas.select<SVGGElement>(".x-axis")                   
-                .call(axisBottom(x));
+                .call(axisBottom(x))
+                .selectAll("text")
+                .attr("class", xAxisTextClass);;
 
             volumeCanvas
                 .selectAll<SVGPathElement, stockDataFormatted[]>('path.area')
@@ -431,7 +455,7 @@ export function StockPriceChart({ data, timeframe = "daily", mode = "linechart",
                     <>
                         <g className="plot-area">
                             <g className="x-axis" />
-                            <g className="y-axis" /> 
+                            <g className={`y-axis ${stockStyles["value-axis"]}`} /> 
                             <rect className="overlay" />        
                             <g className="tooltip" />                     
                         </g>

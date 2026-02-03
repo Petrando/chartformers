@@ -1,16 +1,10 @@
-import React, {useState, useEffect} from 'react';
-import { createPortal } from 'react-dom';
-import * as d3 from 'd3';
+import React from 'react';
+import { schemeCategory10, timeParse, extent, scaleTime, scaleLinear, axisBottom, axisLeft, max, min, line, bisector, pointer, Selection, BaseType, ScaleLinear, area, brushX, D3BrushEvent } from 'd3';
 import { useD3 } from '../../hooks/useD3';
 import { useParentSize } from '../../hooks/useParentSize';
-import { useContainerSize } from '../../hooks/useContainerSize';
-import { useLayerIndex } from '../../hooks/useLayerIndex';
-import { Tooltip, getTooltip, moveTooltip } from '../../components/tooltip';
-import { cloneObj, indexColor, basicFormat } from '../../utils';
-import { inactiveColor } from '../../../dev/data/constants';
 import styles from '../global.module.css';
-import { useUIControls } from '../../hooks/useUIControls';
-import { createWeeklyData, createWeeklyDataD3, createMonthlyData } from './utils';
+import { createWeeklyData, createMonthlyData } from './utils';
+import { basicFormat } from '../../utils';
 import { tooltipFormat } from '../../types';
 import { lineDatum, stockData, stockDataFormatted } from './types'
 
@@ -59,15 +53,15 @@ export function StockPriceChart({ data, timeframe = "daily", mode = "linechart",
         const brushCanvas = svg.select(".brush-area")
             .attr("transform", "translate(" + margin.left + "," + (chartHeight + margin.top + margin.bottom + miniSectionTotalHeight) + ")");
 
-        const color = d3.schemeCategory10
+        const color = schemeCategory10
 
         type ValueKey = 'open' | 'hi' | 'low' | 'close' | 'adj_close';
         const colorDomain: ValueKey[] = Object.keys(data[0])
             .filter((key): key is ValueKey => key !== "date" && key !== "volume") as ValueKey[];
-        //color.domain(d3.keys(JKSEData[0]).filter(function(key) { return key !== "date" && key !== "volume"; }));
+        //color.domain(keys(JKSEData[0]).filter(function(key) { return key !== "date" && key !== "volume"; }));
         
         const formatData = (d:stockData) => {
-            const parsedDate = d3.timeParse("%Y-%m-%d")(d.date);
+            const parsedDate = timeParse("%Y-%m-%d")(d.date);
             return { 
                 date : new Date(parsedDate || new Date()),
                 open: +d.open,
@@ -97,26 +91,26 @@ export function StockPriceChart({ data, timeframe = "daily", mode = "linechart",
             };
         });
 
-        const baseXDomain = d3.extent(formattedData, function(d) { return d.date; }) as [Date, Date]
-        const x = d3.scaleTime()
+        const baseXDomain = extent(formattedData, function(d) { return d.date; }) as [Date, Date]
+        const x = scaleTime()
             .domain(baseXDomain)
             .range([ 0, chartWidth ]);        
 
         canvas.select<SVGGElement>(".x-axis")
             .attr("transform", "translate(0," + chartHeight + ")")
-            .call(d3.axisBottom(x));
+            .call(axisBottom(x));
 
-        const max = d3.max(sources, function(c) { return d3.max(c.values, function(v) { return v.value; }); }) || 0
-        const min = d3.min(sources, function(c) { return d3.min(c.values, function(v) { return v.value; }); }) || 0                        
-        const y = d3.scaleLinear()
-            .domain([min, max])
+        const maxValue = max(sources, function(c) { return max(c.values, function(v) { return v.value; }); }) || 0
+        const minValue = min(sources, function(c) { return min(c.values, function(v) { return v.value; }); }) || 0                        
+        const y = scaleLinear()
+            .domain([minValue, maxValue])
             .range([ chartHeight, 0 ]);
         
         canvas.select<SVGGElement>(".y-axis")
-            .call(d3.axisLeft(y));
+            .call(axisLeft(y));
 
         canvas.selectAll("path.line").remove()
-        const priceLine = d3.line<lineDatum>()
+        const priceLine = line<lineDatum>()
             .x(function(d) { return x(d.date) })
             .y(function(d) { return y(d.value) })
 
@@ -182,8 +176,8 @@ export function StockPriceChart({ data, timeframe = "daily", mode = "linechart",
         function pointermoved(e: PointerEvent){
             const tooltipData = mode === "linechart"? formattedData:chartData
 
-            const bisect = d3.bisector((d: typeof tooltipData[0]) => d.date).center;
-            const i = bisect(tooltipData, x.invert(d3.pointer(e)[0]));                
+            const bisect = bisector((d: typeof tooltipData[0]) => d.date).center;
+            const i = bisect(tooltipData, x.invert(pointer(e)[0]));                
 
             const {date, open, hi, low, close, volume} = tooltipData[i]                
             
@@ -208,7 +202,7 @@ export function StockPriceChart({ data, timeframe = "daily", mode = "linechart",
                     .attr("font-weight", (_, i) => i ? null : "bold")
                     .text(d => d));
 
-            size(tooplipText, tooltipPath as d3.Selection<SVGPathElement | null, unknown, null, undefined>);
+            size(tooplipText, tooltipPath as Selection<SVGPathElement | null, unknown, null, undefined>);
 
             volumeTooltip.style("display", null);
             volumeTooltip.attr("transform", `translate(${x(date)},${yVolumeScale(volume as number)})`);
@@ -231,7 +225,7 @@ export function StockPriceChart({ data, timeframe = "daily", mode = "linechart",
                     .attr("font-weight", (_, i) => i ? null : "bold")
                     .text(d => d));
             
-            size(volTooplipText, volTooltipPath as d3.Selection<SVGPathElement | null, unknown, null, undefined>)
+            size(volTooplipText, volTooltipPath as Selection<SVGPathElement | null, unknown, null, undefined>)
 
             brushCanvas.transition().duration(animDuration/4).style("opacity", 0)
         }
@@ -244,22 +238,22 @@ export function StockPriceChart({ data, timeframe = "daily", mode = "linechart",
             brushCanvas.transition().duration(animDuration/4).style("opacity", 1)
         }
 
-        function size(text: d3.Selection<SVGTextElement, unknown, d3.BaseType, unknown>, path: d3.Selection<SVGPathElement | null, unknown, null, undefined>) {
+        function size(text: Selection<SVGTextElement, unknown, BaseType, unknown>, path: Selection<SVGPathElement | null, unknown, null, undefined>) {
             const {x, y, width: w, height: h} = text.node()!.getBBox();
             text.attr("transform", `translate(${-w / 2},${15 - y})`);
             path.attr("d", `M${-w / 2 - 10},5H-5l5,-5l5,5H${w / 2 + 10}v${h + 20}h-${w + 20}z`);
         }
 
-        const yVolumeScale = d3.scaleLinear()
+        const yVolumeScale = scaleLinear()
             .domain([
                 0, 
-                d3.max(data, 
+                max(data, 
                     function(d){return typeof d.volume === "string"?
                         parseInt(d.volume):d.volume;}) as number
             ])
             .range([miniSectionHeight, 0]);
 
-        const areaVolume = d3.area<stockDataFormatted>()
+        const areaVolume = area<stockDataFormatted>()
             .x(function(d){return x(new Date(d.date));})
             .y0(yVolumeScale(0))
             .y1(function(d){return yVolumeScale(typeof d.volume === "string" ? parseInt(d.volume) : d.volume);});
@@ -276,17 +270,17 @@ export function StockPriceChart({ data, timeframe = "daily", mode = "linechart",
 
         volumeCanvas.select<SVGGElement>(".x-axis")
             .attr("transform", "translate(0," + miniSectionHeight + ")")
-            .call(d3.axisBottom(x));
+            .call(axisBottom(x));
 
-        const xBrush = d3.scaleTime()
+        const xBrush = scaleTime()
             .domain(baseXDomain as [Date, Date])
             .range([0, chartWidth])
             
-        const yBrush = d3.scaleLinear()
-            .domain([min, max])
+        const yBrush = scaleLinear()
+            .domain([minValue, maxValue])
             .range([ miniSectionHeight, 0 ]);
 
-        const brushLine = d3.line<{ date: Date; value: number }>()
+        const brushLine = line<{ date: Date; value: number }>()
                 .x(function(d) { return xBrush(d.date) })
                 .y(function(d) { return yBrush(d.value) })
 
@@ -330,9 +324,9 @@ export function StockPriceChart({ data, timeframe = "daily", mode = "linechart",
         }
         brushCanvas.select<SVGGElement>(".x-axis")
             .attr("transform", "translate(0," + miniSectionHeight + ")")
-            .call(d3.axisBottom(xBrush));
+            .call(axisBottom(xBrush));
 
-        const brush = d3.brushX()                   // Add the brush feature using the d3.brush function
+        const brush = brushX()                   // Add the brush feature using the brush function
             .extent( [ [0,0], [width,miniSectionHeight] ] )  // initialise the brush area: start at 0,0 and finishes at width,height: it means I select the whole graph area                            
             .on("brush", updateChart)  
         
@@ -340,10 +334,10 @@ export function StockPriceChart({ data, timeframe = "daily", mode = "linechart",
             .attr("class", "brush")
             .call(brush);            
 
-        function updateChart(e: d3.D3BrushEvent<unknown>) {
+        function updateChart(e: D3BrushEvent<unknown>) {
 
             // What are the selected boundaries?
-            //const extent = d3.event.selection                
+            //const extent = event.selection                
             const extent = e.selection
         
             if(extent){                    
@@ -368,7 +362,7 @@ export function StockPriceChart({ data, timeframe = "daily", mode = "linechart",
 
         const redraw = () => {
             canvas.select<SVGGElement>(".x-axis")                   
-                .call(d3.axisBottom(x));
+                .call(axisBottom(x));
             if(mode === "candlestick"){
                 canvas.selectAll<SVGGElement, stockDataFormatted>("path.candle")
                     .attr("d", function(d){
@@ -382,7 +376,7 @@ export function StockPriceChart({ data, timeframe = "daily", mode = "linechart",
             }                            
 
             volumeCanvas.select<SVGGElement>(".x-axis")                   
-                .call(d3.axisBottom(x));
+                .call(axisBottom(x));
 
             volumeCanvas
                 .selectAll<SVGPathElement, stockDataFormatted[]>('path.area')
@@ -396,6 +390,7 @@ export function StockPriceChart({ data, timeframe = "daily", mode = "linechart",
 
             return {barWidth, shoulderWidth}
         }
+
         function drawCandle(d:stockDataFormatted, scale: (value: number) => number){
             let pathStart, pathEnd;
             if(d.open >= d.close){

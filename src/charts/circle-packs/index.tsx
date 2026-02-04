@@ -185,7 +185,7 @@ export function CirclePacks({data, tooltipFormat}: PackProps) {
 
             const color = scaleLinear<string>()
                 .domain([-1, 2])
-                .range(["hsl(152,80%,80%)", "hsl(228,30%,40%)"])
+                .range(["#34d399", "#6b21a8"])
                 .interpolate(interpolateHcl);
             
             function circleRadius(d:PackedNodeWithSorted<circlePackData>) { 
@@ -430,15 +430,16 @@ export function CirclePacks({data, tooltipFormat}: PackProps) {
                 >
                     <g className="plot-area" />
                 </svg>
-                <div id="tooltip" 
+                <div id="tooltip"
+                    className={`${packStyles["glass_card"]}`} 
                     style={{
                         position: "absolute", left: 2, top: 2, fontSize: 12, fontWeight: 600,
                         display: "flex", alignItems: "center", gap: 2
                     }}>                    
-                    <p ref={pNameRef} id="name">
+                    <p ref={pNameRef} id="name" style={{ padding: 0, margin: 0}}>
                         Test tooltip
                     </p>
-                    <p ref={pValueRef} id="value" >
+                    <p ref={pValueRef} id="value" style={{ padding: 0, margin: 0}}>
                         Test tooltip
                     </p>
                 </div>

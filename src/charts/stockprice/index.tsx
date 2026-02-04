@@ -1,7 +1,9 @@
 import React from 'react';
 import { 
     schemeCategory10, timeParse, select, extent, scaleTime, scaleLinear, axisBottom, axisLeft, 
-    max, min, line, bisector, pointer, Selection, BaseType, area, brushX, D3BrushEvent } from 'd3';
+    max, min, line, bisector, pointer, Selection, BaseType, area, brushX, D3BrushEvent,
+    //curveLinear, curveBasis, curveCardinal, curveCatmullRom, curveNatural
+} from 'd3';
 import { useD3 } from '../../hooks/useD3';
 import { useParentSize } from '../../hooks/useParentSize';
 import styles from '../global.module.css';
@@ -20,25 +22,29 @@ type stockPriceProps = {
 
 export function StockPriceChart({ data, timeframe = "daily", mode = "linechart", tooltipFormat = { prefix: "", suffix: ""} }: stockPriceProps) {
     const [ref, parentSize] = useParentSize<HTMLDivElement>();
-    const { width: parentWidth, height: parentHeight } = parentSize;    
+    const { width, height } = parentSize;    
     
     const animDuration = 750;    
         
-    const renderDeps = [ data, timeframe, mode, parentWidth, parentHeight, tooltipFormat]                
+    const renderDeps = [ data, timeframe, mode, width, height, tooltipFormat]                
 
     const color = schemeCategory10
 
-    type ValueKey = 'open' | 'hi' | 'low' | 'close' | 'adj_close';
+    type ValueKey = 'open' | 'hi' | 'low' | 'close';    
     const colorDomain: ValueKey[] = Object.keys(data[0])
-        .filter((key): key is ValueKey => key !== "date" && key !== "volume") as ValueKey[];
-    //color.domain(keys(JKSEData[0]).filter(function(key) { return key !== "date" && key !== "volume"; }));
+            .filter((key): key is ValueKey => key !== "date" && key !== "volume" && key !== "adj_close") as ValueKey[];
+        //color.domain(keys(JKSEData[0]).filter(function(key) { return key !== "date" && key !== "volume"; }));
 
-    const chartRef = useD3<HTMLDivElement>((container) => {
-        const width = parentWidth, height = parentHeight
-        if (width === 0 || height === 0) return;
-        const  margin = {top: 10, right: 30, bottom: 20, left: 60}
+    const  margin = {top: 0, right: 30, bottom: 20, left: 60}
 
-        const isMediumScreen = width > 576;
+    const isMediumScreen = width > 576;
+
+    const candleColor = {
+        bullish: "#047857", bearish: "#be123c"
+    }
+
+    const chartRef = useD3<HTMLDivElement>((container) => {        
+        if (width === 0 || height === 0) return;                
                                      
         const miniSectionHeight = 40//there are 2 mini-section: volume group and brush group
         const miniSectionTotalHeight = miniSectionHeight + margin.bottom
@@ -85,7 +91,7 @@ export function StockPriceChart({ data, timeframe = "daily", mode = "linechart",
         const chartData = timeframe === "daily"?formattedData:
                 timeframe === "weekly"?weeklyData:
                     timeframe === "monthly"?monthlyData:
-                        []
+                        []        
 
         const sources = colorDomain.map(function(name: ValueKey) {                
             return {
@@ -123,7 +129,8 @@ export function StockPriceChart({ data, timeframe = "daily", mode = "linechart",
         canvas.selectAll("path.chartline").remove()
         const priceLine = line<lineDatum>()
             .x(function(d) { return x(d.date) })
-            .y(function(d) { return y(d.value) })
+            .y(function(d) { return y(d.value) })       
+                    
 
         if(mode === "linechart"){
             sources.forEach((d, i) => {
@@ -141,8 +148,8 @@ export function StockPriceChart({ data, timeframe = "daily", mode = "linechart",
         canvas.selectAll("path.candle").remove()
 
         const candleFill = (d: stockDataFormatted) => {
-            if(d.open >= d.close)return "#047857";
-            else return "#be123c";
+            if(d.open >= d.close)return candleColor.bullish;
+            else return candleColor.bearish;
         }
         if(mode === "candlestick"){                        
             canvas.selectAll<SVGGElement, stockDataFormatted>("path.candle")
@@ -269,8 +276,7 @@ export function StockPriceChart({ data, timeframe = "daily", mode = "linechart",
             brushCanvas.transition().duration(animDuration/4).style("opacity", 0)
         }
 
-        function pointerleft(e: PointerEvent){
-            //console.log('pointerleft : ', e)
+        function pointerleft(e: PointerEvent){            
             tooltip.style("display", "none");
             volumeTooltip.style("display", "none")
 
@@ -417,7 +423,7 @@ export function StockPriceChart({ data, timeframe = "daily", mode = "linechart",
             }
             else if(mode === "linechart"){
                 canvas
-                    .selectAll<SVGPathElement, lineDatum[]>('path.line')
+                    .selectAll<SVGPathElement, lineDatum[]>('path.chartline')
                     .attr("d", priceLine)
             }                            
 
@@ -464,35 +470,73 @@ export function StockPriceChart({ data, timeframe = "daily", mode = "linechart",
     return (
         <div 
             ref={ref} 
-            style={{ width: parentWidth, height: parentHeight, display:'flex', flexDirection:'column' }}
+            style={{ width: width, height: height, display:'flex', flexDirection:'column' }}
         >                        
             <div
                 ref={chartRef} 
                 className={`${styles["fill-container"]}`}
                 style={{ display:"flex", flexDirection:"column"}}>
-            <svg
-                className={`${styles["chart-svg"]} ${styles["fill-container"]}`}        
-                viewBox={`0 0 ${parentWidth} ${parentHeight}`}
-            >
-                {
-                    parentWidth > 0 &&
-                    <>
-                        <g className="plot-area">
-                            <g className={`x-axis ${stockStyles["time-axis"]}`} />
-                            <g className={`y-axis ${stockStyles["value-axis"]}`} /> 
-                            <rect className="overlay" />        
-                            <g className="tooltip" />                     
-                        </g>
-                        <g className="volume-area">
-                            <g className={`x-axis ${stockStyles["time-axis"]}`} />
-                            <g className="tooltip" />
-                        </g>
-                        <g className="brush-area">
-                            <g className={`x-axis ${stockStyles["time-axis"]}`} />
-                        </g>
-                    </>
-                }                                        
-            </svg>                
+                <div          
+                    className={`${styles[isMediumScreen?"controls-container":"controls-container-sm"]}`}
+                    style={{ gap: 2, height: 24 }}
+                >
+                    { 
+                        mode === "linechart" && 
+                        colorDomain.map((d: string, i: number)=>{
+                            return (
+                                <div 
+                                    key={d}
+                                    style={{ 
+                                        display: "flex", flexDirection:"column", 
+                                        justifyContent: "start", alignItems: "center"
+                                    }}
+                                >
+                                    <div style={{width: 16, height: 2.5, borderRadius: 1, backgroundColor: color[i]}} />
+                                    <p style={{ padding: 0, margin: 0}}>{d}</p>
+                                </div>
+                            )
+                        })                    
+                    }
+                    {
+                        mode === "candlestick" &&
+                        ["bullish", "bearish"].map((d: string) => (
+                            <div 
+                                key={d}
+                                style={{ 
+                                    display: "flex", justifyContent: "center", alignItems: "center",
+                                    backgroundColor: candleColor[d as keyof typeof candleColor], 
+                                    borderRadius: 2.5, padding: "2px 3px"
+                                }}
+                            >
+                                <p style={{color: "white", margin: 0, padding: 0}}>{d}</p>
+                            </div>
+                        ))
+                    }
+
+                </div>
+                <svg
+                    className={`${styles["chart-svg"]} ${styles["fill-container"]}`}        
+                    viewBox={`0 0 ${width} ${height}`}
+                >
+                    {
+                        width > 0 &&
+                        <>
+                            <g className="plot-area">
+                                <g className={`x-axis ${stockStyles["time-axis"]}`} />
+                                <g className={`y-axis ${stockStyles["value-axis"]}`} /> 
+                                <rect className="overlay" />        
+                                <g className="tooltip" />                     
+                            </g>
+                            <g className="volume-area">
+                                <g className={`x-axis ${stockStyles["time-axis"]}`} />
+                                <g className="tooltip" />
+                            </g>
+                            <g className="brush-area">
+                                <g className={`x-axis ${stockStyles["time-axis"]}`} />
+                            </g>
+                        </>
+                    }                                        
+                </svg>                
             </div>            
         </div>
     );

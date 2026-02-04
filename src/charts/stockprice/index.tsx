@@ -1,5 +1,7 @@
 import React from 'react';
-import { schemeCategory10, timeParse, extent, scaleTime, scaleLinear, axisBottom, axisLeft, max, min, line, bisector, pointer, Selection, BaseType, ScaleLinear, area, brushX, D3BrushEvent } from 'd3';
+import { 
+    schemeCategory10, timeParse, select, extent, scaleTime, scaleLinear, axisBottom, axisLeft, 
+    max, min, line, bisector, pointer, Selection, BaseType, area, brushX, D3BrushEvent } from 'd3';
 import { useD3 } from '../../hooks/useD3';
 import { useParentSize } from '../../hooks/useParentSize';
 import styles from '../global.module.css';
@@ -7,7 +9,7 @@ import stockStyles from './stockprice.module.css'
 import { createWeeklyData, createMonthlyData } from './utils';
 import { basicFormat } from '../../utils';
 import { tooltipFormat } from '../../types';
-import { lineDatum, stockData, stockDataFormatted } from './types'
+import { lineDatum, stockData, stockDataFormatted, tooltipData, tooltipPosData } from './types'
 
 type stockPriceProps = {
     data: stockData[];
@@ -23,6 +25,13 @@ export function StockPriceChart({ data, timeframe = "daily", mode = "linechart",
     const animDuration = 750;    
         
     const renderDeps = [ data, timeframe, mode, parentWidth, parentHeight, tooltipFormat]                
+
+    const color = schemeCategory10
+
+    type ValueKey = 'open' | 'hi' | 'low' | 'close' | 'adj_close';
+    const colorDomain: ValueKey[] = Object.keys(data[0])
+        .filter((key): key is ValueKey => key !== "date" && key !== "volume") as ValueKey[];
+    //color.domain(keys(JKSEData[0]).filter(function(key) { return key !== "date" && key !== "volume"; }));
 
     const chartRef = useD3<HTMLDivElement>((container) => {
         const width = parentWidth, height = parentHeight
@@ -55,14 +64,7 @@ export function StockPriceChart({ data, timeframe = "daily", mode = "linechart",
         
         const brushCanvas = svg.select(".brush-area")
             .attr("transform", "translate(" + margin.left + "," + (chartHeight + margin.top + margin.bottom + miniSectionTotalHeight) + ")");
-
-        const color = schemeCategory10
-
-        type ValueKey = 'open' | 'hi' | 'low' | 'close' | 'adj_close';
-        const colorDomain: ValueKey[] = Object.keys(data[0])
-            .filter((key): key is ValueKey => key !== "date" && key !== "volume") as ValueKey[];
-        //color.domain(keys(JKSEData[0]).filter(function(key) { return key !== "date" && key !== "volume"; }));
-        
+                
         const formatData = (d:stockData) => {
             const parsedDate = timeParse("%Y-%m-%d")(d.date);
             return { 
@@ -156,6 +158,13 @@ export function StockPriceChart({ data, timeframe = "daily", mode = "linechart",
                     undefined,
                     exit=>exit.remove()
                 )
+                .on("pointerenter", function(e, d){                    
+                    const {date, open, hi, low, close, volume} = d
+                    const candleWidth = select(this).node()?.getBBox().width ?? 0
+                    setTooltip({ date, open, hi, low, close, volume })
+                    setTooltipPosition({ xPos:x(date) + (candleWidth / 2), low, volume })            
+                })
+                .on("pointerout", pointerleft)
                 .attr("d", function(d){
                     return drawCandle(d, y);
                 })		
@@ -168,7 +177,8 @@ export function StockPriceChart({ data, timeframe = "daily", mode = "linechart",
 
         canvas.select("rect.overlay")
             .attr("width", chartWidth).attr("height", chartHeight)
-            .style("fill", "none").style("pointer-events", "all")
+            .style("fill", "none")
+            .style("pointer-events", mode === "linechart"?"all":"none")            
             .on("pointerenter pointermove", pointermoved)
             .on("pointerleave", pointerleft)
             .on("touchstart", event => event.preventDefault())
@@ -183,17 +193,32 @@ export function StockPriceChart({ data, timeframe = "daily", mode = "linechart",
         }
             
         function pointermoved(e: PointerEvent){
-            const tooltipData = mode === "linechart"? formattedData:chartData
-            const { prefix, suffix } = tooltipFormat
+            if(mode === "candlestick"){
+                return
+            }
+            const tooltipData = mode === "linechart"? formattedData:chartData            
 
             const bisect = bisector((d: typeof tooltipData[0]) => d.date).center;
             const i = bisect(tooltipData, x.invert(pointer(e)[0]));                
 
-            const {date, open, hi, low, close, volume} = tooltipData[i]                
-            
-            tooltip.style("display", null);
-            tooltip.attr("transform", `translate(${x(date)},${y(low as number)})`);
+            const {date, open, hi, low, close, volume} = tooltipData[i]                                        
 
+            setTooltip({ date, open, hi, low, close, volume })
+            setTooltipPosition({ xPos:x(date), low, volume })            
+        }
+        
+        const setTooltipPosition = (tooltipPosData: tooltipPosData) => {
+            const {xPos, low, volume} = tooltipPosData
+            tooltip.style("display", null);
+            tooltip.attr("transform", `translate(${xPos},${y(low as number)})`);            
+
+            volumeTooltip.style("display", null);
+            volumeTooltip.attr("transform", `translate(${xPos},${yVolumeScale(volume as number)})`);        
+        }
+        
+        const setTooltip = (tooltipData: tooltipData) => {
+            const { prefix, suffix } = tooltipFormat
+            const { date, open, hi, low, close, volume} = tooltipData
             const tooltipPath = tooltip.selectAll("path")
                 .data([null])
                 .join("path")
@@ -207,21 +232,19 @@ export function StockPriceChart({ data, timeframe = "daily", mode = "linechart",
                     .selectAll("tspan")
                     .data([
                         formatDate(date), 
-                        basicFormat(open as number, { prefix, suffix }), 
-                        basicFormat(hi as number, { prefix, suffix }), 
-                        basicFormat(low as number, { prefix, suffix }), 
-                        basicFormat(close as number, { prefix, suffix })
+                        `open: ${basicFormat(open as number, { prefix, suffix })}`, 
+                        `hi: ${basicFormat(hi as number, { prefix, suffix })}`, 
+                        `low: ${basicFormat(low as number, { prefix, suffix })}`, 
+                        `close: ${basicFormat(close as number, { prefix, suffix })}`
                     ])
                     .join("tspan")
                     .attr("x", 0)
                     .attr("y", (_, i) => `${i * 1.1}em`)
                     .attr("font-weight", (_, i) => i ? null : "bold")
+                    .style("align", "right")
                     .text(d => d));
 
             size(tooplipText, tooltipPath as Selection<SVGPathElement | null, unknown, null, undefined>);
-
-            volumeTooltip.style("display", null);
-            volumeTooltip.attr("transform", `translate(${x(date)},${yVolumeScale(volume as number)})`);
 
             const volTooltipPath = volumeTooltip.selectAll("path")
                 .data([null] as unknown[])
@@ -340,6 +363,7 @@ export function StockPriceChart({ data, timeframe = "daily", mode = "linechart",
                 .style("fill", candleFill)
             
         }
+
         brushCanvas.select<SVGGElement>(".x-axis")
             .attr("transform", "translate(0," + miniSectionHeight + ")")
             .call(axisBottom(xBrush))

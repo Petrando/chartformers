@@ -32,3 +32,7 @@ export interface nonDailyStockData {
   volumeClose: number;
   volume: number;
 }
+
+export type tooltipPosData = { xPos: number, low: number, volume: number }
+
+export type tooltipData = { date: Date, open: number, hi: number, low: number, close: number, volume: number }

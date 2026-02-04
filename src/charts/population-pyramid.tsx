@@ -9,11 +9,9 @@ import { cloneObj } from "../utils";
 import pyramidStyles from "./population-pyramid.module.css"
 import styles from './global.module.css';
 import { ageRangeGroup } from "../types"
-import { tooltipFormat } from "../types";
 
 type PopulationPyramidProps = {
-    data: ageRangeGroup[];
-    tooltipFormat?: tooltipFormat;
+    data: ageRangeGroup[];    
 }
 
 export function PopulationPyramid({

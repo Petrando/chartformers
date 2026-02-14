@@ -1,4 +1,4 @@
-import { circlePackData } from "../../src/types"
+import { hierarchyData } from "../../src/types"
 const data2017 = [
     {
         "key": "010",
@@ -24474,7 +24474,7 @@ const data2017 = [
     }
 ]
 
-export const loanData1:circlePackData[] = [
+export const loanData1:hierarchyData[] = [
     {
         name: "USA",
         children: [
@@ -24507,7 +24507,7 @@ export const loanData1:circlePackData[] = [
     }
 ]
 
-export const loanData2:circlePackData[] = [
+export const loanData2:hierarchyData[] = [
     {
         name: "Czech Republic",
         children: [
@@ -24550,6 +24550,10 @@ export const loanData2:circlePackData[] = [
                 value: 456000
             },
             {
+                name: "Chicago Branch",
+                value: 642600
+            },
+            {
                 name: "New York Main Branch",
                 value: 856000
             }            
@@ -24557,7 +24561,7 @@ export const loanData2:circlePackData[] = [
     }
 ]
 
-export const loanData3: circlePackData[] = [
+export const loanData3: hierarchyData[] = [
     {
         name: "Czech Republic",
         children: [
@@ -24732,7 +24736,7 @@ export const loanData3: circlePackData[] = [
     }
 ];
 
-export const loanData4: circlePackData[] = [
+export const loanData4: hierarchyData[] = [
     {
         name: "Czech Republic",
         children: [
@@ -24938,7 +24942,7 @@ export const loanData4: circlePackData[] = [
     }
 ];
 
-export const loanData4GPT: circlePackData[] = [
+export const loanData4GPT: hierarchyData[] = [
     {
         name: "Czech Republic",
         children: [
@@ -25168,7 +25172,7 @@ export const loanData4GPT: circlePackData[] = [
     }
 ];
 
-export const flareData: circlePackData[] = [
+export const flareData: hierarchyData[] = [
     {
       name: "analytics",
       children: [

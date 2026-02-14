@@ -10,6 +10,10 @@
 
 **chartformers** is a lightweight React.js library for rendering **interactive, responsive, and animated D3.js charts**.  
 ![Demo](https://raw.githubusercontent.com/Petrando/chartformers/master/media/Pie.gif)
+
+## 🚀 Try Chartformers live
+- 📘 **Documentation, live demos with codepen & stackblitz**: https://chartformers-doc.vercel.app
+
 It is designed to simplify chart creation in modern React apps while retaining the full power of D3 under the hood.
 
 ## ✨ Features

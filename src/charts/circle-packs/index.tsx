@@ -5,12 +5,12 @@ import { useD3 } from '../../hooks/useD3';
 import { useParentSize } from '../../hooks/useParentSize';
 import { basicFormat, cloneObj } from '../../utils';
 import { oldPack } from './utils';
-import { circlePackData, tooltipFormat } from '../../types';
+import { hierarchyData, tooltipFormat } from '../../types';
 import styles from '../global.module.css';
 import packStyles from './circle-pack.module.css'
 
 type PackProps = {
-    data: circlePackData[];
+    data: hierarchyData[];
     tooltipFormat?: tooltipFormat;
 }
 
@@ -58,7 +58,7 @@ function assignSortedGeometry<T extends { name: string }>(
 type hoveredData = {name: string, value: number}
 
 export function CirclePacks({data, tooltipFormat}: PackProps) {
-    const [circlePackData, setPackData] = useState<circlePackData[] | null>(null);
+    const [hierarchyData, setPackData] = useState<hierarchyData[] | null>(null);
     const [ isSorted, setIsSorted ] = useState(false)
     const [ hoveredData, setHoveredData ] = useState<hoveredData>({name: "", value: 0})    
     const [ prevHoveredData, setPrevHoveredData] = useState<hoveredData>({name: "", value: 0})
@@ -126,7 +126,7 @@ export function CirclePacks({data, tooltipFormat}: PackProps) {
     const chartRef = useD3<HTMLDivElement>(
         (container) => 
         {
-            if(!circlePackData){
+            if(!hierarchyData){
                 return
             }                        
 
@@ -147,7 +147,7 @@ export function CirclePacks({data, tooltipFormat}: PackProps) {
             const graphHeight = baseHeight            
             const graphWidth = baseWidth
 
-            const rootData:circlePackData = {'name':'branches', 'children':circlePackData}                    
+            const rootData:hierarchyData = {'name':'branches', 'children':hierarchyData}                    
 
             const diameter = Math.min(graphWidth, graphHeight)
                         
@@ -155,14 +155,14 @@ export function CirclePacks({data, tooltipFormat}: PackProps) {
                 .sum(function(d) { return d.value!; })
                 .sort(function(a, b){return a.value! - b.value!;})
 
-            const packFn = pack<circlePackData>()
+            const packFn = pack<hierarchyData>()
                 .size([diameter - margin, diameter - margin])
                 .padding(2)                
 
             const sortedPackFn = oldPack()
                 .padding(2)
                 .size([diameter - margin, diameter - margin])
-                .value(function(d:circlePackData) { return d.value; })
+                .value(function(d:hierarchyData) { return d.value; })
             const sortedNodes = sortedPackFn.nodes(cloneObj(rootData))
                                     
             let focus = root, scale = 1, thicknessK = 1;    
@@ -188,28 +188,28 @@ export function CirclePacks({data, tooltipFormat}: PackProps) {
                 .range(["#34d399", "#6b21a8"])
                 .interpolate(interpolateHcl);
             
-            function circleRadius(d:PackedNodeWithSorted<circlePackData>) { 
+            function circleRadius(d:PackedNodeWithSorted<hierarchyData>) { 
                 const k = diameter / view[2];	                                
                 
                 const circleRadius = isSorted?d.sortedR ?? 0:d.r
                 return circleRadius * k;
             }
 
-            function xPos(d: PackedNodeWithSorted<circlePackData>){
+            function xPos(d: PackedNodeWithSorted<hierarchyData>){
                 const k = diameter / view[2];                    
                 const xPos = isSorted?d.sortedX ?? 0:d.x
                 return ((xPos - view[0]) * k);
             }
 
-            function yPos(d: PackedNodeWithSorted<circlePackData>){
+            function yPos(d: PackedNodeWithSorted<hierarchyData>){
                 const k = diameter / view[2];                                                              
                 const yPos = isSorted?d.sortedY ?? 0:d.y
                 return ((yPos - view[1]) * k);
             }
 
             const circles = canvas
-                .selectAll<SVGCircleElement, PackedNodeWithSorted<circlePackData>>("circle")
-                .data(nodes,(d:PackedNodeWithSorted<circlePackData>) => d.data.name)
+                .selectAll<SVGCircleElement, PackedNodeWithSorted<hierarchyData>>("circle")
+                .data(nodes,(d:PackedNodeWithSorted<hierarchyData>) => d.data.name)
                 .join(
                     enter =>
                         enter
@@ -251,37 +251,37 @@ export function CirclePacks({data, tooltipFormat}: PackProps) {
                 )
                 .on('mouseover', function(e, d){                        
                     if(focus.parent===d){
-                        texts.filter(function(dText) { return (dText as HierarchyCircularNode<circlePackData>).parent === focus || (this as SVGTextElement).style.display === "inline"; })	    	  
+                        texts.filter(function(dText) { return (dText as HierarchyCircularNode<hierarchyData>).parent === focus || (this as SVGTextElement).style.display === "inline"; })	    	  
                             .style("font-size", LABELFONTSIZE * thicknessK)
-                            .style("fill-opacity", function(d) { return (d as HierarchyCircularNode<circlePackData>).parent === focus ? 1 : 0; })
-                            .style("display", function(d){return ((d as HierarchyCircularNode<circlePackData>).parent===focus? "inline":"none");});
+                            .style("fill-opacity", function(d) { return (d as HierarchyCircularNode<hierarchyData>).parent === focus ? 1 : 0; })
+                            .style("display", function(d){return ((d as HierarchyCircularNode<hierarchyData>).parent===focus? "inline":"none");});
                     }
                     else{  
                         if(d===focus){
-                            texts.filter(function(dText) { return (dText as HierarchyCircularNode<circlePackData>).parent === focus || (this as SVGTextElement).style.display === "inline"; })	    	  
+                            texts.filter(function(dText) { return (dText as HierarchyCircularNode<hierarchyData>).parent === focus || (this as SVGTextElement).style.display === "inline"; })	    	  
                                 .style("font-size", LABELFONTSIZE * thicknessK)
-                                .style("fill-opacity", function(d) { return (d as HierarchyCircularNode<circlePackData>).parent === focus ? 1 : 0; })
-                                .style("display", function(d){return ((d as HierarchyCircularNode<circlePackData>).parent===focus? "inline":"none");});
+                                .style("fill-opacity", function(d) { return (d as HierarchyCircularNode<hierarchyData>).parent === focus ? 1 : 0; })
+                                .style("display", function(d){return ((d as HierarchyCircularNode<hierarchyData>).parent===focus? "inline":"none");});
                         }else /*if(d.parent===focus)*/{
                             texts.filter(function(dText){
                                 if(isSorted){
-                                    const dCircle = d as HierarchyNode<circlePackData>
-                                    const textData = dText as HierarchyNode<circlePackData>
+                                    const dCircle = d as HierarchyNode<hierarchyData>
+                                    const textData = dText as HierarchyNode<hierarchyData>
                                     return textData.name!==dCircle.name
                                 }
                                 
-                                return (dText as HierarchyCircularNode<circlePackData>).data.name!=d.data.name;
+                                return (dText as HierarchyCircularNode<hierarchyData>).data.name!=d.data.name;
                             })
                                 .style("fill-opacity", 0)
                                 .style("display", "none");
                             
                             texts.filter(function(dText){
                                 if(isSorted){
-                                    const dCircle = d as HierarchyNode<circlePackData>
-                                    const textData = dText as HierarchyNode<circlePackData>
+                                    const dCircle = d as HierarchyNode<hierarchyData>
+                                    const textData = dText as HierarchyNode<hierarchyData>
                                     return textData.name!==dCircle.name
                                 }
-                                return (dText as HierarchyCircularNode<circlePackData>).data.name===d.data.name;
+                                return (dText as HierarchyCircularNode<hierarchyData>).data.name===d.data.name;
                             })
                                 .style("fill-opacity", 1)
                                 .style("display", "inline");
@@ -302,10 +302,10 @@ export function CirclePacks({data, tooltipFormat}: PackProps) {
                     })
                 })
                 .on('mouseout', function(e, d){
-                    texts.filter(function(d) { return (d as HierarchyCircularNode<circlePackData>).parent === focus || (this as SVGTextElement).style.display === "inline"; })	    	  
+                    texts.filter(function(d) { return (d as HierarchyCircularNode<hierarchyData>).parent === focus || (this as SVGTextElement).style.display === "inline"; })	    	  
                         //.style("font-size", LABELFONTSIZE * thicknessK)
-                        .style("fill-opacity", function(d) { return (d as HierarchyCircularNode<circlePackData>).parent === focus ? 1 : 0; })
-                        .style("display", function(d){return ((d as HierarchyCircularNode<circlePackData>).parent===focus? "inline":"none");});
+                        .style("fill-opacity", function(d) { return (d as HierarchyCircularNode<hierarchyData>).parent === focus ? 1 : 0; })
+                        .style("display", function(d){return ((d as HierarchyCircularNode<hierarchyData>).parent===focus? "inline":"none");});
             
                     select(this)
                         .style("stroke-width", CIRCLESTROKE * thicknessK)
@@ -327,7 +327,7 @@ export function CirclePacks({data, tooltipFormat}: PackProps) {
                     e.stopPropagation()
                 })
 
-            function textTransform(d: PackedNodeWithSorted<circlePackData>) { 
+            function textTransform(d: PackedNodeWithSorted<hierarchyData>) { 
                 const k = diameter / view[2];
                 const xPos = isSorted?d.sortedX ?? 0:d.x
                 const yPos = isSorted?d.sortedY ?? 0:d.y                                
@@ -335,7 +335,7 @@ export function CirclePacks({data, tooltipFormat}: PackProps) {
             }
 
             const texts = canvas
-                .selectAll<SVGTextElement, PackedNodeWithSorted<circlePackData>>("text")
+                .selectAll<SVGTextElement, PackedNodeWithSorted<hierarchyData>>("text")
                 .data(nodes, d=>d.data.name)
                 .join(
                     enter=>enter.append("text")  
@@ -362,7 +362,7 @@ export function CirclePacks({data, tooltipFormat}: PackProps) {
                     
             texts.raise()
                    
-            function clicked(d:PackedNodeWithSorted<circlePackData>) {	
+            function clicked(d:PackedNodeWithSorted<hierarchyData>) {	
                 const focus0 = focus; focus = d;
                                 
                 const myMaxRadius = (diameter/2) - margin;  
@@ -387,9 +387,9 @@ export function CirclePacks({data, tooltipFormat}: PackProps) {
                                         
                 texts
                     .style("font-size", LABELFONTSIZE * thicknessK + 'px')
-                    .filter(function(d) { return (d as PackedNodeWithSorted<circlePackData>).parent === focus || (this as SVGTextElement).style.display === "inline"; })	    	  	    
-                    .style("fill-opacity", function(d) { return (d as PackedNodeWithSorted<circlePackData>).parent === focus ? 1 : 0; })
-                    .style("display", function(d){return ((d as PackedNodeWithSorted<circlePackData>).parent===focus? "inline":"none");})
+                    .filter(function(d) { return (d as PackedNodeWithSorted<hierarchyData>).parent === focus || (this as SVGTextElement).style.display === "inline"; })	    	  	    
+                    .style("fill-opacity", function(d) { return (d as PackedNodeWithSorted<hierarchyData>).parent === focus ? 1 : 0; })
+                    .style("display", function(d){return ((d as PackedNodeWithSorted<hierarchyData>).parent===focus? "inline":"none");})
                     //.each("start", function(d) { if (d.parent === focus) this.style.display = "inline"; })
                     //.each("end", function(d) { if (d.parent !== focus) this.style.display = "none"; });                                                            
                 //event.stopPropagation();
@@ -402,17 +402,17 @@ export function CirclePacks({data, tooltipFormat}: PackProps) {
                                     
                 texts
                     .style("font-size", LABELFONTSIZE * thicknessK + 'px')
-                    .filter(function(d) { return (d as PackedNodeWithSorted<circlePackData>).parent === focus || (this as SVGTextElement).style.display === "inline"; })	  
+                    .filter(function(d) { return (d as PackedNodeWithSorted<hierarchyData>).parent === focus || (this as SVGTextElement).style.display === "inline"; })	  
                         //.transition().duration(750)
-                    .style("fill-opacity", function(d) { return (d as PackedNodeWithSorted<circlePackData>).parent === focus ? 1 : 0; })
-                    .style("display", function(d){return ((d as PackedNodeWithSorted<circlePackData>).parent===focus? "inline":"none");});                                                                                                                 
+                    .style("fill-opacity", function(d) { return (d as PackedNodeWithSorted<hierarchyData>).parent === focus ? 1 : 0; })
+                    .style("display", function(d){return ((d as PackedNodeWithSorted<hierarchyData>).parent===focus? "inline":"none");});                                                                                                                 
                 
                 return;
             }
 
             reset()
         }, 
-        [circlePackData, parentWidth, parentHeight, isSorted]
+        [hierarchyData, parentWidth, parentHeight, isSorted]
     );
 
     return (

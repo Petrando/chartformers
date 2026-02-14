@@ -1,12 +1,13 @@
 import React, { useState} from 'react';
 import { createRoot } from 'react-dom/client';
 import { BarChart, PieChart, StackedBarChart, GroupedBarChart, PercentageBarChart,
-  Sankey, CirclePacks, PopulationPyramid, StockPriceChart
+  Sankey, CirclePacks, PopulationPyramid, StockPriceChart, Sunburst
  } from '../src';
 import { year1, year2, stackedData, stackedDataVar1, stackedDataVar2, stackData1, stackData2, stackData3 } from './data/constants';
 import { englishFreq, germanFreq, categoryDataV1, categoryDataV2, categoryDataV3 } from './data/constants';
 import { flightData, flightData1, energyData, brexitVoting } from './data/constants'
 import { loanData1, loanData2, loanData3, loanData4, loanData4GPT, flareData } from './data/loan-data';
+import { loan1, loan2, loan3, loan4, loan4Gpt, flareD } from './data/hierarcy-data';
 import { population1, population2, indonesia, australia, japan, usa, brazil } from './data/population-data';
 import { JKSEData } from './data/stockprice';
 import controlStyles from './controls.module.css'
@@ -43,6 +44,21 @@ const App = () => {
 
   const packTooltipFormat = selectedPackData.startsWith("loan")?{prefix: "US$ "}:{}
 
+  const [selectedSunData, setSelectedSunData] = useState<string>("loan 1")
+
+  const handleSunChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    setSelectedSunData(e.target.value)
+    e.stopPropagation()
+    e.preventDefault()
+  }
+
+  const sunData = selectedSunData === "loan 1"?loan1:
+    selectedSunData === "loan 2"?loan2:
+      selectedSunData === "loan 3"?loan3:
+        selectedSunData === "loan 4"?loan4:
+          selectedSunData === "loan 4 GPT"?loan4Gpt:
+            flareD
+
   const [selectedPopulationData, setSelectedPopulationData] = useState<string>("indonesia")
 
   const handlePopulationChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
@@ -78,6 +94,22 @@ const App = () => {
   return(
   
     <div style={{paddingBottom: "20px"}}>    
+      <div id="select-sun-data" className={`${controlStyles["select-optional"]}`}>
+        <label htmlFor="choose-sunburst-data">Choose sunburst data:</label>
+        <select id="choose-sunburst-data" value={selectedSunData} onChange={handleSunChange}>              
+          {
+            ["loan 1", "loan 2", "loan 3", "loan 4", "loan 4 GPT", "flare"].map(s => (
+              <option key={s} value={s}>{s}</option>
+            ))
+          }
+        </select>
+      </div>
+      <div style={{
+          width: '80vw',
+          height: '450px', display:"flex", flexDirection:"column", overflow:'hidden', 
+          marginTop: '20px', border: '2px solid red'}}>
+        <Sunburst data={ sunData } />
+      </div>
       <div style={{
           width: '80vw',
           height: '450px', display:"flex", flexDirection:"column", overflow:'hidden', 
@@ -191,9 +223,9 @@ const App = () => {
       <div style={{width: "80vw", maxWidth:"500px", height: "300px", position: "relative" }}>                 
           <StackedBarChart data={selectedStackedData} colorIdx={50} orientation='horizontal'  />
       </div>
-      <div id="select-optional" className={`${controlStyles["select-optional"]}`}>
-            <label htmlFor="choose-data">Choose data:</label>
-            <select id="choose-data" value={selectedData} onChange={handleChange}>
+      <div id="select-bar-data" className={`${controlStyles["select-optional"]}`}>
+            <label htmlFor="choose-bar-data">Choose data:</label>
+            <select id="choose-bar-data" value={selectedData} onChange={handleChange}>
               <option value="english">English</option>
               <option value="german">German</option>
               <option value={"category1"}>Category 1</option>

@@ -47,10 +47,10 @@ export function Sunburst({data}: sunburstProps) {
                 .sum(d => d.value!)
                 .sort((a, b) => b.value! - a.value!)
         const root = d3.partition<hierarchyData>()
-            .size([2 * Math.PI, radius])
+            .size([2 * Math.PI, hierarchy.height + 1])
             (hierarchy) as sunburstData
 
-        root.each(d => d.current = { x0: d.x0, x1: d.x0, y0: d.y0, y1: d.y1 })
+        root.each(d => d.current = { x0: d.x0, x1: d.x1, y0: d.y0, y1: d.y1 })
 
         return root
     }
@@ -79,8 +79,7 @@ export function Sunburst({data}: sunburstProps) {
     const animDuration = 750;
     const chartRef = useD3<HTMLDivElement>((container) => {
         if (baseWidth === 0 || baseHeight === 0) return;
-                
-        
+                        
         const margin = { 
             top: 20, 
             right: 20, 
@@ -168,14 +167,18 @@ export function Sunburst({data}: sunburstProps) {
         }
 
         const root = processHierarchyData(baseRoot, firstRender?undefined:prevSunData?prevSunData:undefined)        
+        const maxDepth = root.height + 1;
+        const depthScale = radius / maxDepth;
+
+        let focus = root;
 
         const arc = d3.arc<sunburstData>()
             .startAngle(d => d.x0)
             .endAngle(d => d.x1)
             .padAngle(d => Math.min((d.x1 - d.x0) / 2, 0.005))
-            .padRadius(radius / 2)
-            .innerRadius(d => d.y0)
-            .outerRadius(d => d.y1 - 1)
+            .padRadius(radius * 1.5)
+            .innerRadius(d => d.y0 * depthScale)
+            .outerRadius(d => Math.max(d.y0 * depthScale, d.y1 * depthScale - 1))
         
         const longest = Math.max(baseWidth, baseHeight)
         const padding = (longest - dimension)/2
@@ -188,8 +191,14 @@ export function Sunburst({data}: sunburstProps) {
             .style("font", "10px sans-serif")
 
         const svgNode = canvasSvg.node()
-        const canvas = canvasSvg.select<SVGGElement>('.plot-area')               
-            .attr("fill-opacity", 0.6)                
+        const canvas = canvasSvg.select<SVGGElement>('.plot-area')                       
+            .style("fill-opacity", 0.6)                
+
+        const labelCanvas = canvasSvg.select(".label-group")
+            .attr("pointer-events", "none")
+            .attr("text-anchor", "middle")
+            .style("user-select", "none")
+        const labelShadow = "0 1px 0 lightblue, 1px 0 0 lightblue, -1px 0 0 lightblue, 0 -1px 0 lightblue"
         
         const path = canvas                    
             .selectAll<SVGPathElement, sunburstData>("path.slice")
@@ -201,19 +210,23 @@ export function Sunburst({data}: sunburstProps) {
                 enter=>{
                     const slices = enter.append("path")
                         .attr("class", "slice")
-                        .attr("fill", d => { 
-                            //console.log(d)
-                            const colorName = d.depth > 1?d.parent!.data.name:d.data.name
-                            console.log(d.data.name, " : ", colorName)
+                        .attr("fill", d => {                             
+                            const colorName = d.depth > 1?d.parent!.data.name:d.data.name                            
                             return color(colorName); 
+                        })
+                        .style("cursor", function(d){
+                            return d.children?"pointer":"default"
                         })                    
                         //.attr("d", arc)                                          
 
                     slices
                         .transition().duration(animDuration)                                                                                                
-                        .attrTween("d", function (d) {                            
+                        .attrTween("d", function (d) {
+                            const dCurrentEnter = {
+                                x0: d.current.x0, x1: d.current.x0, y0: d.current.y0, y1: d.current.y1
+                            }                            
                             const i = d3.interpolate(
-                                d.current,
+                                dCurrentEnter,
                                 {
                                     x0: d.x0,
                                     x1: d.x1,
@@ -232,6 +245,29 @@ export function Sunburst({data}: sunburstProps) {
                 undefined, 
                 exit=>exit.remove()
             )
+            .on("pointerenter", function(e, d){
+                if(focus !== root){
+                    return
+                }                
+                labelCanvas.selectAll<SVGTextElement, sunburstData>("text.suntext")
+                    .filter(dText => dText.data.name === d.data.name)
+                    .style("fill-opacity", 1)
+                    .style("text-shadow", labelShadow)
+            })
+            .on("pointerleave", function(e, d){
+                if(focus !== root){
+                    return
+                }
+                labelCanvas.selectAll<SVGTextElement, sunburstData>("text.suntext")
+                    .filter(dText => dText.data.name === d.data.name)
+                    .style("fill-opacity", d => labelVisible(d) ? 1 : 0)
+                    .style("text-shadow", d => labelVisible(d)?labelShadow:"none")
+            })
+            .on("click", function(e, d){
+                if(d.children){
+                    clicked(e, d)
+                }
+            })
             .transition().duration(animDuration)                                            
             //.attr("d", arc)                                    
             .attrTween("d", function (d) {                
@@ -248,57 +284,126 @@ export function Sunburst({data}: sunburstProps) {
                     d.current = i(t);                    
                     return arc(d.current as sunburstData)!;
                 };
-            })            
+            })                    
 
-
-        /*path.filter(d => (d.children?true:false))
-            .style("cursor", "pointer")
-            .on("click", clicked);*/
-
-        const labelCanvas = canvasSvg.select(".label-group")
-            .attr("pointer-events", "none")
-            .attr("text-anchor", "middle")
-            .style("user-select", "none")
-        
+        canvasSvg.select("circle.reset").remove()
+        const parentCircle = canvasSvg.selectAll("circle")
+            .data([root])
+            .join("circle")
+            .attr("class", "reset")
+            .attr("r", depthScale)
+            .attr("fill", "transparent")
+            .attr("pointer-events", "all")
+            .on("click", (event, d) => clicked(event, d));
+                        
         const label = labelCanvas.selectAll<SVGTextElement, sunburstData>("text.suntext")
             .data(
-                root.descendants().filter(d => (d.y0 + d.y1) / 2 * (d.x1 - d.x0) > 10), 
+                root.descendants()/*.filter(d => (d.y0 + d.y1) / 2 * (d.x1 - d.x0) > 0.25)*/, 
                 function(d){ return d.data.name})
             .join(
                 enter=>enter
                     .append("text")
                     .attr("class", "suntext")
                     .attr("dy", "0.35em")
-                    .style("opacity", 0)
+                    .style("fill-opacity", 0)
+                    .style("text-shadow", "none")
                     .text(d => d.data.name)
                         .transition().duration(animDuration)
-                    .style("opacity", 1)
+                    .style("fill-opacity", d => labelVisible(d) ? 1 : 0)
+                    .style("text-shadow", d => labelVisible(d)?labelShadow:"none")
                     .attr("transform", labelTransform)
                     ,
                 undefined,
                 exit=>exit.remove()
             )
                 .transition().duration(animDuration)
-            .style("opacity", 1)
+            .style("fill-opacity", d => labelVisible(d) ? 1 : 0)
+            .style("text-shadow", d => labelVisible(d)?labelShadow:"none")
             .attr("transform", labelTransform)
-            .attr("dy", "0.35em")                        
+            .attr("dy", "0.35em")                
+
+        //clicked(undefined, root, true)
+            
+        function clicked(event: PointerEvent | undefined, data: sunburstData | undefined, initialCall: boolean = false) {                
+            const p = data as sunburstData
+            focus = p;            
+
+            parentCircle
+                .style("cursor", focus === root?"default":"pointer")
+            parentCircle.datum(initialCall?root:p.parent || root);
+
+            root.each(d => d.target = {
+                x0: Math.max(0, Math.min(1, (d.x0 - p.x0) / (p.x1 - p.x0))) * 2 * Math.PI,
+                x1: Math.max(0, Math.min(1, (d.x1 - p.x0) / (p.x1 - p.x0))) * 2 * Math.PI,
+                y0: Math.max(0, d.y0 - p.depth),
+                y1: Math.max(0, d.y1 - p.depth)
+            });
+
+            const t = canvasSvg.transition().duration(animDuration);
+
+            canvas                    
+                .selectAll<SVGPathElement, sunburstData>("path.slice")
+                    .transition().duration(animDuration)
+                .tween("data", d => {
+                    const i = d3.interpolate(d.current, d.target!);
+                    return t => d.current = i(t);
+                })
+                .attrTween("d", d => () => arc(d.current as sunburstData) ?? "");
+            
+            labelCanvas
+                .selectAll<SVGTextElement, sunburstData>("text.suntext")
+                    .transition().duration(animDuration)
+                .tween("data", d => {
+                    const i = d3.interpolate(d.current, d.target!);
+                    return t => d.current = i(t);
+                })
+                .style("fill-opacity", d => labelVisible(d) ? 1 : 0)
+                .style("text-shadow", d => labelVisible(d)?labelShadow:"none")
+                .attrTween("transform", d => () => labelTransform(d.current as rect));
+
+            //setPrevSunData(p)
+        }
             
         function arcVisible(d: sunburstData) {
             return d.y1 <= 3 && d.y0 >= 1 && d.x1 > d.x0;
         }
 
         function labelVisible(d: sunburstData) {
-            const visible = d.y1 <= 3 && d.y0 >= 1 && (d.y1 - d.y0) * (d.x1 - d.x0) > 0.03;            
-            return visible;
-        }
-        
-        function labelTransform(d: sunburstData) {
-            if(d.depth === 0){
-                return ''
+
+            const rectData = (d.target ?? d.current) as rect;
+            const { x0, x1, y0, y1 } = rectData;
+
+            //toggle center label
+            //if (y0 === 0) return false;
+
+            const angularWidth = x1 - x0;
+            const radialCenter = (y0 + y1) / 2;
+            const areaMetric = radialCenter * angularWidth;
+
+            // 🚨 Only override area filtering if NOT at root
+            if (focus !== root && d.ancestors().includes(focus)) {
+                return true;
             }
+
+            return (
+                y1 <= maxDepth &&
+                y0 >= 0 &&
+                angularWidth > 0.003 &&
+                areaMetric > 0.25
+            );
+        }
+
+        function labelTransform(d: rect) {
+            if (d.y0 === 0) {
+                return `translate(0,0)`;   // for center label no rotation
+            }            
             const x = (d.x0 + d.x1) / 2 * 180 / Math.PI;
-            const y = (d.y0 + d.y1) / 2// * radius;
-            return `rotate(${x - 90}) translate(${y},0) rotate(${x < 180 ? 0 : 180})`;
+            const y = (d.y0 + d.y1) / 2 * depthScale;
+            return `
+                rotate(${x - 90})
+                translate(${y},0)
+                rotate(${x < 180 ? 0 : 180})
+            `;
         }
 
     }, [data, baseWidth, baseHeight, isSorted]);

@@ -186,6 +186,10 @@
     stroke-width: 2;
 }
 
+.groupedRectNotHovered {
+    fill-opacity: 0.5;
+}
+
 .rotatedAxisText {
     text-anchor: start;
     transform: rotate(25deg);

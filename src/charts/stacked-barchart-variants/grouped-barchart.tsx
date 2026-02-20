@@ -10,7 +10,7 @@ import { cloneObj, indexColor, basicFormat } from '../../utils';
 import { inactiveColor } from '../../../dev/data/constants';
 import styles from '../global.module.css';
 import stackedBarStyles from './stacked-barchart.module.css';
-import { LayeredData, ExtendedSeriesPoint, ExtendedSeries, StackedBarChartProps } from './types';
+import { LayeredData, ExtendedSeriesPointWithSorted, ExtendedSeriesWithSorted, StackedBarChartProps } from './types';
 import { useUIControls } from '../../hooks/useUIControls';
 
 export function GroupedBarChart({ data, colorIdx = 0, orientation = 'vertical', tooltipFormat }: StackedBarChartProps) {
@@ -152,19 +152,17 @@ export function GroupedBarChart({ data, colorIdx = 0, orientation = 'vertical', 
             ref={controlsRef}
             className={`${styles[isMediumScreen?"controls-container":"controls-container-sm"]} ${uiControls?styles["fill-container"]:""}`}
         >
-            <label className={`${styles["controls-label"]} ${plotted === "all"?styles.disabled:""}`} style={{paddingRight: '12px'}}>
+            <label className={`${styles["controls-label"]}`} style={{paddingRight: '12px'}}>
                 <input 
                     type="checkbox" 
                     className={`${styles["controls-checkbox"]}`} 
                     checked={isSorted}
-                    onChange={(e) => setIsSorted(e.target.checked)}
-                    disabled={plotted === "all"}
+                    onChange={(e) => setIsSorted(e.target.checked)}                    
                 />
                     Sort
             </label>
             <div 
-                ref={legendRef}
-                id='stacked-barchart-legends'
+                ref={legendRef}            
                 className={`${stackedBarStyles["legends-container"]}`}
             />
         </div>
@@ -287,35 +285,49 @@ export function GroupedBarChart({ data, colorIdx = 0, orientation = 'vertical', 
         const dataLayers: Series<LayeredData, string | string[]>[] =
             stack<LayeredData>().keys(keys)(sortedData);        
         
-        const processedDataLayers:ExtendedSeries[] = dataLayers.map((series) => {
+        const processedDataLayers:ExtendedSeriesWithSorted[] = dataLayers.map((series) => {
             const seriesKey = series.key
-            const newSeries = series.map((point) => {                
+            const newSeries = series.map((point) => {
+                const sortedLayers = Object.keys(point.data)
+                .filter((prop) => prop !== "label" && prop !== "total")
+                .map((prop) => ({
+                    label: prop,
+                    value: point.data[prop],
+                }))
+                .sort((a, b) => Number(a.value!) - Number(b.value!));
+
                 return {
                     ...point,
                     key: `${seriesKey} - ${point.data.label}`,
                     barKey: seriesKey as string,
+                    data: {
+                        ...point.data,
+                        sortedLayers: sortedLayers.map((d) => d.label),
+                    },
                 };
-            }) as ExtendedSeries
+            }) as ExtendedSeriesWithSorted
 
             newSeries.key = seriesKey as string
             return newSeries
-        }
-        );
+        });
+        //groupedRectNotHovered
 
-        const updateRectClass = (d:ExtendedSeriesPoint) => {
+        const updateRectClass = (d:ExtendedSeriesPointWithSorted) => {
                 if(hovered !== ""){
                     return `rect 
                         ${
                             hovered === d.barKey?
                             stackedBarStyles.rectLegendHovered:
-                            stackedBarStyles.rectLegendNotHovered
+                            `
+                                ${stackedBarStyles.rectLegendNotHovered} 
+                                ${(plotted === "all")?stackedBarStyles.groupedRectNotHovered:""}`
                         }`
                 }
                 return `rect ${stackedBarStyles.rect}`
 
         }  
 
-        let serie = canvas.selectAll<SVGGElement, ExtendedSeries>(".serie")
+        let serie = canvas.selectAll<SVGGElement, ExtendedSeriesWithSorted>(".serie")
             .data(processedDataLayers, function(d){return d.key})
             .join(
                 enter=>{
@@ -372,16 +384,17 @@ export function GroupedBarChart({ data, colorIdx = 0, orientation = 'vertical', 
                 exit=>exit
                     .transition().duration(animDuration)
                     .style("opacity", 0).attr("fill", "grey")
-                    .selectAll<SVGRectElement, ExtendedSeriesPoint>("rect")
+                    .selectAll<SVGRectElement, ExtendedSeriesPointWithSorted>("rect")
                     .attr("y", graphHeight)
                     .attr("height", 0)
                     .remove()
             )
             
-        const labelScalePos = (d: ExtendedSeriesPoint) => {
+        const labelScalePos = (d: ExtendedSeriesPointWithSorted) => {
             const labelPos = labelScale(d.data.label + "") ?? 0;
             if(plotted === "all"){                                    
-                const idx = keys.indexOf(d.barKey) || 0
+                const sortReference = !isSorted?keys:d.data.sortedLayers
+                const idx = (Array.isArray(sortReference) && sortReference.indexOf(d.barKey)) || 0
                 return labelPos + (idx * (labelScale.bandwidth()/keys.length))
             }                            
             return labelPos
@@ -392,36 +405,36 @@ export function GroupedBarChart({ data, colorIdx = 0, orientation = 'vertical', 
                 labelScale.bandwidth()/keys.length:labelScale.bandwidth()
         }
 
-        const valueScalePos = (d: ExtendedSeriesPoint) => {
+        const valueScalePos = (d: ExtendedSeriesPointWithSorted) => {
             return orientation === 'vertical'?
                 graphHeight - (valueScale(d[0]) - valueScale(d[1])):
                     valueScale(0)
         }
 
-        const valueScaleDimension = (d: ExtendedSeriesPoint) => {
+        const valueScaleDimension = (d: ExtendedSeriesPointWithSorted) => {
             const rectDimension = orientation === 'vertical'?
                 valueScale(d[0]) - valueScale(d[1]):
                     valueScale(d[1]) - valueScale(d[0]);
             return isNaN(rectDimension)?0:rectDimension<0?0:rectDimension;
         }
 
-        const rectXPos = (d: ExtendedSeriesPoint) => {            
+        const rectXPos = (d: ExtendedSeriesPointWithSorted) => {            
             return orientation === 'vertical' ? labelScalePos(d) : valueScalePos(d)
         }
 
-        const rectWidth = (d: ExtendedSeriesPoint) => {            
+        const rectWidth = (d: ExtendedSeriesPointWithSorted) => {            
             return orientation === 'vertical' ? labelScaleBandWidth() : valueScaleDimension(d)
         }
 
-        const rectYPos = (d: ExtendedSeriesPoint) => {            
+        const rectYPos = (d: ExtendedSeriesPointWithSorted) => {            
             return orientation === 'vertical' ? valueScalePos(d) : labelScalePos(d)
         }
 
-        const rectHeight = (d: ExtendedSeriesPoint) => {            
+        const rectHeight = (d: ExtendedSeriesPointWithSorted) => {            
             return orientation === 'vertical' ? valueScaleDimension(d) : labelScaleBandWidth()
         }
         
-        serie.selectAll<SVGRectElement, ExtendedSeriesPoint>("rect")
+        serie.selectAll<SVGRectElement, ExtendedSeriesPointWithSorted>("rect")
             .data(
                 (d) => d,
                 (d) => d.data.label
@@ -490,7 +503,7 @@ export function GroupedBarChart({ data, colorIdx = 0, orientation = 'vertical', 
                 .attr("y", rectYPos);
 
         serie
-            .selectAll<SVGRectElement, ExtendedSeriesPoint>("rect")
+            .selectAll<SVGRectElement, ExtendedSeriesPointWithSorted>("rect")
                 .on("mouseover", function(e, d){
                     //unhoverLegend()
                     

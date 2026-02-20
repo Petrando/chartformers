@@ -18,6 +18,13 @@ export type ExtendedSeriesPoint = d3.SeriesPoint<LayeredData> & {
 
 export type ExtendedSeries = ExtendedSeriesPoint[] & { key: string };
 
+export type ExtendedSeriesPointWithSorted = d3.SeriesPoint<LayeredData & { sortedLayers: string[] }> & {
+  key: string;
+  barKey: string;
+};
+
+export type ExtendedSeriesWithSorted = ExtendedSeriesPointWithSorted[] & { key: string };
+
 export interface StackedBarChartProps {
     data: LayeredData[];
     colorIdx?: number;

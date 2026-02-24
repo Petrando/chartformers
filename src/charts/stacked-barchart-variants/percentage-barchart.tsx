@@ -154,8 +154,7 @@ export function PercentageBarChart({ data, colorIdx = 0, orientation = 'vertical
                     Percentage
             </label>
             <div 
-                ref={legendRef}
-                id='stacked-barchart-legends'
+                ref={legendRef}                
                 className={`${stackedBarStyles["legends-container"]}`}
             />
         </div>

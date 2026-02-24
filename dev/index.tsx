@@ -1,6 +1,6 @@
 import React, { useState} from 'react';
 import { createRoot } from 'react-dom/client';
-import { BarChart, PieChart, StackedBarChart, GroupedBarChart, PercentageBarChart,
+import { BarChart, PieChart, StackedBarChart, GroupedBarChart, PercentageBarChart, MorphStackedBarChart,
   Sankey, CirclePacks, PopulationPyramid, StockPriceChart, Sunburst
  } from '../src';
 import { year1, year2, stackedData, stackedDataVar1, stackedDataVar2, stackData1, stackData2, stackData3 } from './data/constants';
@@ -12,11 +12,18 @@ import { population1, population2, indonesia, australia, japan, usa, brazil } fr
 import { JKSEData } from './data/stockprice';
 import controlStyles from './controls.module.css'
 
+type modeType = "stacked" | "grouped" | "percentage"
 const App = () => {
   const [selectedData, setSelectedData] = useState<string>("stack1");
   
   const handleChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     setSelectedData(e.target.value);
+  };
+
+  const [morphStackedMode, setMode] = useState<modeType>("stacked");
+  
+  const handleModeChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    setMode(e.target.value as modeType);
   };
 
   const [selectedSankeyData, setSelectedSankeyData] = useState<string>("brexit voting")
@@ -176,22 +183,7 @@ const App = () => {
         height: '450px', display:"flex", flexDirection:"column", overflow:'hidden', 
         marginTop: '20px', /*border: '2px solid red'*/}}>      
         <div id="parent" className={`${controlStyles.parent}`}>
-          <div id="select-optional" className={`${controlStyles["select-optional"]}`}>
-            <label htmlFor="choose-data">Choose data:</label>
-            <select id="choose-data" value={selectedData} onChange={handleChange}>
-              {/*<option value="english">English</option>
-              <option value="german">German</option>
-              <option value={"category1"}>Category 1</option>
-              <option value={"category2"}>Category 2</option>
-              <option value={"category3"}>Category 3</option>
-              */}
-              {
-                ["stack1", "stack2", "stack3", "stack4", "stack5"].map(s => (
-                  <option key={s} value={s}>{s}</option>
-                ))
-              }
-            </select>
-          </div>
+          
           <div className={`${controlStyles["UI-controls"]}`}>
             
             {/*<div id="legends-container" className={`${controlStyles["legends-container"]}`}>
@@ -222,6 +214,31 @@ const App = () => {
       </div>
       <div style={{width: "80vw", maxWidth:"500px", height: "300px", position: "relative" }}>                 
           <StackedBarChart data={selectedStackedData} colorIdx={50} orientation='horizontal'  />
+      </div>
+      <div id="select-stack-data" className={`${controlStyles["select-optional"]}`}>
+        <label htmlFor="choose-stack-data">Choose data:</label>
+        <select id="choose-stack-data" value={selectedData} onChange={handleChange}>              
+          {
+            ["stack1", "stack2", "stack3", "stack4", "stack5"].map(s => (
+              <option key={s} value={s}>{s}</option>
+            ))
+          }
+        </select>
+      </div>
+      <div id="select-mode" className={`${controlStyles["select-optional"]}`}>
+            <label htmlFor="choose-mode">Choose mode:</label>
+            <select id="choose-mode" value={morphStackedMode} onChange={handleModeChange}>
+              <option value="stacked">Stacked</option>
+              <option value="grouped">Grouped</option>
+              <option value="percentage">Percentage</option>              
+            </select>
+          </div>
+      <div style={{width: "80vw", height: "450px", position: "relative" }}>                 
+          <MorphStackedBarChart 
+            data={selectedStackedData} 
+            mode={morphStackedMode}   
+            focusOnPlot={true}
+          />
       </div>
       <div id="select-bar-data" className={`${controlStyles["select-optional"]}`}>
             <label htmlFor="choose-bar-data">Choose data:</label>

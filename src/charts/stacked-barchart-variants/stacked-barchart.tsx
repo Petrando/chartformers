@@ -77,8 +77,7 @@ export function StackedBarChart({ data, focusOnPlot = false, colorIdx = 0, orien
                     focusOnPlot?containerActiveClass:containerInactiveClass:
                         containerClass}
                 legend-item
-            `
-            
+            `            
         }
         const legends = container.selectAll<HTMLDivElement, string>(".legend-item")
             .data([...keys], d=>d)
@@ -212,8 +211,7 @@ export function StackedBarChart({ data, focusOnPlot = false, colorIdx = 0, orien
                     Sort
             </label>
             <div 
-                ref={legendRef}
-                id='stacked-barchart-legends'
+                ref={legendRef}            
                 className={`${stackedBarStyles["legends-container"]}`}
             />
         </div>
@@ -332,7 +330,7 @@ export function StackedBarChart({ data, focusOnPlot = false, colorIdx = 0, orien
             .remove()                        
 
         const dataLayers: Series<LayeredData, string>[] =
-            stack<LayeredData>().keys(selectedKeys)(sortedData);
+            stack<LayeredData>().keys(selectedKeys)(cloneObj(sortedData));                     
         
         const extendedDataLayers: ExtendedSeries[] = dataLayers.map((series) => {
             const seriesKey = series.key;
@@ -348,7 +346,7 @@ export function StackedBarChart({ data, focusOnPlot = false, colorIdx = 0, orien
 
             newSeries.key = seriesKey;
             return newSeries;
-        });        
+        });                
         
         const serie = canvas
             .selectAll<SVGGElement, ExtendedSeries>(".serie")

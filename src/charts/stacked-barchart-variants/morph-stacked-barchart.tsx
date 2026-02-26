@@ -1,6 +1,6 @@
-import React, {useState, useEffect} from 'react';
-import { createPortal } from 'react-dom';
-import { axisBottom, axisLeft, format, max, ScaleBand, scaleBand, ScaleLinear, scaleLinear, select, Series, stack } from 'd3';
+import React, {useState, useEffect, useDeferredValue, useRef} from 'react';
+import { axisBottom, axisLeft, format, max, ScaleBand, scaleBand, ScaleLinear, scaleLinear, 
+    select, Series, stack, stackOffsetExpand, stackOffsetNone } from 'd3';
 import { useD3 } from '../../hooks/useD3';
 import { useParentSize } from '../../hooks/useParentSize';
 import { useContainerSize } from '../../hooks/useContainerSize';
@@ -22,41 +22,47 @@ type MorphStackedBarChartProps =
 };
 
 export function MorphStackedBarChart({ 
-    data, colorIdx = 0, mode = 'stacked', orientation = 'vertical', focusOnPlot = true, tooltipFormat 
+    data, colorIdx = 0, mode = 'stacked', orientation = 'vertical', focusOnPlot = false, tooltipFormat 
 }: MorphStackedBarChartProps) {
     const [ref, parentSize] = useParentSize<HTMLDivElement>();
-    const [prevMode, setPrevMode] = useState<modeType>("stacked")
-    const { width: parentWidth, height: parentHeight } = parentSize;
-    const [controlsRef, controlsSize] = useContainerSize<HTMLDivElement>();
-    const { height: controlsHeight } = controlsSize;
+    const prevModeRef = useRef<modeType>(mode);
+    const defferedMode = useDeferredValue(mode)
+  
+    const { width: parentWidth, height: parentHeight } = parentSize;    
     const [ chartContainerRef, chartSize] = useContainerSize<HTMLDivElement>()
     const { width, height } = chartSize
 
     const [prevData, setPrevData] = useState<LayeredData[] | null>(null);
-    
-    const [dataJustChanged, setDataJustChanged] = useState(false)
+        
     const [plotted, setPlotted] = useState<string[]>(["all"]);
-    const [justPlotted, setJustPlotted] = useState<boolean>(false)
-    const [hovered, setHovered] = useState<string>("")    
-    const [isSorted, setIsSorted] = useState<boolean>(false);
-    
-    const uiControls = useUIControls();  
+    const [justPlotted, setJustPlotted] = useState<boolean>(false)    
+    const [isSorted, setIsSorted] = useState<boolean>(false);        
     
     const stackData = data
     useEffect(() => {
-        setPlotted(["all"])
-        setDataJustChanged(true)
-        setIsSorted(false)
+        setPlotted(["all"])        
+        setIsSorted(false)        
     }, [stackData])    
-    
-    const animDuration = 750;
+
     useEffect(()=>{
-        let timer: ReturnType<typeof setTimeout>;
-        if(dataJustChanged){
-            timer = setTimeout(()=>{setDataJustChanged(false)}, animDuration + 500)
+        if(prevModeRef.current !== mode){
+            prevModeRef.current = mode
         }
-        return () => { clearTimeout(timer)}
-    }, [dataJustChanged]) 
+    }, [stackData, mode])
+
+    useEffect(()=>{
+        setPlotted(["all"])
+        setIsSorted(false)
+    }, [ mode ])
+    
+    const animDuration = 750;     
+
+    // 2. Use useEffect to update the ref *after* the render is committed
+    useEffect(() => {
+        if(defferedMode !== mode){
+            prevModeRef.current = defferedMode;
+        }        
+    }, [defferedMode, mode]);
         
     const renderDeps = [ width, height, plotted, colorIdx ]
 
@@ -67,11 +73,50 @@ export function MorphStackedBarChart({
 
     const layers = useLayerIndex(keys)
     const isMediumScreen = width > 576;
-
-    const legendRef = useD3<HTMLDivElement>((container) => { 
-        if(dataJustChanged) return
-        const legendWidth = isMediumScreen?80:50
         
+    const chartRef = useD3<HTMLDivElement>((container) => {
+        if (width === 0 || height === 0) return;        
+        
+        const margin = { top: 20, right: 30, bottom: 30, left: 40 };          
+
+        const prevMode = prevModeRef.current
+                    
+        chartData.forEach(function(d: LayeredData) {
+            d.total = keys.reduce((acc, curr) => {
+                if(!(curr in d)){
+                    d[curr] = 0
+                }
+                const value = d[curr];
+                return acc + (typeof value === 'number' ? value : Number(value));
+            }, 0);
+        });  
+
+        const filteredData = chartData
+
+        const sortedData = isSorted?
+            cloneObj(filteredData).sort(function(a:LayeredData, b:LayeredData){
+                if(!focusOnPlot){
+                    return a.total! - b.total!
+                }else{
+                    if(plotted[0] === "all"){
+                        return a.total! - b.total!
+                    }
+
+                    return Number(a[plotted[0]]!) - Number(b[plotted[0]]!)
+                }
+                
+            }):filteredData
+                                
+        const graphWidth = width - margin.left - margin.right,
+            graphHeight = height - margin.top - margin.bottom;
+
+        const canvasSvg = container.select<SVGSVGElement>("svg")
+        const svgNode = canvasSvg.node()
+        const canvas = canvasSvg.select<SVGGElement>('.plot-area')
+            .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+
+        const controls = container.select<HTMLDivElement>(".controls")
+        const legendsContainer = controls.select<HTMLDivElement>(".legends-container")
         const legendClass = function(d:string){
             const containerClass = stackedBarStyles[isMediumScreen?"legend-container":"legend-container-sm"]
             const containerActiveClass = stackedBarStyles[isMediumScreen?"legend-container-active":"legend-container-active-sm"]
@@ -84,7 +129,16 @@ export function MorphStackedBarChart({
             `            
         }
 
-        const legends = container.selectAll<HTMLDivElement, string>(".legend-item")
+        function layerFill(d:ExtendedSeriesWithSorted){
+            const layerIndex = layers.current.findIndex(l => l === d.key) + colorIdx
+            const color = indexColor(layerIndex)
+            
+            return color
+        }
+
+        const legendWidth = isMediumScreen?80:50        
+
+        const legends = legendsContainer.selectAll<HTMLDivElement, string>(".legend-item")
             .data([...keys], d=>d)
             .join(
                 enter => {
@@ -136,10 +190,38 @@ export function MorphStackedBarChart({
                     .style("opacity", 0)
                     .style("top", "53px")
                     .remove().remove()
-            )        
+            )
+            .on("mouseover", function(e, d){
+                if(mode === "percentage") return;
+                if(plotted[0] === "all"){
+                    if(focusOnPlot){
+                        canvas.selectAll<SVGGElement, ExtendedSeriesWithSorted>(".serie")
+                            .attr("fill", layerFill)
+                            .filter(dSerie => dSerie.key !== d)                            
+                                .transition().duration(250)
+                            .style("opacity", 0.25)
+                    }else{
+                        canvas.selectAll<SVGGElement, ExtendedSeriesWithSorted>(".serie")
+                            .attr("fill", layerFill)
+                            .filter(dSerie => dSerie.key === d)                            
+                                .transition().duration(250)
+                            .style("opacity", 0.25)
+                    }   
+                }                             
 
-        legends
+            })
+            .on("mouseout", function(e, d){
+                if(mode === "percentage") return;
+                if(plotted[0] === "all"){
+                    canvas.selectAll<SVGGElement, ExtendedSeriesWithSorted>(".serie")
+                        .attr("fill", layerFill)                        
+                        .transition().duration(250)
+                    .style("opacity", 1)
+                }
+                
+            })
             .on("click", (e, d)=>{
+                if(mode === "percentage") return;
                 setPlotted(prev=>{
                     let newPlot:string[] = []
                     if(focusOnPlot){
@@ -158,81 +240,7 @@ export function MorphStackedBarChart({
                     return newPlot
                 })
                 setJustPlotted(true)
-            })
-            .on("mouseover", (e, d)=>{
-                setHovered(d)
-            })
-            .on("mouseout", (e, d)=>{
-                setHovered("")
-            })
-                        
-    }, [...renderDeps, keys, dataJustChanged]);
-
-    // Define the controls element (checkbox)
-    const controls = (
-        <div 
-            ref={controlsRef}
-            className={`${styles[isMediumScreen?"controls-container":"controls-container-sm"]} ${uiControls?styles["fill-container"]:""}`}
-        >
-            <label className={`${styles["controls-label"]}`} style={{paddingRight: '12px'}}>
-                <input 
-                    type="checkbox" 
-                    className={`${styles["controls-checkbox"]}`} 
-                    checked={isSorted}
-                    onChange={(e) => setIsSorted(e.target.checked)}                    
-                />
-                    Sort
-            </label>
-            <div 
-                ref={legendRef}            
-                className={`${stackedBarStyles["legends-container"]}`}
-            />
-        </div>
-    );
-
-    const chartRef = useD3<HTMLDivElement>((container) => {
-        if (width === 0 || height === 0) return;
-        if(hovered !== "" && dataJustChanged) return
-        
-        const margin = { top: 20, right: 30, bottom: 30, left: 40 };          
-                    
-        chartData.forEach(function(d: LayeredData) {
-            d.total = keys.reduce((acc, curr) => {
-                if(!(curr in d)){
-                    d[curr] = 0
-                }
-                const value = d[curr];
-                return acc + (typeof value === 'number' ? value : Number(value));
-            }, 0);
-        });  
-
-        const filteredData = chartData
-
-        const sortedData = isSorted?
-            cloneObj(filteredData).sort(function(a:LayeredData, b:LayeredData){
-                if(!focusOnPlot){
-                    return a.total! - b.total!
-                }else{
-                    if(plotted[0] === "all"){
-                        return a.total! - b.total!
-                    }
-
-                    return Number(a[plotted[0]]!) - Number(b[plotted[0]]!)
-                }
-                
-            }):filteredData
-                        
-        if(prevMode !== mode){
-            setPrevMode(mode)
-        }
-
-        const graphWidth = width - margin.left - margin.right,
-            graphHeight = height - margin.top - margin.bottom;
-
-        const canvasSvg = container.select<SVGSVGElement>("svg")
-        const svgNode = canvasSvg.node()
-        const canvas = canvasSvg.select<SVGGElement>('.plot-area')
-            .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+            })        
 
         const xLabels = sortedData.map(function(d:LayeredData) { return d.label; });            
 
@@ -285,7 +293,7 @@ export function MorphStackedBarChart({
                                     1
                                                                     
         y.domain([0, yMax as number]);
-        let yAxis = axisLeft(y).ticks(null, mode === "percentage" ?".0%":"s");            
+        let yAxis = axisLeft(y).tickSize(-graphWidth).ticks(4, mode === "percentage" ?".0%":"s");            
         
         canvas.select<SVGGElement>(".y-axis")  
             .attr("transform", `translate(0,0)`)
@@ -293,6 +301,10 @@ export function MorphStackedBarChart({
                 .transition().duration(animDuration)
                     .delay((prevMode === "stacked" && mode === "grouped")?1000:0)
             .call(yAxis)
+            .selectAll(".tick")
+            .filter(d => d === 0)
+            .select("line")
+            .remove()                        
 
         const tooltip = getTooltip(container as any)
             .style("opacity", 0);
@@ -304,7 +316,7 @@ export function MorphStackedBarChart({
         }
         
         const dataLayers: Series<LayeredData, string | string[]>[] =
-            stack<LayeredData>().keys(keys)(sortedData);        
+            stack<LayeredData>().keys(keys).offset(mode !== "percentage"?stackOffsetNone:stackOffsetExpand)(sortedData);        
         
         const processedDataLayers:ExtendedSeriesWithSorted[] = dataLayers.map((series) => {
             const seriesKey = series.key
@@ -333,15 +345,14 @@ export function MorphStackedBarChart({
         });
         
         function strokeDasharray(d:ExtendedSeriesPointWithSorted){
-            if(d.barKey === hovered){
+            /*if(d.barKey === hovered){
                 return "none"
-            }
-            const rectWidth = x.bandwidth()
-            const baseHeight = y(d[0]) - y(d[1])
-            const rectHeight = isNaN(baseHeight)?0:baseHeight<0?0:baseHeight    
+            }*/
+            const rectWidth = x.bandwidth()            
+            const rectHeight = y(d[0]) - y(d[1])
             
             const isTopLayer = keys.indexOf(d.barKey) === keys.length - 1
-                    || d.barKey === plotted[0]
+                || d.barKey === plotted[0]
             
             if(mode === "grouped"){
                 return "none"                    
@@ -371,7 +382,7 @@ export function MorphStackedBarChart({
         function rectHeight(d:ExtendedSeriesPointWithSorted){
             const height = y(d[0]) - y(d[1]);
             return height;
-        }
+        }        
         
         const serie = canvas.selectAll<SVGGElement, ExtendedSeriesWithSorted>(".serie")
             .data(processedDataLayers, function(d){return d.key})
@@ -379,8 +390,7 @@ export function MorphStackedBarChart({
                 enter=>{
                     let g = enter.append("g")
                         .attr("class", "serie")
-                        .attr("fill", function(d, i) {
-                            return indexColor(i); })
+                        .attr("fill", layerFill)
                         .style("opacity", d=>{
                             if(plotted[0] === "all"){
                                 return 1;
@@ -400,8 +410,7 @@ export function MorphStackedBarChart({
                 update=>{
                     let g = update                        
                         .transition().duration(animDuration)
-                        .attr("fill", function(d, i) {
-                            return indexColor(i); })
+                        .attr("fill", layerFill)
                         .style("opacity", d=>{
                             if(plotted[0] === "all"){
                                 return 1;
@@ -422,7 +431,12 @@ export function MorphStackedBarChart({
                     .attr("fill", "grey")
                     .selectAll("rect").attr("y", 0).attr("height", 0)
                     .remove()
-            )                 
+            )           
+            
+        const updateRectClass = (d: ExtendedSeriesPointWithSorted) => {            
+            
+            return `rect ${stackedBarStyles.rect}`
+        }
 
         serie.selectAll<SVGRectElement, ExtendedSeriesPointWithSorted>("rect")
             .data((d) => d, (d) => d.data.label)
@@ -533,7 +547,7 @@ export function MorphStackedBarChart({
 
         function transitionNormal(){
             serie.selectAll<SVGRectElement, ExtendedSeriesPointWithSorted>("rect")
-                //.attr("class", updateRectClass)                    
+                .attr("class", updateRectClass)                    
                 .transition().duration(animDuration)
                 .attr("stroke-dasharray", strokeDasharray)
                 .attr("stroke-dashoffset", strokeDashoffset)
@@ -556,7 +570,7 @@ export function MorphStackedBarChart({
 
         function transitionXWidth_then_YHeight(){
             serie.selectAll<SVGRectElement, ExtendedSeriesPointWithSorted>("rect")
-                //.attr("class", updateRectClass)                    
+                .attr("class", updateRectClass)                    
                     .transition().duration(animDuration)                    
                 .attr("x", function(d){                                                        
                     const xPos = x(d.data.label) ?? 0
@@ -580,7 +594,7 @@ export function MorphStackedBarChart({
 
         function transitionYHeight_then_XWidth(){
             serie.selectAll<SVGRectElement, ExtendedSeriesPointWithSorted>("rect")
-                //.attr("class", updateRectClass)                    
+                .attr("class", updateRectClass)                    
                     .transition().duration(animDuration)
                 .attr("y", yPos)
                 .attr("height", rectHeight)
@@ -601,10 +615,9 @@ export function MorphStackedBarChart({
                             x.bandwidth()/keys.length:x.bandwidth()
                 })
         }
-
+        
         console.log('mode: ', mode)
         console.log('prevMode: ', prevMode)
-        console.log('hovered: ', hovered)
         if(mode === "percentage"){
             if(prevMode === "stacked" || prevMode === "percentage"){
                 transitionNormal()
@@ -612,53 +625,54 @@ export function MorphStackedBarChart({
                 transitionYHeight_then_XWidth()
             }
         }
-        else if(mode === "grouped" && (prevMode === "stacked" || prevMode === null || prevMode === "percentage") ){
-            console.log('grouped to stacked')
+        else if(mode === "grouped" && (prevMode === "stacked" || prevMode === null || prevMode === "percentage") ){            
             transitionXWidth_then_YHeight()
         }
-        else if(mode === "stacked" && (prevMode === "grouped" /*|| prevSortSegment === true*/)){                                
-            console.log('stacked to grouped')
+        else if(mode === "stacked" && (prevMode === "grouped" /*|| prevSortSegment === true*/)){                                            
             transitionYHeight_then_XWidth()                            
         }
         else if(prevMode === mode ){
-            console.log('mode and prevMode is the same')
+
             transitionNormal()
         }
 
-    }, [ ...renderDeps, isSorted, chartData, keys, hovered, justPlotted, mode, orientation, dataJustChanged, tooltipFormat ]);
+    }, [ ...renderDeps, isSorted, chartData, keys, mode, orientation, tooltipFormat ]);
     
     return (
         <div 
             ref={ref} 
             style={{ width: parentWidth, height: parentHeight, display:'flex', flexDirection:'column' }}
-        >
-            {uiControls
-                ? createPortal(controls, uiControls)
-                    : controls}
+        >                        
             <div
-                ref={chartContainerRef} 
+                ref={chartRef} 
                 className={`${styles["fill-container"]}`}
                 style={{ display:"flex", flexDirection:"column"}}>
                 <div
-                    ref={chartRef} 
-                    className={`${styles["fill-container"]}`}
-                    style={{ display:"flex", flexDirection:"column"}}>
-                <svg
-                    className={`${styles["chart-svg"]} ${styles["fill-container"]}`}        
-                    viewBox={`0 0 ${width} ${height}`}
+                    className={`controls ${styles[isMediumScreen?"controls-container":"controls-container-sm"]}`}
+                    style={{border: "1px solid red", width: parentWidth}}
                 >
-                    {
-                        width > 0 &&
-                        <g className="plot-area">
-                            <g className="plot-rects" />
-                            <g className={`y-axis`} />
-                            <g className={`x-axis`} />  
-                        </g>        
-                    }                                        
-                </svg>
-                <Tooltip pCount={3} />
+                    <div className={`legends-container ${stackedBarStyles["legends-container"]}`} />
                 </div>
-            </div>
+                <div
+                    ref={chartContainerRef} 
+                    className={`${styles["fill-container"]}`}
+                    style={{ display:"flex", flexDirection:"column", border: "1px solid green"}}>
+                    <svg
+                        className={`${styles["chart-svg"]} ${styles["fill-container"]}`}        
+                        viewBox={`0 0 ${width} ${height}`}
+                    >
+                        {
+                            width > 0 &&
+                            <g className="plot-area">
+                                <g className="plot-rects" />
+                                <g className={`${stackedBarStyles["value-axis"]} y-axis`} />
+                                <g className={`x-axis`} />  
+                            </g>        
+                        }                                        
+                    </svg>
+                    <Tooltip pCount={3} />
+                </div>
+            </div>            
         </div>
     );
 }

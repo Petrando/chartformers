@@ -1,6 +1,7 @@
 import React, {useState, useEffect} from 'react';
 import { createPortal } from 'react-dom';
-import { axisBottom, axisLeft, format, max, ScaleBand, scaleBand, scaleLinear, select, Series, stack, stackOffsetExpand, stackOrderNone } from 'd3';
+import { axisBottom, axisLeft, format, max, ScaleBand, scaleBand, scaleLinear, select, Series, 
+    stack, stackOffsetExpand, stackOffsetNone, stackOrderNone } from 'd3';
 import { useD3 } from '../../hooks/useD3';
 import { useParentSize } from '../../hooks/useParentSize';
 import { useContainerSize } from '../../hooks/useContainerSize';
@@ -260,15 +261,12 @@ export function PercentageBarChart({ data, colorIdx = 0, orientation = 'vertical
             .selectAll(".tick")
             .filter(d => d === 0)
             .select("line")
-            .remove()
+            .remove()        
 
-        const stackFn = stack<LayeredData>()
+        const dataLayers: Series<LayeredData, string>[] = stack<LayeredData>()        
+            .keys(keys)
             .order(stackOrderNone)
-            .offset(stackOffsetExpand);
-
-        const dataLayers: Series<LayeredData, string>[] = !isPercentage?
-            stack<LayeredData>().keys(keys)(sortedData):
-                stackFn.keys(keys)(sortedData);
+            .offset(isPercentage?stackOffsetExpand:stackOffsetNone)(sortedData);
 
         const extendedDataLayers: ExtendedSeries[] = dataLayers.map((series) => {
             const seriesKey = series.key;

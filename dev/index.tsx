@@ -213,7 +213,7 @@ const App = () => {
         </div>
       </div>
       <div style={{width: "80vw", maxWidth:"500px", height: "300px", position: "relative" }}>                 
-          <StackedBarChart data={selectedStackedData} colorIdx={50} orientation='horizontal'  />
+          <StackedBarChart focusOnPlot={true} data={selectedStackedData} colorIdx={50} orientation='horizontal'  />
       </div>
       <div id="select-stack-data" className={`${controlStyles["select-optional"]}`}>
         <label htmlFor="choose-stack-data">Choose data:</label>

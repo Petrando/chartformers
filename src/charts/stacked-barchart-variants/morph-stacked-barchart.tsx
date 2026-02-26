@@ -322,7 +322,9 @@ export function MorphStackedBarChart({
         }
         
         const dataLayers: Series<LayeredData, string | string[]>[] =
-            stack<LayeredData>().keys(keys).offset(mode !== "percentage"?stackOffsetNone:stackOffsetExpand)(sortedData);        
+            stack<LayeredData>()
+            .keys(keys)
+            .offset(mode !== "percentage"?stackOffsetNone:stackOffsetExpand)(sortedData);        
         
         const processedDataLayers:ExtendedSeriesWithSorted[] = dataLayers.map((series) => {
             const seriesKey = series.key
@@ -573,7 +575,28 @@ export function MorphStackedBarChart({
         
         console.log('mode: ', mode)
         console.log('prevMode: ', prevMode)
-        if(mode === "percentage"){
+
+        const isStacked = mode === "stacked" || mode === "percentage"
+        const prevIsStacked = prevMode === "stacked" || prevMode === "percentage"
+
+        if(mode === prevMode){
+            transitionNormal()
+        }else{
+            if(isStacked){
+                if(prevIsStacked){
+                    transitionNormal()
+                }else{
+                    transitionYHeight_then_XWidth()                                    
+                }
+            }else{
+                if(!prevIsStacked){
+                    transitionNormal()
+                }else{
+                    transitionXWidth_then_YHeight()
+                }
+            }
+        }
+        /*if(mode === "percentage"){
             if(prevMode === "stacked" || prevMode === "percentage"){
                 transitionNormal()
             }else {
@@ -583,13 +606,13 @@ export function MorphStackedBarChart({
         else if(mode === "grouped" && (prevMode === "stacked" || prevMode === null || prevMode === "percentage") ){            
             transitionXWidth_then_YHeight()
         }
-        else if(mode === "stacked" && (prevMode === "grouped" /*|| prevSortSegment === true*/)){                                            
+        else if(mode === "stacked" && (prevMode === "grouped" /*|| prevSortSegment === true*//*)){                                            
             transitionYHeight_then_XWidth()                            
         }
         else if(prevMode === mode ){
 
             transitionNormal()
-        }
+        }*/
 
     }, [ ...renderDeps, isSorted, chartData, keys, mode, orientation, tooltipFormat ]);
     

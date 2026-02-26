@@ -93,7 +93,7 @@ export function MorphStackedBarChart({
 
         const filteredData = chartData
 
-        const sortedData = isSorted?
+        const sortedData = (isSorted && mode === "stacked")?
             cloneObj(filteredData).sort(function(a:LayeredData, b:LayeredData){
                 if(!focusOnPlot){
                     return a.total! - b.total!
@@ -152,6 +152,9 @@ export function MorphStackedBarChart({
                     divs.append("div")
                         .attr("class", stackedBarStyles["legend-rect"])
                         .style("background", (d) => {
+                            if(!focusOnPlot && plotted.includes(d)){
+                                return inactiveColor
+                            }
                             const layerIndex = layers.current.findIndex(l => l === d) + colorIdx
                             return indexColor(layerIndex);
                         })
@@ -174,6 +177,9 @@ export function MorphStackedBarChart({
                             .style("opacity", 1)
                         .select(`.${stackedBarStyles["legend-rect"]}`)
                         .style("background", (d) => {
+                            if(!focusOnPlot && plotted.includes(d)){
+                                return inactiveColor
+                            }
                             const layerIndex = layers.current.findIndex(l => l === d) + colorIdx
                             return indexColor(layerIndex);
                         });
@@ -342,47 +348,7 @@ export function MorphStackedBarChart({
 
             newSeries.key = seriesKey as string
             return newSeries
-        });
-        
-        function strokeDasharray(d:ExtendedSeriesPointWithSorted){
-            /*if(d.barKey === hovered){
-                return "none"
-            }*/
-            const rectWidth = x.bandwidth()            
-            const rectHeight = y(d[0]) - y(d[1])
-            
-            const isTopLayer = keys.indexOf(d.barKey) === keys.length - 1
-                || d.barKey === plotted[0]
-            
-            if(mode === "grouped"){
-                return "none"                    
-            }
-            if(isTopLayer){
-                return `${rectWidth + rectHeight} ${rectWidth} ${rectHeight}`
-            }                
-            return `${rectHeight} ${rectWidth}`
-        }
-
-        function strokeDashoffset(d:ExtendedSeriesPointWithSorted){
-            const rectWidth = x.bandwidth()
-            const isTopLayer = keys.indexOf(d.barKey) === keys.length - 1
-                || d.barKey === plotted[0]
-
-            return isTopLayer?0:(rectWidth * -1)
-        }
-
-        function yPos(d: ExtendedSeriesPointWithSorted){
-            if(mode === "grouped"){
-                return graphHeight - (y(d[0]) - y(d[1]))
-            }                                                               
-            return plotted[0]==="all"?y(d[1]):
-                d.key.startsWith(plotted[0])?graphHeight - (y(d[0]) - y(d[1])):y(d[1]);
-        }
-
-        function rectHeight(d:ExtendedSeriesPointWithSorted){
-            const height = y(d[0]) - y(d[1]);
-            return height;
-        }        
+        });        
         
         const serie = canvas.selectAll<SVGGElement, ExtendedSeriesWithSorted>(".serie")
             .data(processedDataLayers, function(d){return d.key})
@@ -438,6 +404,61 @@ export function MorphStackedBarChart({
             return `rect ${stackedBarStyles.rect}`
         }
 
+        function strokeDasharray(d:ExtendedSeriesPointWithSorted){
+            /*if(d.barKey === hovered){
+                return "none"
+            }*/
+            const rectWidth = x.bandwidth()            
+            const rectHeight = y(d[0]) - y(d[1])
+            
+            const isTopLayer = keys.indexOf(d.barKey) === keys.length - 1
+                || d.barKey === plotted[0]
+            
+            if(mode === "grouped"){
+                return "none"                    
+            }
+            if(isTopLayer){
+                return `${rectWidth + rectHeight} ${rectWidth} ${rectHeight}`
+            }                
+            return `${rectHeight} ${rectWidth}`
+        }
+
+        function strokeDashoffset(d:ExtendedSeriesPointWithSorted){
+            const rectWidth = x.bandwidth()
+            const isTopLayer = keys.indexOf(d.barKey) === keys.length - 1
+                || d.barKey === plotted[0]
+
+            return isTopLayer?0:(rectWidth * -1)
+        }
+
+        function yPos(d: ExtendedSeriesPointWithSorted){
+            if(mode === "grouped"){
+                return graphHeight - (y(d[0]) - y(d[1]))
+            }                                                               
+            return plotted[0]==="all"?y(d[1]):
+                d.key.startsWith(plotted[0])?graphHeight - (y(d[0]) - y(d[1])):y(d[1]);
+        }
+
+        function rectHeight(d:ExtendedSeriesPointWithSorted){
+            const height = y(d[0]) - y(d[1]);
+            return height;
+        }        
+        
+        function xPos(d: ExtendedSeriesPointWithSorted){
+            const xPos = x(d.data.label as string) ?? 0
+            if(mode==="grouped" && plotted[0] === "all"){
+                const sortReference = !isSorted?keys:d.data.sortedLayers
+                const idx = sortReference.indexOf(d.barKey)
+                return xPos + (idx * (x.bandwidth()/keys.length))
+            }                            
+            return xPos
+        }
+
+        function rectWidth(d: ExtendedSeriesPointWithSorted){
+            return (mode === "grouped" && plotted[0] === "all")?
+            x.bandwidth()/keys.length:x.bandwidth()
+        }
+
         serie.selectAll<SVGRectElement, ExtendedSeriesPointWithSorted>("rect")
             .data((d) => d, (d) => d.data.label)
             .join(
@@ -458,19 +479,8 @@ export function MorphStackedBarChart({
                             .attr("stroke-dasharray", strokeDasharray)
                             .attr("stroke-dashoffset", strokeDashoffset)
                                 .transition().duration(animDuration)                                
-                            .attr("x", function(d){                                                        
-                                const xPos = x(d.data.label as string) ?? 0
-                                if(mode==="grouped" && plotted[0] === "all"){
-                                    const sortReference = !isSorted?keys:d.data.sortedLayers
-                                    const idx = sortReference.indexOf(d.barKey)
-                                    return xPos + (idx * (x.bandwidth()/keys.length))
-                                }                            
-                                return xPos
-                            })
-                            .attr("width", function(d){
-                                return (mode === "grouped" && plotted[0] === "all")?
-                                    x.bandwidth()/keys.length:x.bandwidth()
-                            })                        
+                            .attr("x", xPos)
+                            .attr("width", rectWidth)                        
                             .attr("height", rectHeight)
                             .attr("y", yPos)
 
@@ -487,19 +497,8 @@ export function MorphStackedBarChart({
                             .attr("stroke-dasharray", strokeDasharray)
                             .attr("stroke-dashoffset", strokeDashoffset)          
                                 .transition().duration(animDuration)                                
-                            .attr("x", function(d){                                                        
-                                const xPos = x(d.data.label) ?? 0
-                                if(mode==="grouped" && plotted[0] === "all"){
-                                    const sortReference = !isSorted?keys:d.data.sortedLayers
-                                    const idx = sortReference.indexOf(d.barKey)
-                                    return xPos + (idx * (x.bandwidth()/keys.length))
-                                }                            
-                                return xPos
-                            })
-                            .attr("width", function(d){
-                                return (mode === "grouped" && plotted[0] === "all")?
-                                    x.bandwidth()/keys.length:x.bandwidth()
-                            })                        
+                            .attr("x", xPos)
+                            .attr("width", rectWidth)                        
                             .attr("height", rectHeight)
                                 .transition().duration(animDuration)
                             .attr("y", yPos)
@@ -520,19 +519,8 @@ export function MorphStackedBarChart({
                                 .transition().duration(animDuration)
                             .attr("y", yPos)
                                 .transition().duration(animDuration)                                
-                            .attr("x", function(d){                                                        
-                                const xPos = x(d.data.label as string) ?? 0
-                                if(plotted[0] === "all"){
-                                    const sortReference = !isSorted?keys:d.data.sortedLayers
-                                    const idx = sortReference.indexOf(d.barKey)
-                                    return xPos + (idx * (x.bandwidth()/keys.length))
-                                }                            
-                                return xPos
-                            })
-                            .attr("width", function(d){                                    
-                                return (plotted[0] === "all")?
-                                    x.bandwidth()/keys.length:x.bandwidth()
-                            })                        
+                            .attr("x", xPos)
+                            .attr("width", rectWidth)                        
                             .attr("height", rectHeight)
 
                         return theBars
@@ -551,19 +539,8 @@ export function MorphStackedBarChart({
                 .transition().duration(animDuration)
                 .attr("stroke-dasharray", strokeDasharray)
                 .attr("stroke-dashoffset", strokeDashoffset)
-                .attr("x", function(d){                                                        
-                    const xPos = x(d.data.label) ?? 0
-                    if(mode==="grouped" && plotted[0] === "all"){
-                        const sortReference = !isSorted?keys:d.data.sortedLayers
-                        const idx = sortReference.indexOf(d.barKey)
-                        return xPos + (idx * (x.bandwidth()/keys.length))
-                    }                            
-                    return xPos
-                })                    
-                .attr("width", function(d){
-                    return (mode === "grouped" && plotted[0] === "all")?
-                            x.bandwidth()/keys.length:x.bandwidth()
-                })
+                .attr("x", xPos)                    
+                .attr("width", rectWidth)
                 .attr("height", rectHeight)
                 .attr("y", yPos)
         }
@@ -572,19 +549,8 @@ export function MorphStackedBarChart({
             serie.selectAll<SVGRectElement, ExtendedSeriesPointWithSorted>("rect")
                 .attr("class", updateRectClass)                    
                     .transition().duration(animDuration)                    
-                .attr("x", function(d){                                                        
-                    const xPos = x(d.data.label) ?? 0
-                    if(mode==="grouped" && plotted[0] === "all"){
-                        const sortReference = !isSorted?keys:d.data.sortedLayers
-                        const idx = sortReference.indexOf(d.barKey)
-                        return xPos + (idx * (x.bandwidth()/keys.length))
-                    }                            
-                    return xPos
-                })                    
-                .attr("width", function(d){
-                    return (mode === "grouped" && plotted[0] === "all")?
-                            x.bandwidth()/keys.length:x.bandwidth()
-                })                    
+                .attr("x", xPos)                    
+                .attr("width", rectWidth)                    
                     .transition().duration(animDuration)
                 .attr("stroke-dasharray", strokeDasharray)
                 .attr("stroke-dashoffset", strokeDashoffset)
@@ -601,19 +567,8 @@ export function MorphStackedBarChart({
                     .transition().duration(animDuration)
                 .attr("stroke-dasharray", strokeDasharray)
                 .attr("stroke-dashoffset", strokeDashoffset)                    
-                .attr("x", function(d){                                                        
-                    const xPos = x(d.data.label) ?? 0
-                    if(mode==="grouped" && plotted[0] === "all"){
-                        const sortReference = !isSorted?keys:d.data.sortedLayers
-                        const idx = sortReference.indexOf(d.barKey)
-                        return xPos + (idx * (x.bandwidth()/keys.length))
-                    }                            
-                    return xPos
-                })                    
-                .attr("width", function(d){
-                    return (mode === "grouped" && plotted[0] === "all")?
-                            x.bandwidth()/keys.length:x.bandwidth()
-                })
+                .attr("x", xPos)                    
+                .attr("width", rectWidth)
         }
         
         console.log('mode: ', mode)
@@ -651,6 +606,15 @@ export function MorphStackedBarChart({
                     className={`controls ${styles[isMediumScreen?"controls-container":"controls-container-sm"]}`}
                     style={{border: "1px solid red", width: parentWidth}}
                 >
+                    <label className={styles["controls-label"]} style={{paddingRight: '12px'}}>
+                        <input 
+                            type="checkbox" 
+                            className={styles["controls-checkbox"]} 
+                            checked={isSorted}
+                            onChange={(e) => setIsSorted(e.target.checked)}
+                        />
+                            Sort
+                    </label>
                     <div className={`legends-container ${stackedBarStyles["legends-container"]}`} />
                 </div>
                 <div

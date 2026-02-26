@@ -237,7 +237,7 @@ const App = () => {
           <MorphStackedBarChart 
             data={selectedStackedData} 
             mode={morphStackedMode}   
-            focusOnPlot={true}
+           
           />
       </div>
       <div id="select-bar-data" className={`${controlStyles["select-optional"]}`}>

@@ -40,20 +40,36 @@ export function MorphStackedBarChart({
     
     const stackData = data
     useEffect(() => {
-        setPlotted(["all"])        
-        setIsSorted(false)        
+        setPlotted(["all"])                
     }, [stackData])    
 
     useEffect(()=>{
         if(prevModeRef.current !== mode){
             prevModeRef.current = mode
         }
+        if(mode !== "stacked"){
+            setIsSorted(false)        
+        }
     }, [stackData, mode])
 
-    useEffect(()=>{
-        setPlotted(["all"])
+    useEffect(()=>{        
         setIsSorted(false)
+        /*if(mode === "percentage"){
+            setPlotted(["all"])
+        }*/
     }, [ mode ])
+
+    useEffect(()=>{
+        if(focusOnPlot){
+            setPlotted(["all"])
+        }
+    }, [ mode, focusOnPlot ])
+
+    useEffect(()=>{
+        if(isSorted && prevModeRef.current !== mode){
+            prevModeRef.current = mode
+        }
+    }, [ isSorted ])
     
     const animDuration = 750;     
 
@@ -80,9 +96,15 @@ export function MorphStackedBarChart({
         const margin = { top: 20, right: 30, bottom: 30, left: 40 };          
 
         const prevMode = prevModeRef.current
+
+        const keys = chartData.length === 0 ? [] :
+            (Object.keys(chartData[0]) as (keyof LayeredData)[])
+                .filter((key) => key !== "label" && key !== "total") as string[];
+
+        const selectedKeys = focusOnPlot?keys:keys.filter(k => !plotted.includes(k))
                     
         chartData.forEach(function(d: LayeredData) {
-            d.total = keys.reduce((acc, curr) => {
+            d.total = selectedKeys.reduce((acc, curr) => {
                 if(!(curr in d)){
                     d[curr] = 0
                 }
@@ -93,7 +115,9 @@ export function MorphStackedBarChart({
 
         const filteredData = chartData
 
-        const sortedData = (isSorted && mode === "stacked")?
+        const sortedData = (isSorted && (mode === "stacked" || 
+            (mode === "grouped" && (
+                (focusOnPlot && plotted[0]!=="all") || (!focusOnPlot && selectedKeys.length === 1)))))?
             cloneObj(filteredData).sort(function(a:LayeredData, b:LayeredData){
                 if(!focusOnPlot){
                     return a.total! - b.total!
@@ -198,7 +222,7 @@ export function MorphStackedBarChart({
                     .remove().remove()
             )
             .on("mouseover", function(e, d){
-                if(mode === "percentage") return;
+                if(mode === "percentage" && focusOnPlot) return;
                 if(plotted[0] === "all"){
                     if(focusOnPlot){
                         canvas.selectAll<SVGGElement, ExtendedSeriesWithSorted>(".serie")
@@ -217,7 +241,7 @@ export function MorphStackedBarChart({
 
             })
             .on("mouseout", function(e, d){
-                if(mode === "percentage") return;
+                if(mode === "percentage" && focusOnPlot) return;
                 if(plotted[0] === "all"){
                     canvas.selectAll<SVGGElement, ExtendedSeriesWithSorted>(".serie")
                         .attr("fill", layerFill)                        
@@ -227,7 +251,7 @@ export function MorphStackedBarChart({
                 
             })
             .on("click", (e, d)=>{
-                if(mode === "percentage") return;
+                if(mode === "percentage" && focusOnPlot) return;
                 setPlotted(prev=>{
                     let newPlot:string[] = []
                     if(focusOnPlot){
@@ -256,7 +280,8 @@ export function MorphStackedBarChart({
         const x: ScaleBand<string> = scaleBand<string>()
                 .rangeRound([0, graphWidth])
                 .domain(xLabels)
-                .paddingInner(0.1)
+                .paddingInner(mode !== "grouped"?(isMediumScreen?0.4:0.25):0.1)
+                .paddingOuter(0.2)
                 .align(0.2) 
 
         const xAxis = axisBottom(x)
@@ -323,14 +348,14 @@ export function MorphStackedBarChart({
         
         const dataLayers: Series<LayeredData, string | string[]>[] =
             stack<LayeredData>()
-            .keys(keys)
-            .offset(mode !== "percentage"?stackOffsetNone:stackOffsetExpand)(sortedData);        
+            .keys(selectedKeys)
+            .offset(mode !== "percentage"?stackOffsetNone:stackOffsetExpand)(sortedData);                
         
         const processedDataLayers:ExtendedSeriesWithSorted[] = dataLayers.map((series) => {
             const seriesKey = series.key
             const newSeries = series.map((point) => {
                 const sortedLayers = Object.keys(point.data)
-                .filter((prop) => prop !== "label" && prop !== "total")
+                .filter((prop) => prop !== "label" && prop !== "total" && (!focusOnPlot?!plotted.includes(prop):true))
                 .map((prop) => ({
                     label: prop,
                     value: point.data[prop],
@@ -350,7 +375,7 @@ export function MorphStackedBarChart({
 
             newSeries.key = seriesKey as string
             return newSeries
-        });        
+        });  
         
         const serie = canvas.selectAll<SVGGElement, ExtendedSeriesWithSorted>(".serie")
             .data(processedDataLayers, function(d){return d.key})
@@ -399,21 +424,18 @@ export function MorphStackedBarChart({
                     .attr("fill", "grey")
                     .selectAll("rect").attr("y", 0).attr("height", 0)
                     .remove()
-            )           
-            
+            )
+
         const updateRectClass = (d: ExtendedSeriesPointWithSorted) => {            
             
             return `rect ${stackedBarStyles.rect}`
         }
 
-        function strokeDasharray(d:ExtendedSeriesPointWithSorted){
-            /*if(d.barKey === hovered){
-                return "none"
-            }*/
+        function strokeDasharray(d:ExtendedSeriesPointWithSorted){            
             const rectWidth = x.bandwidth()            
             const rectHeight = y(d[0]) - y(d[1])
             
-            const isTopLayer = keys.indexOf(d.barKey) === keys.length - 1
+            const isTopLayer = selectedKeys.indexOf(d.barKey) === selectedKeys.length - 1
                 || d.barKey === plotted[0]
             
             if(mode === "grouped"){
@@ -427,7 +449,7 @@ export function MorphStackedBarChart({
 
         function strokeDashoffset(d:ExtendedSeriesPointWithSorted){
             const rectWidth = x.bandwidth()
-            const isTopLayer = keys.indexOf(d.barKey) === keys.length - 1
+            const isTopLayer = selectedKeys.indexOf(d.barKey) === selectedKeys.length - 1
                 || d.barKey === plotted[0]
 
             return isTopLayer?0:(rectWidth * -1)
@@ -448,24 +470,27 @@ export function MorphStackedBarChart({
         
         function xPos(d: ExtendedSeriesPointWithSorted){
             const xPos = x(d.data.label as string) ?? 0
-            if(mode==="grouped" && plotted[0] === "all"){
-                const sortReference = !isSorted?keys:d.data.sortedLayers
+            if(mode==="grouped" && (!focusOnPlot || (focusOnPlot && plotted[0] === "all"))){
+                const sortReference = !isSorted?selectedKeys:d.data.sortedLayers
                 const idx = sortReference.indexOf(d.barKey)
-                return xPos + (idx * (x.bandwidth()/keys.length))
+                return xPos + (idx * (x.bandwidth()/selectedKeys.length))
             }                            
             return xPos
         }
 
         function rectWidth(d: ExtendedSeriesPointWithSorted){
-            return (mode === "grouped" && plotted[0] === "all")?
-            x.bandwidth()/keys.length:x.bandwidth()
+            return (mode === "grouped" && (!focusOnPlot || (focusOnPlot && plotted[0] === "all")))?
+                x.bandwidth()/selectedKeys.length:x.bandwidth()
         }
+
+        const isStacked = mode === "stacked" || mode === "percentage"
+        const prevIsStacked = prevMode === "stacked" || prevMode === "percentage"
 
         serie.selectAll<SVGRectElement, ExtendedSeriesPointWithSorted>("rect")
             .data((d) => d, (d) => d.data.label)
             .join(
                 enter=>{                        
-                    if(prevMode === mode){
+                    if((isStacked && prevIsStacked) || (!isStacked && !prevIsStacked)){
                         const theBars = enter
                             .append("rect")
                             .attr("class", styles.rect)
@@ -488,7 +513,7 @@ export function MorphStackedBarChart({
 
                         return theBars
                     }
-                    else if((prevMode === "stacked" || prevMode === "percentage") && mode === "grouped"){
+                    else if(prevIsStacked && !isStacked){
                         const theBars = enter
                             .append("rect")
                             .attr("class", styles.rect)
@@ -508,7 +533,7 @@ export function MorphStackedBarChart({
                         return theBars
                         
                     }
-                    else if(prevMode === "grouped" && (mode === "stacked" || mode === "percentage")){
+                    else if(!prevIsStacked && isStacked){
                         const theBars = enter
                             .append("rect")
                             .attr("class", styles.rect)
@@ -533,7 +558,21 @@ export function MorphStackedBarChart({
                 },
                 undefined,
                 exit=>exit.attr("opacity", 0).remove()
-            )           
+            )
+            .on("mouseover", function(e, d){                
+                if(mode === "grouped" && isSorted){
+                    serie.selectAll<SVGRectElement, ExtendedSeriesPointWithSorted>("rect")
+                        .filter(dRect => dRect.barKey !== d.barKey)
+                        .style("opacity", 0.25)    
+                }
+            })
+            .on("mouseout", function(e, d){
+                if(mode === "grouped" && isSorted){
+                    serie.selectAll<SVGRectElement, ExtendedSeriesPointWithSorted>("rect")
+                        .filter(dRect => dRect.barKey !== d.barKey)
+                        .style("opacity", 1)    
+                }
+            })
 
         function transitionNormal(){
             serie.selectAll<SVGRectElement, ExtendedSeriesPointWithSorted>("rect")
@@ -571,13 +610,7 @@ export function MorphStackedBarChart({
                 .attr("stroke-dashoffset", strokeDashoffset)                    
                 .attr("x", xPos)                    
                 .attr("width", rectWidth)
-        }
-        
-        console.log('mode: ', mode)
-        console.log('prevMode: ', prevMode)
-
-        const isStacked = mode === "stacked" || mode === "percentage"
-        const prevIsStacked = prevMode === "stacked" || prevMode === "percentage"
+        }        
 
         if(mode === prevMode){
             transitionNormal()
@@ -596,25 +629,8 @@ export function MorphStackedBarChart({
                 }
             }
         }
-        /*if(mode === "percentage"){
-            if(prevMode === "stacked" || prevMode === "percentage"){
-                transitionNormal()
-            }else {
-                transitionYHeight_then_XWidth()
-            }
-        }
-        else if(mode === "grouped" && (prevMode === "stacked" || prevMode === null || prevMode === "percentage") ){            
-            transitionXWidth_then_YHeight()
-        }
-        else if(mode === "stacked" && (prevMode === "grouped" /*|| prevSortSegment === true*//*)){                                            
-            transitionYHeight_then_XWidth()                            
-        }
-        else if(prevMode === mode ){
 
-            transitionNormal()
-        }*/
-
-    }, [ ...renderDeps, isSorted, chartData, keys, mode, orientation, tooltipFormat ]);
+    }, [ ...renderDeps, isSorted, chartData, mode, orientation, tooltipFormat ]);
     
     return (
         <div 
@@ -629,12 +645,13 @@ export function MorphStackedBarChart({
                     className={`controls ${styles[isMediumScreen?"controls-container":"controls-container-sm"]}`}
                     style={{border: "1px solid red", width: parentWidth}}
                 >
-                    <label className={styles["controls-label"]} style={{paddingRight: '12px'}}>
+                    <label className={`${styles["controls-label"]} ${mode === "percentage"?styles.disabled:""}`} style={{paddingRight: '12px'}}>
                         <input 
                             type="checkbox" 
                             className={styles["controls-checkbox"]} 
                             checked={isSorted}
                             onChange={(e) => setIsSorted(e.target.checked)}
+                            disabled={mode === "percentage"}
                         />
                             Sort
                     </label>

@@ -212,8 +212,8 @@ const App = () => {
           <GroupedBarChart data={selectedStackedData} colorIdx={28} orientation='horizontal' />
         </div>
       </div>
-      <div style={{width: "80vw", maxWidth:"500px", height: "300px", position: "relative" }}>                 
-          <StackedBarChart focusOnPlot={true} data={selectedStackedData} colorIdx={50} orientation='horizontal'  />
+      <div style={{width: "80vw", height: "500px", position: "relative" }}>                 
+          <StackedBarChart focusOnPlot={true} data={selectedStackedData} colorIdx={12}  />
       </div>
       <div id="select-stack-data" className={`${controlStyles["select-optional"]}`}>
         <label htmlFor="choose-stack-data">Choose data:</label>
@@ -236,8 +236,7 @@ const App = () => {
       <div style={{width: "80vw", height: "450px", position: "relative" }}>                 
           <MorphStackedBarChart 
             data={selectedStackedData} 
-            mode={morphStackedMode}   
-           
+            mode={morphStackedMode}                          
           />
       </div>
       <div id="select-bar-data" className={`${controlStyles["select-optional"]}`}>

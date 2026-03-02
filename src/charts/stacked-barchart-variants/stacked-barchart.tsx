@@ -29,8 +29,7 @@ export function StackedBarChart({ data, focusOnPlot = false, colorIdx = 0, orien
         
     const [dataJustChanged, setDataJustChanged] = useState(false)
     const [plotted, setPlotted] = useState<string[]>(["all"]);
-    const [justPlotted, setJustPlotted] = useState<boolean>(false)
-    const [hovered, setHovered] = useState<string>("")   
+    const [justPlotted, setJustPlotted] = useState<boolean>(false)    
     const [isSorted, setIsSorted] = useState<boolean>(false);
     
     const uiControls = useUIControls(); 
@@ -62,10 +61,56 @@ export function StackedBarChart({ data, focusOnPlot = false, colorIdx = 0, orien
     
     const isMediumScreen = width > 576;
     
-    const legendRef = useD3<HTMLDivElement>((container) => {         
-        if(dataJustChanged){
-            return
-        }        
+    const chartRef = useD3<HTMLDivElement>((container) => {
+        if (width === 0 || height === 0) return;        
+        
+        const margin = { top: 20, right: 20, bottom: 30, left: 40 };         
+        
+        const keys = chartData.length === 0 ? [] :
+        (Object.keys(chartData[0]) as (keyof LayeredData)[])
+            .filter((key) => key !== "label" && key !== "total") as string[];
+        const selectedKeys = focusOnPlot?keys:keys.filter(k => !plotted.includes(k))
+                
+        chartData.forEach((row, i) => {
+            const total = selectedKeys.reduce((sum, key) => {
+                if(!(key in row)){
+                    row[key] = 0
+                } 
+                const value = row[key];
+                return sum + (typeof value === "number" ? value : 0);
+            }, 0);
+            row.total = total;
+        });
+        
+        const filteredData = chartData/*.filter((d: LayeredData) => {
+            return plotted === "all" ? (d?.total && d.total > 0) : (d[plotted as keyof LayeredData] as number) > 0;                
+        });*/
+
+        const sortedData = isSorted?
+            cloneObj(filteredData).sort(function(a:LayeredData, b:LayeredData){
+                if(!focusOnPlot){
+                    return a.total! - b.total!
+                }else{
+                    if(plotted[0] === "all"){
+                        return a.total! - b.total!
+                    }
+
+                    return Number(a[plotted[0]]!) - Number(b[plotted[0]]!)
+                }
+                
+            }):filteredData
+                
+        const graphWidth = width - margin.left - margin.right,
+            graphHeight = height - margin.top - margin.bottom;
+
+        const canvasSvg = container.select<SVGSVGElement>("svg")
+        const svgNode = canvasSvg.node()
+        const canvas = canvasSvg.select<SVGGElement>('.plot-area')
+            .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+
+        const controls = container.select<HTMLDivElement>(".controls")
+        const legendsContainer = controls.select<HTMLDivElement>(".legends-container")
+
         const legendWidth = isMediumScreen?80:50
         
         const legendClass = function(d:string){
@@ -79,7 +124,15 @@ export function StackedBarChart({ data, focusOnPlot = false, colorIdx = 0, orien
                 legend-item
             `            
         }
-        const legends = container.selectAll<HTMLDivElement, string>(".legend-item")
+
+        function layerFill(d:ExtendedSeries){
+            const layerIndex = layersRef.current.findIndex(l => l === d.key) + colorIdx
+            const color = indexColor(layerIndex)
+            
+            return color
+        }
+
+        const legends = legendsContainer.selectAll<HTMLDivElement, string>(".legend-item")
             .data([...keys], d=>d)
             .join(
                 enter => {
@@ -149,25 +202,35 @@ export function StackedBarChart({ data, focusOnPlot = false, colorIdx = 0, orien
                     .style("opacity", 0)
                     .style("top", "53px")
                     .remove()
-            )         
+            )
+            .on("mouseover", function(e, d){                
+                if(plotted[0] === "all"){
+                    const serie = canvas.selectAll<SVGGElement, ExtendedSeries>(".serie")
+                    if(focusOnPlot){
+                        serie
+                            .attr("fill", layerFill)
+                            .filter(dSerie => dSerie.key !== d)                                                            
+                            .style("opacity", 0.25)
 
-        legends
-            .on("mouseover", function(e, d){
-                if(dataJustChanged){                    
-                    return
-                }else{
-                    setHovered(d)
-                }
-                
+                        const rects = serie
+                            .selectAll<SVGRectElement, ExtendedSeriesPoint>("rect")
+                            .filter(dRect => dRect.barKey === d)
+                            .attr("stroke-dasharray", "none")
+                    }else{
+                        serie                        
+                            .attr("fill", layerFill)
+                            .filter(dSerie => dSerie.key === d)                                                            
+                            .style("opacity", 0.25)                        
+                    }   
+                }                       
             })
             .on("mouseout", function(e, d){
-                if(dataJustChanged){                       
-                    return
-                }else{
-                    setHovered("")
+                if(plotted[0] === "all"){
+                    canvas.selectAll<SVGGElement, ExtendedSeries>(".serie")
+                        .attr("fill", layerFill)                                                
+                    .style("opacity", 1)                    
                 }
-                                    
-                
+                                                    
                 if(justPlotted){
                     setJustPlotted(false)
                 }
@@ -191,76 +254,7 @@ export function StackedBarChart({ data, focusOnPlot = false, colorIdx = 0, orien
                     return newPlot
                 })
                 setJustPlotted(true)
-            })
-                        
-    }, [...renderDeps, keys, dataJustChanged]);
-
-    // Define the controls element (checkbox)
-    const controls = (
-        <div 
-            ref={controlsRef}
-            className={`${styles[isMediumScreen?"controls-container":"controls-container-sm"]} ${uiControls?styles["fill-container"]:""}`}
-        >
-            <label className={styles["controls-label"]} style={{paddingRight: '12px'}}>
-                <input 
-                    type="checkbox" 
-                    className={styles["controls-checkbox"]} 
-                    checked={isSorted}
-                    onChange={(e) => setIsSorted(e.target.checked)}
-                />
-                    Sort
-            </label>
-            <div 
-                ref={legendRef}            
-                className={`${stackedBarStyles["legends-container"]}`}
-            />
-        </div>
-    );
-
-    const chartRef = useD3<HTMLDivElement>((container) => {
-        if (width === 0 || height === 0) return;
-        if(hovered !== "" && dataJustChanged) return        
-        
-        const margin = { top: 20, right: 20, bottom: 30, left: 40 };         
-        
-        const selectedKeys = focusOnPlot?keys:keys.filter(k => !plotted.includes(k))
-                
-        chartData.forEach((row, i) => {
-            const total = selectedKeys.reduce((sum, key) => {
-                if(!(key in row)){
-                    row[key] = 0
-                } 
-                const value = row[key];
-                return sum + (typeof value === "number" ? value : 0);
-            }, 0);
-            row.total = total;
-        });
-        
-        const filteredData = chartData/*.filter((d: LayeredData) => {
-            return plotted === "all" ? (d?.total && d.total > 0) : (d[plotted as keyof LayeredData] as number) > 0;                
-        });*/
-
-        const sortedData = isSorted?
-            cloneObj(filteredData).sort(function(a:LayeredData, b:LayeredData){
-                if(!focusOnPlot){
-                    return a.total! - b.total!
-                }else{
-                    if(plotted[0] === "all"){
-                        return a.total! - b.total!
-                    }
-
-                    return Number(a[plotted[0]]!) - Number(b[plotted[0]]!)
-                }
-                
-            }):filteredData
-                
-        const graphWidth = width - margin.left - margin.right,
-            graphHeight = height - margin.top - margin.bottom;
-
-        const canvasSvg = container.select<SVGSVGElement>("svg")
-        const svgNode = canvasSvg.node()
-        const canvas = canvasSvg.select<SVGGElement>('.plot-area')
-            .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+            })         
 
         const tooltip = getTooltip(container as any)
             .style("opacity", 0);
@@ -346,7 +340,7 @@ export function StackedBarChart({ data, focusOnPlot = false, colorIdx = 0, orien
 
             newSeries.key = seriesKey;
             return newSeries;
-        });                
+        });           
         
         const serie = canvas
             .selectAll<SVGGElement, ExtendedSeries>(".serie")
@@ -361,22 +355,8 @@ export function StackedBarChart({ data, focusOnPlot = false, colorIdx = 0, orien
                             const color = indexColor(layerIndex)
                             
                             return color
-                        })
+                        })                        
                         .style("opacity", (d) => {
-                            if(hovered !== ""){                                
-                                if(focusOnPlot){                                    
-                                    if(plotted[0] === "all"){
-                                        return d.key === hovered?1:
-                                            justPlotted?1:0.25
-                                    }                                    
-                                }else{
-                                    if(justPlotted){
-                                        return 1
-                                    }
-                                    return d.key === hovered?0.25:1
-                                }
-                            }
-                            
                             if(focusOnPlot){
                                 if (plotted[0] === "all") return 1;
                                 return d.key === plotted[0] ? 1 : 0;
@@ -404,25 +384,12 @@ export function StackedBarChart({ data, focusOnPlot = false, colorIdx = 0, orien
                             return color
                         })
                         .style("opacity", (d) => {
-                            if(hovered !== ""){
-                                if(focusOnPlot){
-                                    if(plotted[0] === "all"){
-                                        return d.key === hovered?1:
-                                            justPlotted?1:0.25
-                                    }                                    
-                                }else{
-                                    if(justPlotted){
-                                        return 1
-                                    }
-                                    return d.key === hovered?0.25:1
-                                }
-                            }
                             if(focusOnPlot){
                                 if (plotted[0] === "all") return 1;
                                 return d.key === plotted[0] ? 1 : 0;
                             }
                             return 1
-                        })
+                        })                                            
                         .style("pointer-events", (d) => {
                             if(focusOnPlot){
                                 if (plotted[0] === "all") return "auto";
@@ -484,9 +451,9 @@ export function StackedBarChart({ data, focusOnPlot = false, colorIdx = 0, orien
         }
         
         const strokeDasharray = (d: ExtendedSeriesPoint): string => {
-            if(d.barKey === hovered){
+            /*if(d.barKey === hovered){
                 return "none"
-            }
+            }*/
             const rectStrokeWidth = rectWidth(d);            
             const rectStrokeHeight = rectHeight(d);    
             
@@ -517,9 +484,9 @@ export function StackedBarChart({ data, focusOnPlot = false, colorIdx = 0, orien
         };
 
         const updateRectClass = (d: ExtendedSeriesPoint) => {            
-            if(hovered !== "" && hovered === d.barKey && focusOnPlot){                
+            /*if(hovered !== "" && hovered === d.barKey && focusOnPlot){                
                 return `rect ${stackedBarStyles.rectLegendHovered}`
-            }
+            }*/
             return `rect ${stackedBarStyles.rect}`
         }       
         
@@ -605,15 +572,11 @@ export function StackedBarChart({ data, focusOnPlot = false, colorIdx = 0, orien
                 .attr("x", rectXPos)
                 .attr("width", rectWidth)
                 .attr("height", rectHeight)
-                .attr("y", rectYPos)
-                .on("start", function(){})
-                .on("end", function(){});
+                .attr("y", rectYPos);
 
         serie
             .selectAll<SVGRectElement, ExtendedSeriesPoint>("rect")
-                .on("mouseover", function(e, d){
-                    //unhoverLegend()
-                    //console.log("hovered on ", d);
+                .on("mouseover", function(e, d){                                        
                     
                     select(orientation === "vertical"?".x-axis":".y-axis").selectAll("text")
                         .filter(dText=>dText === d.data.label)
@@ -647,22 +610,36 @@ export function StackedBarChart({ data, focusOnPlot = false, colorIdx = 0, orien
                     tooltip.style("opacity", 0);
                 })
 
-    }, [ ...renderDeps, isSorted, chartData, keys, hovered, justPlotted, dataJustChanged, orientation, tooltipFormat ]);
+    }, [ ...renderDeps, isSorted, chartData, keys, justPlotted, dataJustChanged, orientation, tooltipFormat ]);
             
     return (
         <div 
             ref={ref} 
             style={{ width: `${parentWidth}px`, height: `${parentHeight}px`, display:'flex', flexDirection:'column' }}
-        >            
-            {uiControls
-                ? createPortal(controls, uiControls)
-                    : controls}
+        >                        
             <div
-                ref={chartContainerRef} 
+                ref={chartRef} 
                 className={`${styles["fill-container"]}`}
                 style={{ display:"flex", flexDirection:"column" }}>
                 <div 
-                    ref={chartRef}
+                    ref={controlsRef}
+                    className={`controls ${styles[isMediumScreen?"controls-container":"controls-container-sm"]} ${uiControls?styles["fill-container"]:""}`}
+                >
+                    <label className={styles["controls-label"]} style={{paddingRight: '12px'}}>
+                        <input 
+                            type="checkbox" 
+                            className={styles["controls-checkbox"]} 
+                            checked={isSorted}
+                            onChange={(e) => setIsSorted(e.target.checked)}
+                        />
+                            Sort
+                    </label>
+                    <div                         
+                        className={`legends-container ${stackedBarStyles["legends-container"]}`}
+                    />
+                </div>
+                <div 
+                    ref={chartContainerRef}
                     className={`${styles["fill-container"]}`}
                     style={{ display:"flex", flexDirection:"column" }}>                                                
                     <svg                              

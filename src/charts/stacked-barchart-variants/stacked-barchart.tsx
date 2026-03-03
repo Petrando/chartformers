@@ -225,11 +225,18 @@ export function StackedBarChart({ data, focusOnPlot = false, colorIdx = 0, orien
                 }                       
             })
             .on("mouseout", function(e, d){
+                const serie = canvas.selectAll<SVGGElement, ExtendedSeries>(".serie")
                 if(plotted[0] === "all"){
-                    canvas.selectAll<SVGGElement, ExtendedSeries>(".serie")
+                    serie
                         .attr("fill", layerFill)                                                
-                    .style("opacity", 1)                    
+                    .style("opacity", 1)
+                    
+                    
                 }
+
+                const rects = serie
+                    .selectAll<SVGRectElement, ExtendedSeriesPoint>("rect")
+                    .attr("stroke-dasharray", strokeDasharray)
                                                     
                 if(justPlotted){
                     setJustPlotted(false)

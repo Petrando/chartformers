@@ -1,6 +1,6 @@
 import React, {useState, useEffect, useDeferredValue, useRef} from 'react';
-import { axisBottom, axisLeft, format, max, ScaleBand, scaleBand, ScaleLinear, scaleLinear, 
-    select, Series, stack, stackOffsetExpand, stackOffsetNone } from 'd3';
+import { axisBottom, axisLeft, max, ScaleBand, scaleBand, ScaleLinear, scaleLinear, 
+    Series, stack, stackOffsetExpand, stackOffsetNone } from 'd3';
 import { useD3 } from '../../hooks/useD3';
 import { useParentSize } from '../../hooks/useParentSize';
 import { useContainerSize } from '../../hooks/useContainerSize';
@@ -223,15 +223,22 @@ export function MorphStackedBarChart({
             )
             .on("mouseover", function(e, d){
                 if(mode === "percentage" && focusOnPlot) return;
+
+                const serie = canvas.selectAll<SVGGElement, ExtendedSeriesWithSorted>(".serie")
                 if(plotted[0] === "all"){
                     if(focusOnPlot){
-                        canvas.selectAll<SVGGElement, ExtendedSeriesWithSorted>(".serie")
+                        serie
                             .attr("fill", layerFill)
                             .filter(dSerie => dSerie.key !== d)                            
                                 .transition().duration(250)
                             .style("opacity", 0.25)
+
+                        const rects = serie
+                            .selectAll<SVGRectElement, ExtendedSeriesPointWithSorted>("rect")
+                            .filter(dRect => dRect.barKey === d)
+                            .attr("stroke-dasharray", "none")
                     }else{
-                        canvas.selectAll<SVGGElement, ExtendedSeriesWithSorted>(".serie")
+                        serie
                             .attr("fill", layerFill)
                             .filter(dSerie => dSerie.key === d)                            
                                 .transition().duration(250)
@@ -242,12 +249,16 @@ export function MorphStackedBarChart({
             })
             .on("mouseout", function(e, d){
                 if(mode === "percentage" && focusOnPlot) return;
+                const serie = canvas.selectAll<SVGGElement, ExtendedSeriesWithSorted>(".serie")
                 if(plotted[0] === "all"){
                     canvas.selectAll<SVGGElement, ExtendedSeriesWithSorted>(".serie")
                         .attr("fill", layerFill)                        
                         .transition().duration(250)
                     .style("opacity", 1)
                 }
+                serie
+                    .selectAll<SVGRectElement, ExtendedSeriesPointWithSorted>("rect")
+                    .attr("stroke-dasharray", strokeDasharray)
                 
             })
             .on("click", (e, d)=>{

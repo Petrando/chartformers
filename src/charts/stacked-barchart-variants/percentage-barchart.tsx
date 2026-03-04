@@ -22,17 +22,16 @@ export function PercentageBarChart({ data, colorIdx = 0, orientation = 'vertical
     const { height: controlsHeight } = controlsSize;        
     const [chartContainerRef, chartSize] = useContainerSize<HTMLDivElement>()
     const { width, height } = chartSize    
-
-    const [hovered, setHovered] = useState<string>("")
+    
     const [ isPercentage, setIsPercentage ] = useState<boolean>(true);
     const [dataJustChanged, setDataJustChanged] = useState<boolean>(false)
-    const [plotted, setPlotted] = useState<string>("all");  
+    const [plotted, setPlotted] = useState<string[]>(["all"]);
     
     const uiControls = useUIControls();
     
     const stackData = data
     useEffect(() => {
-        setPlotted("all")
+        setPlotted(["all"])
         setIsPercentage(true)
         setDataJustChanged(true)
     }, [stackData])
@@ -56,25 +55,65 @@ export function PercentageBarChart({ data, colorIdx = 0, orientation = 'vertical
             .filter((key) => key !== "label" && key !== "total") as string[];
 
     const layers = useLayerIndex(keys)
-    const isMediumScreen = width > 576;
-
-    const legendRef = useD3<HTMLDivElement>((container) => {
-        if(dataJustChanged) return  
-        const legendWidth = isMediumScreen?80:50
+    const isMediumScreen = width > 576;        
+    
+    const chartRef = useD3<HTMLDivElement>((container) => {
+        if (width === 0 || height === 0) return;        
         
+        const margin = { top: 20, right: 30, bottom: 30, left: 40 };         
+        
+        const keys = chartData.length === 0 ? [] :
+        (Object.keys(chartData[0]) as (keyof LayeredData)[])
+            .filter((key) => key !== "label" && key !== "total") as string[];
+
+        const selectedKeys = keys.filter(k => !plotted.includes(k))
+        
+        chartData.forEach(function(d: LayeredData) {
+            d.total = selectedKeys.reduce((acc, curr) => {
+                if(!(curr in d)){
+                    d[curr] = 0
+                }
+                const value = d[curr];
+                return acc + (typeof value === 'number' ? value : Number(value));
+            }, 0);
+        });  
+                        
+        const filteredData = chartData.filter((d: LayeredData) => {
+            //return plotted === "all" ? (d?.total && d.total > 0) : (d[plotted as keyof LayeredData] as number) > 0;                
+            return (d?.total && d.total > 0)
+        });
+
+        const sortedData:LayeredData[] = filteredData
+
+        const graphWidth = width - margin.left - margin.right,
+            graphHeight = height - margin.top - margin.bottom;
+
+        const canvasSvg = container.select<SVGSVGElement>("svg")
+        const svgNode = canvasSvg.node()
+        const canvas = canvasSvg.select<SVGGElement>('.plot-area')
+            .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+
+        const controls = container.select<HTMLDivElement>(".controls")
+        const legendsContainer = controls.select<HTMLDivElement>(".legends-container")
+
+        const legendWidth = isMediumScreen?80:50
+
+        function layerFill(d: ExtendedSeries) {
+            const layerIndex = layers.current.findIndex(l => l === d.key) + colorIdx
+            return indexColor(layerIndex); 
+        }
+
         const legendClass = function(d:string){
             const containerClass = stackedBarStyles[isMediumScreen?"legend-container":"legend-container-sm"]
             const containerActiveClass = stackedBarStyles[isMediumScreen?"legend-container-active":"legend-container-active-sm"]
             const containerInactiveClass = stackedBarStyles[isMediumScreen?"legend-container-inactive":"legend-container-inactive-sm"]
             return  `
-                ${plotted.includes(d)?
-                    plotted === d?containerActiveClass:containerInactiveClass:
-                        containerClass}
+                ${plotted.includes(d)?containerInactiveClass:containerClass}
                 legend-item
             `            
         }
 
-        const legends = container.selectAll<HTMLDivElement, string>(".legend-item")
+        const legends = legendsContainer.selectAll<HTMLDivElement, string>(".legend-item")
             .data([...keys], d=>d)
             .join(
                 enter => {
@@ -88,6 +127,9 @@ export function PercentageBarChart({ data, colorIdx = 0, orientation = 'vertical
                     divs.append("div")
                         .attr("class", stackedBarStyles["legend-rect"])
                         .style("background", (d) => {
+                            if(plotted.includes(d)){
+                                return inactiveColor
+                            }
                             const layerIndex = layers.current.findIndex(l => l === d) + colorIdx
                             return indexColor(layerIndex);
                         })
@@ -111,6 +153,9 @@ export function PercentageBarChart({ data, colorIdx = 0, orientation = 'vertical
                             .style("opacity", 1)
                         .select(`.${stackedBarStyles["legend-rect"]}`)
                         .style("background", (d) => {
+                            if(plotted.includes(d)){
+                                return inactiveColor
+                            }
                             const layerIndex = layers.current.findIndex(l => l === d) + colorIdx
                             return indexColor(layerIndex);
                         });
@@ -131,66 +176,30 @@ export function PercentageBarChart({ data, colorIdx = 0, orientation = 'vertical
 
         legends
             .on("mouseover", (e, d)=>{
-                setHovered(d)
+                canvas.selectAll<SVGGElement, ExtendedSeries>(".serie")
+                    .attr("fill", layerFill)
+                    .filter(dSerie => dSerie.key === d)                                                            
+                    .style("opacity", 0.25)
+                
             })
-            .on("mouseout", function(d){
-                setHovered("")
+            .on("mouseout", function(e, d){                
+                canvas.selectAll<SVGGElement, ExtendedSeries>(".serie")
+                    .attr("fill", layerFill)
+                    .filter(dSerie => dSerie.key === d)                                                            
+                    .style("opacity", 1)
             })
-                        
-    }, [...renderDeps, keys, dataJustChanged]);
+            .on("click", function(e, d){
+                setPlotted(prev=>{
+                    let newPlot:string[] = []
+                    if(prev.includes(d)){
+                        newPlot = prev.filter(p => p !== d)                           
+                    }else{
+                        newPlot = [...prev, d]                           
+                    }
+                    return newPlot
+                })
+            })
 
-    // Define the controls element (checkbox)
-    const controls = (
-        <div 
-            ref={controlsRef}
-            className={`${styles["controls-container"]} ${uiControls?styles["fill-container"]:""}`}
-        >
-            <label className={styles["controls-label"]} style={{paddingRight: '12px'}}>
-                <input 
-                    type="checkbox" 
-                    className={styles["controls-checkbox"]} 
-                    checked={isPercentage}
-                    onChange={(e) => setIsPercentage(e.target.checked)}
-                />
-                    Percentage
-            </label>
-            <div 
-                ref={legendRef}                
-                className={`${stackedBarStyles["legends-container"]}`}
-            />
-        </div>
-    );    
-    
-    const chartRef = useD3<HTMLDivElement>((container) => {
-        if (width === 0 || height === 0) return;
-        if(hovered !== "" && dataJustChanged) return
-        
-        const margin = { top: 20, right: 30, bottom: 30, left: 40 };                              
-        
-        chartData.forEach(function(d: LayeredData) {
-            d.total = keys.reduce((acc, curr) => {
-                if(!(curr in d)){
-                    d[curr] = 0
-                }
-                const value = d[curr];
-                return acc + (typeof value === 'number' ? value : Number(value));
-            }, 0);
-        });  
-                        
-        const filteredData = chartData.filter((d: LayeredData) => {
-            //return plotted === "all" ? (d?.total && d.total > 0) : (d[plotted as keyof LayeredData] as number) > 0;                
-            return (d?.total && d.total > 0)
-        });
-
-        const sortedData:LayeredData[] = filteredData
-
-        const graphWidth = width - margin.left - margin.right,
-            graphHeight = height - margin.top - margin.bottom;
-
-        const canvasSvg = container.select<SVGSVGElement>("svg")
-        const svgNode = canvasSvg.node()
-        const canvas = canvasSvg.select<SVGGElement>('.plot-area')
-            .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
 
         const tooltip = getTooltip(container as any)
             .style("opacity", 0);        
@@ -264,7 +273,7 @@ export function PercentageBarChart({ data, colorIdx = 0, orientation = 'vertical
             .remove()        
 
         const dataLayers: Series<LayeredData, string>[] = stack<LayeredData>()        
-            .keys(keys)
+            .keys(selectedKeys)
             .order(stackOrderNone)
             .offset(isPercentage?stackOffsetExpand:stackOffsetNone)(sortedData);
 
@@ -290,10 +299,7 @@ export function PercentageBarChart({ data, colorIdx = 0, orientation = 'vertical
                 enter=>{
                     let g = enter.append("g")
                         .attr("class", "serie")
-                        .attr("fill", function(d) {
-                            const layerIndex = layers.current.findIndex(l => l === d.key) + colorIdx
-                            return indexColor(layerIndex); 
-                        })
+                        .attr("fill", layerFill)
                         .style("opacity", 1)
                         .style("pointer-events", "auto");
                     return g;
@@ -308,10 +314,7 @@ export function PercentageBarChart({ data, colorIdx = 0, orientation = 'vertical
                             return "serie"
                         })*/
                         .transition().duration(animDuration)
-                        .attr("fill", function(d) {
-                            const layerIndex = layers.current.findIndex(l => l === d.key) + colorIdx
-                            return indexColor(layerIndex); 
-                        })
+                        .attr("fill", layerFill)
                         .style("opacity", 1)
                         .style("pointer-events", "auto");
                     return g;
@@ -356,14 +359,11 @@ export function PercentageBarChart({ data, colorIdx = 0, orientation = 'vertical
             return orientation === 'vertical' ? valueScaleDimension(d) : labelScaleBandWidth
         }
 
-        function strokeDasharray(d: ExtendedSeriesPoint){
-            if(d.barKey === hovered){
-                return "none"
-            }
+        function strokeDasharray(d: ExtendedSeriesPoint){            
             const rectStrokeWidth = rectWidth(d);            
             const rectStrokeHeight = rectHeight(d);    
             
-            const isTopLayer = keys.indexOf(d.barKey) === keys.length - 1
+            const isTopLayer = selectedKeys.indexOf(d.barKey) === selectedKeys.length - 1
                 || d.barKey === plotted[0]
 
             if(isTopLayer){
@@ -382,7 +382,7 @@ export function PercentageBarChart({ data, colorIdx = 0, orientation = 'vertical
         function strokeDashoffset(d: ExtendedSeriesPoint){
             const rectStrokeWidth = rectWidth(d);            
             const isTopLayer =
-                keys.indexOf(d.barKey) === keys.length - 1;
+                selectedKeys.indexOf(d.barKey) === selectedKeys.length - 1;
 
             if(orientation === 'vertical'){
                 return isTopLayer ? 0 : rectStrokeWidth * -1;
@@ -390,11 +390,8 @@ export function PercentageBarChart({ data, colorIdx = 0, orientation = 'vertical
             return 0
         }
 
-        const updateRectClass = (d:ExtendedSeriesPoint) => {
-                if(hovered !== "" && hovered === d.barKey){
-                    return `rect ${stackedBarStyles.rectLegendHovered}`
-                }
-                return `rect ${stackedBarStyles.rect}`
+        const updateRectClass = (d:ExtendedSeriesPoint) => {                
+            return `rect ${stackedBarStyles.rect}`
         }
             
         serie.selectAll<SVGRectElement, ExtendedSeriesPoint>("rect")
@@ -510,22 +507,37 @@ export function PercentageBarChart({ data, colorIdx = 0, orientation = 'vertical
                     tooltip.style("opacity", 0);
                 })
 
-    }, [ ...renderDeps, chartData, keys, isPercentage, hovered, orientation, dataJustChanged, tooltipFormat ]);
+    }, [ ...renderDeps, chartData, isPercentage, orientation, dataJustChanged, tooltipFormat ]);
     
     return (
         <div 
             ref={ref} 
             style={{ width: parentWidth, height: parentHeight, display:'flex', flexDirection:'column' }}
-        >
-            {uiControls
-                ? createPortal(controls, uiControls)
-                    : controls}
+        >            
             <div
-                ref={chartContainerRef} 
+                ref={chartRef} 
                 className={`${styles["fill-container"]}`}
                 style={{ display:"flex", flexDirection:"column"}}>
+
+                <div 
+                    ref={controlsRef}
+                    className={`controls ${styles["controls-container"]} ${uiControls?styles["fill-container"]:""}`}
+                >
+                    <label className={styles["controls-label"]} style={{paddingRight: '12px'}}>
+                        <input 
+                            type="checkbox" 
+                            className={styles["controls-checkbox"]} 
+                            checked={isPercentage}
+                            onChange={(e) => setIsPercentage(e.target.checked)}
+                        />
+                            Percentage
+                    </label>
+                    <div               
+                        className={`legends-container ${stackedBarStyles["legends-container"]}`}
+                    />
+                </div>
                 <div
-                    ref={chartRef} 
+                    ref={chartContainerRef} 
                     className={`${styles["fill-container"]}`}
                     style={{ display:"flex", flexDirection:"column"}}>
                     <svg

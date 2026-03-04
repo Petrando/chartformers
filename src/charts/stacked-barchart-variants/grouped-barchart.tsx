@@ -13,7 +13,14 @@ import stackedBarStyles from './stacked-barchart.module.css';
 import { LayeredData, ExtendedSeriesPointWithSorted, ExtendedSeriesWithSorted, StackedBarChartProps } from './types';
 import { useUIControls } from '../../hooks/useUIControls';
 
-export function GroupedBarChart({ data, colorIdx = 0, orientation = 'vertical', tooltipFormat }: StackedBarChartProps) {
+type GroupedBarChartProps =  StackedBarChartProps & {
+    focusOnPlot?: boolean;
+}
+
+export function GroupedBarChart({ 
+    data, colorIdx = 0, orientation = 'vertical', focusOnPlot = true, 
+    tooltipFormat 
+}: GroupedBarChartProps) {
     const [ref, parentSize] = useParentSize<HTMLDivElement>();
     const { width: parentWidth, height: parentHeight } = parentSize;
     const [controlsRef, controlsSize] = useContainerSize<HTMLDivElement>();
@@ -24,16 +31,15 @@ export function GroupedBarChart({ data, colorIdx = 0, orientation = 'vertical', 
     const [prevData, setPrevData] = useState<LayeredData[] | null>(null);
     
     const [dataJustChanged, setDataJustChanged] = useState(false)
-    const [plotted, setPlotted] = useState<string>("all");
-    const [justPlotted, setJustPlotted] = useState<boolean>(false)
-    const [hovered, setHovered] = useState<string>("")    
+    const [plotted, setPlotted] = useState<string[]>(["all"]);
+    const [justPlotted, setJustPlotted] = useState<boolean>(false)    
     const [isSorted, setIsSorted] = useState<boolean>(false);
     
     const uiControls = useUIControls();  
     
     const stackData = data
     useEffect(() => {
-        setPlotted("all")
+        setPlotted(["all"])
         setDataJustChanged(true)
         setIsSorted(false)
     }, [stackData])    
@@ -55,25 +61,80 @@ export function GroupedBarChart({ data, colorIdx = 0, orientation = 'vertical', 
             .filter((key) => key !== "label" && key !== "total") as string[];
 
     const layers = useLayerIndex(keys)
-    const isMediumScreen = width > 576;
+    const isMediumScreen = width > 576;   
 
-    const legendRef = useD3<HTMLDivElement>((container) => { 
-        if(dataJustChanged) return
-        const legendWidth = isMediumScreen?80:50
+    const chartRef = useD3<HTMLDivElement>((container) => {
+        if (width === 0 || height === 0) return;
+//        if(hovered !== "" && dataJustChanged) return
         
+        const margin = { top: 20, right: 30, bottom: 30, left: 40 };          
+
+        const keys = chartData.length === 0 ? [] :
+            (Object.keys(chartData[0]) as (keyof LayeredData)[])
+                .filter((key) => key !== "label" && key !== "total") as string[];
+
+        const selectedKeys = focusOnPlot?keys:keys.filter(k => !plotted.includes(k))
+                    
+        chartData.forEach(function(d: LayeredData) {
+            d.total = selectedKeys.reduce((acc, curr) => {
+                if(!(curr in d)){
+                    d[curr] = 0
+                }
+                const value = d[curr];
+                return acc + (typeof value === 'number' ? value : Number(value));
+            }, 0);
+        });  
+                        
+        const filteredData = chartData/*.filter((d: LayeredData) => {
+            return plotted === "all" ? (d?.total && d.total > 0) : (d[plotted as keyof LayeredData] as number) > 0;                
+        });*/
+
+        const sortedData = (isSorted && (
+            (focusOnPlot && plotted[0]!=="all") || (!focusOnPlot && selectedKeys.length === 1)))?
+            cloneObj(filteredData).sort(function(a:LayeredData, b:LayeredData){
+                if(!focusOnPlot){
+                    return a.total! - b.total!
+                }else{
+                    if(plotted[0] === "all"){
+                        return a.total! - b.total!
+                    }
+
+                    return Number(a[plotted[0]]!) - Number(b[plotted[0]]!)
+                }
+                
+            }):filteredData
+
+        const graphWidth = width - margin.left - margin.right,
+            graphHeight = height - margin.top - margin.bottom;
+
+        const canvasSvg = container.select<SVGSVGElement>("svg")
+        const svgNode = canvasSvg.node()
+        const canvas = canvasSvg.select<SVGGElement>('.plot-area')
+            .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+
+        const controls = container.select<HTMLDivElement>(".controls")
+        const legendsContainer = controls.select<HTMLDivElement>(".legends-container")
+
+        const legendWidth = isMediumScreen?80:50
+
         const legendClass = function(d:string){
             const containerClass = stackedBarStyles[isMediumScreen?"legend-container":"legend-container-sm"]
             const containerActiveClass = stackedBarStyles[isMediumScreen?"legend-container-active":"legend-container-active-sm"]
             const containerInactiveClass = stackedBarStyles[isMediumScreen?"legend-container-inactive":"legend-container-inactive-sm"]
             return  `
                 ${plotted.includes(d)?
-                    plotted === d?containerActiveClass:containerInactiveClass:
+                    focusOnPlot?containerActiveClass:containerInactiveClass:
                         containerClass}
                 legend-item
             `            
         }
 
-        const legends = container.selectAll<HTMLDivElement, string>(".legend-item")
+        function layerFill(d:ExtendedSeriesWithSorted){            
+            const layerIndex = layers.current.findIndex(l => l === d.key) + colorIdx
+            return indexColor(layerIndex); 
+        }
+
+        const legends = legendsContainer.selectAll<HTMLDivElement, string>(".legend-item")
             .data([...keys], d=>d)
             .join(
                 enter => {
@@ -87,6 +148,9 @@ export function GroupedBarChart({ data, colorIdx = 0, orientation = 'vertical', 
                     divs.append("div")
                         .attr("class", stackedBarStyles["legend-rect"])
                         .style("background", (d) => {
+                            if(!focusOnPlot && plotted.includes(d)){
+                                return inactiveColor
+                            }
                             const layerIndex = layers.current.findIndex(l => l === d) + colorIdx
                             return indexColor(layerIndex);
                         })
@@ -109,6 +173,9 @@ export function GroupedBarChart({ data, colorIdx = 0, orientation = 'vertical', 
                             .style("opacity", 1)
                         .select(`.${stackedBarStyles["legend-rect"]}`)
                         .style("background", (d) => {
+                            if(!focusOnPlot && plotted.includes(d)){
+                                return inactiveColor
+                            }
                             const layerIndex = layers.current.findIndex(l => l === d) + colorIdx
                             return indexColor(layerIndex);
                         });
@@ -125,85 +192,57 @@ export function GroupedBarChart({ data, colorIdx = 0, orientation = 'vertical', 
                     .style("opacity", 0)
                     .style("top", "53px")
                     .remove().remove()
-            )        
+            )
 
         legends
             .on("click", (e, d)=>{
                 setPlotted(prev=>{
-                    if(prev === d) {
-                        setIsSorted(false)
-                        return "all"
+                    let newPlot:string[] = []
+                    if(focusOnPlot){
+                        if(prev[0] === d){
+                            newPlot = ["all"]
+                        }else{
+                            newPlot = [d]
+                        }
+                    }else{
+                        if(prev.includes(d)){
+                            newPlot = prev.filter(p => p !== d)                           
+                        }else{
+                            newPlot = [...prev, d]                           
+                        }
                     }
-                    return d
+                    return newPlot
                 })
+                setJustPlotted(true)
             })
             .on("mouseover", (e, d)=>{
-                setHovered(d)
+                const serie = canvas.selectAll<SVGGElement, ExtendedSeriesWithSorted>(".serie")
+                if(plotted[0] === "all"){
+                    if(focusOnPlot){
+                        serie
+                            .attr("fill", layerFill)
+                            .filter(dSerie => dSerie.key !== d)                            
+                                .transition().duration(250)
+                            .style("opacity", 0.25)
+                        
+                    }else{
+                        serie
+                            .attr("fill", layerFill)
+                            .filter(dSerie => dSerie.key === d)                            
+                                .transition().duration(250)
+                            .style("opacity", 0.25)
+                    }   
+                }
             })
             .on("mouseout", (e, d)=>{
-                setHovered("")
+                const serie = canvas.selectAll<SVGGElement, ExtendedSeriesWithSorted>(".serie")
+                if(plotted[0] === "all"){
+                    canvas.selectAll<SVGGElement, ExtendedSeriesWithSorted>(".serie")
+                        .attr("fill", layerFill)                        
+                        .transition().duration(250)
+                    .style("opacity", 1)
+                }                
             })
-                        
-    }, [...renderDeps, keys, dataJustChanged]);
-
-    // Define the controls element (checkbox)
-    const controls = (
-        <div 
-            ref={controlsRef}
-            className={`${styles[isMediumScreen?"controls-container":"controls-container-sm"]} ${uiControls?styles["fill-container"]:""}`}
-        >
-            <label className={`${styles["controls-label"]}`} style={{paddingRight: '12px'}}>
-                <input 
-                    type="checkbox" 
-                    className={`${styles["controls-checkbox"]}`} 
-                    checked={isSorted}
-                    onChange={(e) => setIsSorted(e.target.checked)}                    
-                />
-                    Sort
-            </label>
-            <div 
-                ref={legendRef}            
-                className={`${stackedBarStyles["legends-container"]}`}
-            />
-        </div>
-    );
-
-    const chartRef = useD3<HTMLDivElement>((container) => {
-        if (width === 0 || height === 0) return;
-        if(hovered !== "" && dataJustChanged) return
-        
-        const margin = { top: 20, right: 30, bottom: 30, left: 40 };          
-                    
-        chartData.forEach(function(d: LayeredData) {
-            d.total = keys.reduce((acc, curr) => {
-                if(!(curr in d)){
-                    d[curr] = 0
-                }
-                const value = d[curr];
-                return acc + (typeof value === 'number' ? value : Number(value));
-            }, 0);
-        });  
-                        
-        const filteredData = chartData/*.filter((d: LayeredData) => {
-            return plotted === "all" ? (d?.total && d.total > 0) : (d[plotted as keyof LayeredData] as number) > 0;                
-        });*/
-
-        const sortedData = isSorted?
-            cloneObj(filteredData).sort(function(a:LayeredData, b:LayeredData){
-                /*if(plotted === "all"){
-                    return a.total! - b.total!
-                }*/
-
-                return Number(a[plotted]!) - Number(b[plotted]!)
-            }):filteredData
-
-        const graphWidth = width - margin.left - margin.right,
-            graphHeight = height - margin.top - margin.bottom;
-
-        const canvasSvg = container.select<SVGSVGElement>("svg")
-        const svgNode = canvasSvg.node()
-        const canvas = canvasSvg.select<SVGGElement>('.plot-area')
-            .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
 
         const tooltip = getTooltip(container as any)
             .style("opacity", 0);
@@ -214,7 +253,7 @@ export function GroupedBarChart({ data, colorIdx = 0, orientation = 'vertical', 
             setPrevData(cloneObj(chartData));
         }
 
-        const noPlot = plotted === "all"
+        const noPlot = plotted[0] === "all"
 
         const xAxisTextClass = (!isMediumScreen && orientation === 'vertical')?stackedBarStyles.rotatedAxisText:
             stackedBarStyles.axisText;    
@@ -226,14 +265,9 @@ export function GroupedBarChart({ data, colorIdx = 0, orientation = 'vertical', 
             .paddingInner(noPlot?0.15:isMediumScreen?0.4:0.25)
             .paddingOuter(0.2)            
             .align(0.2) 
-
-        /*const yMax = plotted === "all"?
-                max(chartData, d => max(
-                    Object.entries(d)
-                    .filter(d => d[0]!=="total" && d[0]!=="label"), d => (d as any)[1])):
-                        max(chartData, d=>(d[plotted] as number));*/ 
+        
         const valueMax =
-            plotted === "all"
+            plotted[0] === "all"
                 ? max(chartData, d =>
                     max(
                     Object.entries(d)
@@ -241,7 +275,7 @@ export function GroupedBarChart({ data, colorIdx = 0, orientation = 'vertical', 
                         .map(([, value]) => value as number)     // value is number | string | undefined
                     )
                 )
-                : max(chartData, d => d[plotted] as number);
+                : max(chartData, d => d[plotted[0]] as number);
         const valueScale = scaleLinear()
             .domain([0, valueMax ?? 0])
             .range(orientation === 'vertical'?[graphHeight, 0]:[0, graphWidth]);
@@ -283,13 +317,13 @@ export function GroupedBarChart({ data, colorIdx = 0, orientation = 'vertical', 
             .remove()
 
         const dataLayers: Series<LayeredData, string | string[]>[] =
-            stack<LayeredData>().keys(keys)(sortedData);        
+            stack<LayeredData>().keys(selectedKeys)(sortedData);        
         
         const processedDataLayers:ExtendedSeriesWithSorted[] = dataLayers.map((series) => {
             const seriesKey = series.key
             const newSeries = series.map((point) => {
                 const sortedLayers = Object.keys(point.data)
-                .filter((prop) => prop !== "label" && prop !== "total")
+                .filter((prop) => prop !== "label" && prop !== "total" && (!focusOnPlot?!plotted.includes(prop):true))
                 .map((prop) => ({
                     label: prop,
                     value: point.data[prop],
@@ -309,22 +343,10 @@ export function GroupedBarChart({ data, colorIdx = 0, orientation = 'vertical', 
 
             newSeries.key = seriesKey as string
             return newSeries
-        });
-        //groupedRectNotHovered
+        });        
 
-        const updateRectClass = (d:ExtendedSeriesPointWithSorted) => {
-                if(hovered !== ""){
-                    return `rect 
-                        ${
-                            hovered === d.barKey?
-                            stackedBarStyles.rectLegendHovered:
-                            `
-                                ${stackedBarStyles.rectLegendNotHovered} 
-                                ${(plotted === "all")?stackedBarStyles.groupedRectNotHovered:""}`
-                        }`
-                }
+        const updateRectClass = (d:ExtendedSeriesPointWithSorted) => {                
                 return `rect ${stackedBarStyles.rect}`
-
         }  
 
         let serie = canvas.selectAll<SVGGElement, ExtendedSeriesWithSorted>(".serie")
@@ -333,21 +355,19 @@ export function GroupedBarChart({ data, colorIdx = 0, orientation = 'vertical', 
                 enter=>{
                     let g = enter.append("g")
                         .attr("class", "serie")
-                        .attr("fill", function(d) {
-                            const layerIndex = layers.current.findIndex(l => l === d.key) + colorIdx
-                            return indexColor(layerIndex); })
+                        .attr("fill", layerFill)
                         .style("opacity", d=>{
-                            if(plotted === "all"){
+                            if(plotted[0] === "all"){
                                 return 1;
                             }else {                                
-                                return d.key === plotted?1:0;
+                                return d.key === plotted[0]?1:0;
                             }
                         })
                         .style("pointer-events", d=>{
-                            if(plotted === "all"){
+                            if(plotted[0] === "all"){
                                 return "auto";
                             }else {
-                                return d.key === plotted?"auto":"none";
+                                return d.key === plotted[0]?"auto":"none";
                             }
                         });
                     return g;
@@ -362,21 +382,19 @@ export function GroupedBarChart({ data, colorIdx = 0, orientation = 'vertical', 
                             return "serie"
                         })*/
                         .transition().duration(animDuration)
-                        .attr("fill", function(d) {
-                            const layerIndex = layers.current.findIndex(l => l === d.key) + colorIdx
-                            return indexColor(layerIndex); })
+                        .attr("fill", layerFill)
                         .style("opacity", d=>{
-                            if(plotted === "all"){
+                            if(plotted[0] === "all"){
                                 return 1;
                             }else {
-                                return d.key === plotted?1:0;
+                                return d.key === plotted[0]?1:0;
                             }
                         })
                         .style("pointer-events", d=>{
-                            if(plotted === "all"){
+                            if(plotted[0] === "all"){
                                 return "auto";
                             }else {
-                                return d.key === plotted?"auto":"none";
+                                return d.key === plotted[0]?"auto":"none";
                             }
                         });
                     return g;
@@ -391,18 +409,18 @@ export function GroupedBarChart({ data, colorIdx = 0, orientation = 'vertical', 
             )
             
         const labelScalePos = (d: ExtendedSeriesPointWithSorted) => {
-            const labelPos = labelScale(d.data.label + "") ?? 0;
-            if(plotted === "all"){                                    
-                const sortReference = !isSorted?keys:d.data.sortedLayers
+            const labelPos = labelScale(d.data.label as string) ?? 0;
+            if(!focusOnPlot || (focusOnPlot && plotted[0] === "all")){                                    
+                const sortReference = !isSorted?selectedKeys:d.data.sortedLayers
                 const idx = (Array.isArray(sortReference) && sortReference.indexOf(d.barKey)) || 0
-                return labelPos + (idx * (labelScale.bandwidth()/keys.length))
+                return labelPos + (idx * (labelScale.bandwidth()/selectedKeys.length))
             }                            
             return labelPos
         }
 
         const labelScaleBandWidth = () => {
-            return plotted === "all"?
-                labelScale.bandwidth()/keys.length:labelScale.bandwidth()
+            return (!focusOnPlot || (focusOnPlot && plotted[0] === "all"))?
+                labelScale.bandwidth()/selectedKeys.length:labelScale.bandwidth()
         }
 
         const valueScalePos = (d: ExtendedSeriesPointWithSorted) => {
@@ -456,8 +474,8 @@ export function GroupedBarChart({ data, colorIdx = 0, orientation = 'vertical', 
                         })
                         .attr("width", function(d){
                             if(orientation === 'vertical'){
-                                return plotted === "all"?
-                                labelScale.bandwidth()/keys.length:labelScale.bandwidth()
+                                return plotted[0] === "all"?
+                                labelScale.bandwidth()/selectedKeys.length:labelScale.bandwidth()
                             }else{
                                 return 0
                             }
@@ -475,11 +493,12 @@ export function GroupedBarChart({ data, colorIdx = 0, orientation = 'vertical', 
                             if(orientation === 'vertical'){
                                 return 0
                             }else{
-                                return plotted === "all"?
-                                labelScale.bandwidth()/keys.length:labelScale.bandwidth()
+                                return plotted[0] === "all"?
+                                labelScale.bandwidth()/selectedKeys.length:labelScale.bandwidth()
                             }
                         })
                             .transition().duration(animDuration)//.delay(animDuration)
+                            .style("opacity", 1)
                             .attr("x", rectXPos)
                             .attr("width", rectWidth)                        
                             .attr("height", rectHeight)
@@ -497,6 +516,7 @@ export function GroupedBarChart({ data, colorIdx = 0, orientation = 'vertical', 
             )
             .attr("class", updateRectClass)
             .transition().duration(animDuration)//.delay(isFirstRender?animDuration:0)
+                .style("opacity", 1)
                 .attr("x", rectXPos)
                 .attr("width", rectWidth)                        
                 .attr("height", rectHeight)
@@ -505,7 +525,11 @@ export function GroupedBarChart({ data, colorIdx = 0, orientation = 'vertical', 
         serie
             .selectAll<SVGRectElement, ExtendedSeriesPointWithSorted>("rect")
                 .on("mouseover", function(e, d){
-                    //unhoverLegend()
+                    if(isSorted){
+                        serie.selectAll<SVGRectElement, ExtendedSeriesPointWithSorted>("rect")
+                            .filter(dRect => dRect.barKey !== d.barKey)
+                            .style("opacity", 0.25)    
+                    }
                     
                     select(orientation === "vertical"?".x-axis":".y-axis").selectAll("text")
                         .filter(dText=>dText === d.data.label).attr("class", (orientation === "vertical"?xAxisTextClass:"") + " " + stackedBarStyles.hoveredAxisText)
@@ -519,7 +543,7 @@ export function GroupedBarChart({ data, colorIdx = 0, orientation = 'vertical', 
                     const percentText = format(".1f")(percentage) + "%"
                     tooltip.select("p.top-label").text(d.barKey + " : " + basicFormat(value as number, tooltipFormat))
                     tooltip.select("p.bottom-label").text(
-                        plotted === "all"?`Total : ${basicFormat(total!, tooltipFormat)}`:"~"
+                        plotted[0] === "all"?`Total : ${basicFormat(total!, tooltipFormat)}`:"~"
                     )
                 })
                 .on("touch", function(e, d){
@@ -531,47 +555,64 @@ export function GroupedBarChart({ data, colorIdx = 0, orientation = 'vertical', 
                     moveTooltip(tooltip, {e, svg:svgNode as SVGSVGElement, yScale: valueScale})
                 })
                 .on("mouseout", function(e, d){
+                    if(isSorted){
+                        serie.selectAll<SVGRectElement, ExtendedSeriesPointWithSorted>("rect")
+                            .filter(dRect => dRect.barKey !== d.barKey)
+                            .style("opacity", 1)    
+                    }
                     select(orientation === "vertical"?".x-axis":".y-axis").selectAll("text")
                         .filter(dText=>dText === d.data.label)
                         .attr("class", orientation === "vertical"?xAxisTextClass:"")
 
                     tooltip.style("opacity", 0);
-                })
-            
-                         
+                })                                     
 
-    }, [ ...renderDeps, isSorted, chartData, keys, hovered, justPlotted, orientation, dataJustChanged, tooltipFormat ]);
+    }, [ ...renderDeps, isSorted, chartData, justPlotted, orientation, dataJustChanged, tooltipFormat ]);
     
     return (
         <div 
             ref={ref} 
             style={{ width: parentWidth, height: parentHeight, display:'flex', flexDirection:'column' }}
-        >
-            {uiControls
-                ? createPortal(controls, uiControls)
-                    : controls}
+        >            
             <div
-                ref={chartContainerRef} 
+                ref={chartRef} 
                 className={`${styles["fill-container"]}`}
                 style={{ display:"flex", flexDirection:"column"}}>
+                <div 
+                    ref={controlsRef}
+                    className={`controls ${styles[isMediumScreen?"controls-container":"controls-container-sm"]} ${uiControls?styles["fill-container"]:""}`}
+                >
+                    <label className={styles["controls-label"]} style={{paddingRight: '12px'}}>
+                        <input 
+                            type="checkbox" 
+                            className={styles["controls-checkbox"]} 
+                            checked={isSorted}
+                            onChange={(e) => setIsSorted(e.target.checked)}
+                        />
+                            Sort
+                    </label>
+                    <div                         
+                        className={`legends-container ${stackedBarStyles["legends-container"]}`}
+                    />
+                </div>
                 <div
-                    ref={chartRef} 
+                    ref={chartContainerRef} 
                     className={`${styles["fill-container"]}`}
                     style={{ display:"flex", flexDirection:"column"}}>
-                <svg
-                    className={`${styles["chart-svg"]} ${styles["fill-container"]}`}        
-                    viewBox={`0 0 ${width} ${height}`}
-                >
-                    {
-                        width > 0 &&
-                        <g className="plot-area">
-                            <g className="plot-rects" />
-                            <g className={`${orientation === 'vertical'?stackedBarStyles["value-axis"]:""} y-axis`} />
-                            <g className={`${orientation === 'horizontal'?stackedBarStyles["value-axis"]:""} x-axis`} />  
-                        </g>        
-                    }                                        
-                </svg>
-                <Tooltip pCount={3} />
+                    <svg
+                        className={`${styles["chart-svg"]} ${styles["fill-container"]}`}        
+                        viewBox={`0 0 ${width} ${height}`}
+                    >
+                        {
+                            width > 0 &&
+                            <g className="plot-area">
+                                <g className="plot-rects" />
+                                <g className={`${orientation === 'vertical'?stackedBarStyles["value-axis"]:""} y-axis`} />
+                                <g className={`${orientation === 'horizontal'?stackedBarStyles["value-axis"]:""} x-axis`} />  
+                            </g>        
+                        }                                        
+                    </svg>
+                    <Tooltip pCount={3} />
                 </div>
             </div>
         </div>

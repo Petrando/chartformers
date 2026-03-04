@@ -208,11 +208,7 @@ const App = () => {
           </div>
           
         </div>
-        <div style={{ flex:1, width: "100%", height: "100%", overflow:"hidden", border: "1px solid grey" }}>                 
-          <GroupedBarChart data={selectedStackedData} colorIdx={28} orientation='horizontal' />
-        </div>
-      </div>
-      <div id="select-stack-data" className={`${controlStyles["select-optional"]}`}>
+        <div id="select-stack-data" className={`${controlStyles["select-optional"]}`}>
         <label htmlFor="choose-stack-data">Choose data:</label>
         <select id="choose-stack-data" value={selectedData} onChange={handleChange}>              
           {
@@ -222,6 +218,13 @@ const App = () => {
           }
         </select>
       </div>
+        <div style={{ flex:1, width: "100%", height: "100%", overflow:"hidden", border: "1px solid grey" }}>                 
+          <GroupedBarChart 
+            data={selectedStackedData} 
+            colorIdx={28}                         
+          />
+        </div>
+      </div>      
       <div style={{width: "80vw", height: "500px", position: "relative" }}>                 
           <StackedBarChart focusOnPlot data={selectedStackedData} colorIdx={12}  />
       </div>      

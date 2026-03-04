@@ -11,7 +11,6 @@ import { inactiveColor } from '../../../dev/data/constants';
 import styles from '../global.module.css';
 import stackedBarStyles from './stacked-barchart.module.css';
 import { LayeredData, ExtendedSeriesPointWithSorted, ExtendedSeriesWithSorted, StackedBarChartProps } from './types';
-import { useUIControls } from '../../hooks/useUIControls';
 
 type modeType =  'stacked' | 'grouped' | 'percentage';
 
@@ -289,15 +288,21 @@ export function MorphStackedBarChart({
                 prevData.map(d => d.name)
 
         const x: ScaleBand<string> = scaleBand<string>()
-                .rangeRound([0, graphWidth])
-                .domain(xLabels)
-                .paddingInner(mode !== "grouped"?(isMediumScreen?0.4:0.25):0.1)
-                .paddingOuter(0.2)
-                .align(0.2) 
+            .rangeRound([0, graphWidth])
+            .domain(xLabels)
+            .paddingInner(
+                (mode !== "grouped" || 
+                (mode === "grouped" && (
+                    (focusOnPlot && plotted[0] !== "all") ||
+                    (!focusOnPlot && selectedKeys.length === 1)
+                ))                    
+            )?(isMediumScreen?0.4:0.25):0.1)
+            .paddingOuter(0.2)
+            .align(0.2) 
 
         const xAxis = axisBottom(x)
-                .tickValues(x.domain())
-                .tickSizeOuter(0)
+            .tickValues(x.domain())
+            .tickSizeOuter(0)
 
         const xAxisTextClass = (!isMediumScreen && orientation === 'vertical')?stackedBarStyles.rotatedAxisText:
             stackedBarStyles.axisText;
@@ -653,8 +658,7 @@ export function MorphStackedBarChart({
                 className={`${styles["fill-container"]}`}
                 style={{ display:"flex", flexDirection:"column"}}>
                 <div
-                    className={`controls ${styles[isMediumScreen?"controls-container":"controls-container-sm"]}`}
-                    style={{border: "1px solid red", width: parentWidth}}
+                    className={`controls ${styles[isMediumScreen?"controls-container":"controls-container-sm"]}`}                    
                 >
                     <label className={`${styles["controls-label"]} ${mode === "percentage"?styles.disabled:""}`} style={{paddingRight: '12px'}}>
                         <input 

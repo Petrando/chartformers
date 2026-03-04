@@ -1,5 +1,6 @@
 import React, {useState, useEffect, useDeferredValue, useRef} from 'react';
 import { axisBottom, axisLeft, max, ScaleBand, scaleBand, ScaleLinear, scaleLinear, 
+    select, 
     Series, stack, stackOffsetExpand, stackOffsetNone } from 'd3';
 import { useD3 } from '../../hooks/useD3';
 import { useParentSize } from '../../hooks/useParentSize';
@@ -581,6 +582,24 @@ export function MorphStackedBarChart({
                         .filter(dRect => dRect.barKey !== d.barKey)
                         .style("opacity", 0.25)    
                 }
+
+                select(orientation === "vertical"?".x-axis":".y-axis").selectAll("text")
+                    .filter(dText=>dText === d.data.label)
+                    .attr("class", (orientation === "vertical"?xAxisTextClass:"") + " " + stackedBarStyles.hoveredAxisText)
+                
+                tooltip.style("opacity", 1)
+                    .select("p.title").text(d.data.label)
+                
+                const value = d.data[d.barKey] as number
+                const {total} = d.data
+                const percentage = (value/total!) * 100
+                
+                tooltip.select("p.top-label").text(d.barKey + " : " + basicFormat(value, tooltipFormat))
+                tooltip.select("p.bottom-label").text(plotted[0] === "all"?
+                    `Total : ${basicFormat(total as number, tooltipFormat)}`:"~")
+            })
+            .on("mousemove", (e, d)=>{                                                                               
+                moveTooltip(tooltip, {e, svg:svgNode as SVGSVGElement, yScale: y})
             })
             .on("mouseout", function(e, d){
                 if(mode === "grouped" && isSorted){
@@ -588,6 +607,12 @@ export function MorphStackedBarChart({
                         .filter(dRect => dRect.barKey !== d.barKey)
                         .style("opacity", 1)    
                 }
+
+                select(orientation === 'vertical'?".x-axis":".y-axis").selectAll("text")
+                    .filter(dText=>dText === d.data.label)
+                    .attr("class", orientation==='vertical'?xAxisTextClass:"")
+
+                tooltip.style("opacity", 0);
             })
 
         function transitionNormal(){

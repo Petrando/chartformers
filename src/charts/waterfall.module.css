@@ -1,0 +1,20 @@
+.x-axis .tick, .x-axis .domain {
+  display: none;
+}
+
+.label, .axis-label, .axis-label-sm {  
+  text-shadow: 0 1px 0 lightblue, 1px 0 0 lightblue, -1px 0 0 lightblue, 0 -1px 0 lightblue;
+  font-weight: bold;
+}
+
+.label {
+  text-anchor: middle;
+}
+.axis-label {
+  text-anchor: middle;  
+}
+
+.axis-label-sm {
+  text-anchor: start;
+  font-weight:300
+}

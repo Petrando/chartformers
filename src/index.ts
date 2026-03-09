@@ -9,3 +9,4 @@ export { CirclePacks } from './charts/circle-packs';
 export { PopulationPyramid } from './charts/population-pyramid';
 export { StockPriceChart} from './charts/stockprice'
 export { Sunburst } from './charts/sunburst'
+export { WaterfallChart } from './charts/waterfall';

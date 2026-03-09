@@ -1,6 +1,7 @@
 import { createRoot } from 'react-dom/client';
 import { StockPriceChart } from '../src';
 import { JKSEData } from './data/stockprice';
+import { WaterfallDiagram } from './charts/waterfall-chart';
 import { SunburstChart } from './charts/SunburstChart';
 import { PopulationPyramidChart } from './charts/populationPyramid';
 import { ZoomableCirclePacks } from './charts/zoomableCirclePacks';
@@ -13,6 +14,7 @@ const App = () => {
   return(
   
     <div style={{paddingBottom: "20px"}}>    
+      <WaterfallDiagram />
       <SunburstChart />
       <div style={{
           width: '80vw',

@@ -1,5 +1,3 @@
-import { SankeyNodeMinimal, SankeyNode } from "d3-sankey";
-
 export type pointData = {
     label: string;
     value: number;
@@ -78,4 +76,12 @@ export interface PackNode {
 export interface PackLink {
     source: PackNode;
     target: PackNode;
+}
+
+export interface waterfallData {
+    label: string;
+    start?: number;
+    value: number;
+    end?: number;
+    type: "total" | "variation";
 }

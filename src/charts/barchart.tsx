@@ -206,7 +206,6 @@ export function BarChart({
                     .style("stroke", "#71717a")
                     .style("stroke-width", 1)
                 
-
                 tooltip.style("opacity", 1)
                     .select("p").text(d.label + ` : 
                         ${prefix}

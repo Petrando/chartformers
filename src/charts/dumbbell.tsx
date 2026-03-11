@@ -10,10 +10,12 @@ import { useContainerSize } from '../hooks/useContainerSize';
 type DumbbellProps<T> = {
     data: dumbbellDatum[];    
     tooltipFormat?: tooltipFormat;
+    orientation?: 'vertical' | 'horizontal';
 }
 
 export function DumbbellChart<T extends { label: string }>({
         data,         
+        orientation= 'horizontal',
         tooltipFormat: {
             prefix = "", suffix = "", formatType = "long"
         } = { prefix: "", suffix: "", formatType: "long"}
@@ -122,13 +124,11 @@ export function DumbbellChart<T extends { label: string }>({
         const tooltip = getTooltip(container as any)
             .style("opacity", 0); 
                             
-        const yScale = scaleBand()
+        const labelScale = scaleBand()
             .domain(data.map(d => d.label))
-            .rangeRound([0, graphHeight])
+            .rangeRound([0, orientation === 'horizontal'?graphHeight:graphWidth])
             //.paddingInner(isMediumScreen?0.4:0.25)
-            .paddingOuter(0.1)        
-
-        const yAxis = axisLeft(yScale).tickSizeOuter(0)
+            .paddingOuter(0.1)                
         
         const valueMinStart = min(data, d => d[numKeys[0]] as number) ?? 0
         const valueMaxStart = max(data, d => d[numKeys[0]] as number) ?? 0
@@ -137,33 +137,55 @@ export function DumbbellChart<T extends { label: string }>({
 
         const valueMin = Math.min(valueMinStart, valueMinEnd)
         const valueMax = Math.max(valueMaxStart, valueMaxEnd)        
-        const xScale = scaleLinear()
+        const valueScale = scaleLinear()
             .domain([valueMin, valueMax])
-            .rangeRound([0, graphWidth])
-            .nice()            
-        
-        const xAxis = axisBottom(xScale)            
-            .tickValues(xScale.domain())
-            .scale(xScale)
-            .ticks(5, "s").tickSize(-graphHeight)
+            .rangeRound(orientation === 'horizontal'?[0, graphWidth]:[graphHeight, 0])
+            .nice()
 
-        canvas.select<SVGGElement>(".x-axis")            
-            .transition().duration(animDuration).call(xAxis)            
-            .attr("transform", `translate(0, ${graphHeight})`)
-            //.selectAll("text")
-            //.attr("class", `${xAxisTextClass}`)
+        const yAxis = orientation === 'horizontal'?axisLeft(labelScale).tickSizeOuter(0):
+            axisLeft(valueScale)            
+                .tickValues(valueScale.domain())
+                .scale(valueScale)
+                .ticks(5, "s").tickSize(-graphWidth)
+
+        const xAxis = orientation === 'horizontal'?
+            axisBottom(valueScale)            
+                .tickValues(valueScale.domain())
+                .scale(valueScale)
+                .ticks(5, "s").tickSize(-graphHeight):
+            axisBottom(labelScale).tickSizeOuter(0)
 
         const fromNegativeToPositive = valueMin < 0 && valueMax > 0
 
+        canvas.select<SVGGElement>(".x-axis")            
+            .transition().duration(animDuration).call(xAxis)            
+            .attr(
+                    "transform", 
+                    `translate(0, ${(orientation === 'vertical' && fromNegativeToPositive)?
+                        valueScale(0):graphHeight})`
+            )
+            //.selectAll("text")
+            //.attr("class", `${xAxisTextClass}`)
+        
         canvas.select<SVGGElement>(".y-axis")            
             .transition().duration(animDuration).call(yAxis)
-            .attr("transform", `translate(${fromNegativeToPositive?xScale(0):"0"}, 0)`)
+            .attr(
+                "transform", 
+                `translate(${(orientation === 'horizontal' && fromNegativeToPositive)?
+                    valueScale(0):"0"}, 0)`
+            )
         
-        const xPosStart = (d: dumbbellDatum) => xScale(d[numKeys[0]] as number)        
+        const valuePosStart = (d: dumbbellDatum) => valueScale(d[numKeys[0]] as number)        
 
-        const xPosEnd = (d: dumbbellDatum) => xScale(d[numKeys[1]] as number)
+        const valuePosEnd = (d: dumbbellDatum) => valueScale(d[numKeys[1]] as number)
 
-        const yPos = (d: dumbbellDatum) => (yScale(d.label) ?? 0) + (yScale.bandwidth()/2)
+        const labelPos = (d: dumbbellDatum) => (labelScale(d.label) ?? 0) + (labelScale.bandwidth()/2)
+
+        const xPosStart = (d: dumbbellDatum) => orientation === 'horizontal'?valuePosStart(d):labelPos(d)
+        const yPosStart = (d: dumbbellDatum) => orientation === 'horizontal'?labelPos(d):valuePosStart(d)
+
+        const xPosEnd = (d: dumbbellDatum) => orientation === 'horizontal'?valuePosEnd(d):labelPos(d)
+        const yPosEnd = (d: dumbbellDatum) => orientation === 'horizontal'?labelPos(d):valuePosEnd(d)
 
         const links = canvas.selectAll<SVGLineElement, dumbbellDatum>("line.link")
             .data(data, (d) => d.label)
@@ -173,26 +195,27 @@ export function DumbbellChart<T extends { label: string }>({
                     .attr("stroke", "#9ca3af")
                     .attr("stroke-width", 4)
                     .attr("x1", xPosStart)
-                    .attr("y1", yPos)
+                    .attr("y1", yPosStart)
                     .attr("x2", xPosStart)
-                    .attr("y2", yPos)
+                    .attr("y2", yPosStart)
                         .transition().duration(animDuration)
                     .attr("x1", xPosStart)
-                    .attr("y1", yPos)
+                    .attr("y1", yPosStart)
                     .attr("x2", xPosEnd)
-                    .attr("y2", yPos)
+                    .attr("y2", yPosEnd)
                     ,
                 update=>update
                         .transition().duration(animDuration)
                     .attr("x1", xPosStart)
-                    .attr("y1", yPos)
+                    .attr("y1", yPosStart)
                     .attr("x2", xPosEnd)
-                    .attr("y2", yPos),
+                    .attr("y2", yPosEnd),
                 exit=>exit
                         .transition().duration(animDuration)                    
                     .style("opacity", 0)
                         .remove()
             )
+                        
 
         const r = isMediumScreen?7:10
 
@@ -203,15 +226,15 @@ export function DumbbellChart<T extends { label: string }>({
                     .attr("class", "start")
                     .attr("fill", colors.startColor)
                     .attr("cx", xPosStart)
-                    .attr("cy", yPos)
+                    .attr("cy", yPosStart)
                         .transition().duration(animDuration)
                     .attr("cx", xPosStart)
-                    .attr("cy", yPos)
+                    .attr("cy", yPosStart)
                     .attr("r", r),
                 update=>update
                         .transition().duration(animDuration)
                     .attr("cx", xPosStart)
-                    .attr("cy", yPos)
+                    .attr("cy", yPosStart)
                     .attr("r", r),
                 exit=>exit
                         .transition().duration(animDuration)
@@ -226,15 +249,15 @@ export function DumbbellChart<T extends { label: string }>({
                     .attr("class", "end")
                     .attr("fill", colors.endColor)
                     .attr("cx", xPosStart)
-                    .attr("cy", yPos)
+                    .attr("cy", yPosStart)
                         .transition().duration(animDuration)
                     .attr("cx", xPosEnd)
-                    .attr("cy", yPos)
+                    .attr("cy", yPosEnd)
                     .attr("r", r),
                 update=>update
                         .transition().duration(animDuration)
                     .attr("cx", xPosEnd)
-                    .attr("cy", yPos)
+                    .attr("cy", yPosEnd)
                     .attr("r", r),
                 exit=>exit
                         .transition().duration(animDuration)                    
@@ -259,7 +282,7 @@ export function DumbbellChart<T extends { label: string }>({
             console.log(label, a, b)
         })*/
         
-    }, [data, width, height,  {prefix, suffix, formatType}]);
+    }, [data, width, height, orientation,  {prefix, suffix, formatType}]);
     
     return (
         <div 
@@ -286,8 +309,8 @@ export function DumbbellChart<T extends { label: string }>({
                         viewBox={`0 0 ${width} ${height}`}
                     >
                         <g className="plot-area">
-                            <g className={`y-axis`} />
-                            <g className={`${styles["value-axis"]} x-axis`} />    
+                            <g className={`${orientation === "vertical"?styles["value-axis"]:''} y-axis`} />
+                            <g className={`${orientation === "horizontal"?styles["value-axis"]:''} x-axis`} />    
                         </g>                        
                     </svg>                                
                     <Tooltip />

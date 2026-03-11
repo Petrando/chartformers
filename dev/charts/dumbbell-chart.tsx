@@ -36,7 +36,7 @@ export const DumbbellDiagram = () => {
                 </select>
             </div>
             <div style={{width: "80vw", height: "500px", }}>                 
-                <DumbbellChart data={dumbbellData}   />
+                <DumbbellChart data={dumbbellData} orientation="horizontal"  />
             </div>            
         </div>
     )

@@ -281,8 +281,8 @@ export function BarChart({
                     viewBox={`0 0 ${width} ${height}`}
                 >
                     <g className="plot-area">
-                        <g className={`${orientation === 'vertical'?barchartStyles["value-axis"]:""} y-axis`} />
-                        <g className={`${orientation === 'horizontal'?barchartStyles["value-axis"]:""} x-axis`} />    
+                        <g className={`${orientation === 'vertical'?styles["value-axis"]:""} y-axis`} />
+                        <g className={`${orientation === 'horizontal'?styles["value-axis"]:""} x-axis`} />    
                     </g>                        
                 </svg>            
                 {

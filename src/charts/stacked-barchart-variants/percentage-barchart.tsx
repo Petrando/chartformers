@@ -521,7 +521,7 @@ export function PercentageBarChart({ data, colorIdx = 0, orientation = 'vertical
 
                 <div 
                     ref={controlsRef}
-                    className={`controls ${styles["controls-container"]} ${uiControls?styles["fill-container"]:""}`}
+                    className={`controls ${styles["controls-container"]}`}
                 >
                     <label className={styles["controls-label"]} style={{paddingRight: '12px'}}>
                         <input 

@@ -3,6 +3,7 @@ import { StockPriceChart } from '../src';
 import { JKSEData } from './data/stockprice';
 import { WaterfallDiagram } from './charts/waterfall-chart';
 import { SunburstChart } from './charts/SunburstChart';
+import { DumbbellDiagram } from './charts/dumbbell-chart';
 import { PopulationPyramidChart } from './charts/populationPyramid';
 import { ZoomableCirclePacks } from './charts/zoomableCirclePacks';
 import { SortableSankey } from './charts/sortableSankey';
@@ -13,7 +14,8 @@ const App = () => {
   
   return(
   
-    <div style={{paddingBottom: "20px"}}>    
+    <div style={{paddingBottom: "20px"}}>
+      <DumbbellDiagram />    
       <WaterfallDiagram />
       <SunburstChart />
       <div style={{

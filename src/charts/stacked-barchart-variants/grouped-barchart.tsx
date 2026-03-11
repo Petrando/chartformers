@@ -579,7 +579,7 @@ export function GroupedBarChart({
                 style={{ display:"flex", flexDirection:"column"}}>
                 <div 
                     ref={controlsRef}
-                    className={`controls ${styles[isMediumScreen?"controls-container":"controls-container-sm"]} ${uiControls?styles["fill-container"]:""}`}
+                    className={`controls ${styles[isMediumScreen?"controls-container":"controls-container-sm"]}`}
                 >
                     <label className={styles["controls-label"]} style={{paddingRight: '12px'}}>
                         <input 

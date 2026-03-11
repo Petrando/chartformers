@@ -1,12 +1,8 @@
 import React, {useState} from 'react';
-import { createPortal } from "react-dom";
-import {select, scaleBand, scaleLinear, axisLeft, axisBottom, max, format, selectAll} from 'd3';
+import {scaleBand, scaleLinear, axisLeft, axisBottom, format} from 'd3';
 import { useD3 } from '../hooks/useD3';
 import { useParentSize } from '../hooks/useParentSize';
-import { useUIControls } from '../hooks/useUIControls';
 import { Tooltip, getTooltip, moveTooltip } from '../components/tooltip';
-import { cloneObj, indexSelectedColor } from '../utils';
-import { inactiveColor } from '../../dev/data/constants';
 import styles from './global.module.css';
 import waterfallStyles from './waterfall.module.css'
 import barchartStyles from './barchart.module.css';
@@ -48,9 +44,7 @@ export function WaterfallChart({
             prevEnd = end
 
             return { ...d, start, end }
-        })        
-
-        console.log(formattedData)
+        })                
         
         const canvasSvg = container.select<SVGSVGElement>("svg")
         const svgNode = canvasSvg.node()
@@ -270,7 +264,7 @@ export function WaterfallChart({
                     viewBox={`0 0 ${width} ${height}`}
                 >
                     <g className="plot-area">
-                        <g className={`${barchartStyles["value-axis"]} y-axis`} />
+                        <g className={`${styles["value-axis"]} y-axis`} />
                         <g className={`${waterfallStyles["x-axis"]} x-axis`} />    
                     </g>                        
                 </svg>            

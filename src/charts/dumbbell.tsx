@@ -121,9 +121,7 @@ export function DumbbellChart<T extends { label: string }>({
 
         const tooltip = getTooltip(container as any)
             .style("opacity", 0); 
-            
-                
-
+                            
         const yScale = scaleBand()
             .domain(data.map(d => d.label))
             .rangeRound([0, graphHeight])
@@ -155,9 +153,11 @@ export function DumbbellChart<T extends { label: string }>({
             //.selectAll("text")
             //.attr("class", `${xAxisTextClass}`)
 
-        canvas.select<SVGGElement>(".y-axis")
-            .attr("transform", `translate(0, 0)`)
+        const fromNegativeToPositive = valueMin < 0 && valueMax > 0
+
+        canvas.select<SVGGElement>(".y-axis")            
             .transition().duration(animDuration).call(yAxis)
+            .attr("transform", `translate(${fromNegativeToPositive?xScale(0):"0"}, 0)`)
         
         const xPosStart = (d: dumbbellDatum) => xScale(d[numKeys[0]] as number)        
 
@@ -242,6 +242,8 @@ export function DumbbellChart<T extends { label: string }>({
                     .remove()
             )
             
+        canvas.select<SVGGElement>(".x-axis").raise()
+        canvas.select<SVGGElement>(".y-axis").raise()
         /*
         const numericKeys = Object.keys(data[0]).filter(
             k => typeof data[0][k as keyof T] === "number"

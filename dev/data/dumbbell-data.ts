@@ -31,6 +31,36 @@ export const internetPenetration_2015_2025 = [
   { label: "Australia", year2015: 79, year2025: 90 }
 ]
 
+export const companyProfit2023_2024 = [
+  { label: "Company A", profit2023: -40, profit2024: 15 },
+  { label: "Company B", profit2023: 25, profit2024: 10 },
+  { label: "Company C", profit2023: -30, profit2024: -5 },
+  { label: "Company D", profit2023: 10, profit2024: 45 },
+  { label: "Company E", profit2023: -15, profit2024: -20 },
+  { label: "Company F", profit2023: 5, profit2024: -10 }
+]
+
+export const companyProfit2024_2025 = [
+  { label: "Company A", profit2024: 15, profit2025: 28 },
+  { label: "Company C", profit2024: -5, profit2025: 8 },
+  { label: "Company D", profit2024: 45, profit2025: 40 },
+  { label: "Company E", profit2024: -20, profit2025: -12 },
+  { label: "Company F", profit2024: -10, profit2025: 5 },
+  { label: "Company G", profit2024: 12, profit2025: 22 },
+  { label: "Company H", profit2024: -8, profit2025: 6 }
+]
+
+export const companyProfit2025_2026 = [
+  { label: "Company A", profit2025: 28, profit2026: 35 },
+  { label: "Company D", profit2025: 40, profit2026: 55 },
+  { label: "Company E", profit2025: -12, profit2026: -3 },
+  { label: "Company F", profit2025: 5, profit2026: -7 },
+  { label: "Company G", profit2025: 22, profit2026: 30 },
+  { label: "Company H", profit2025: 6, profit2026: 18 },
+  { label: "Company I", profit2025: -25, profit2026: -10 },
+  { label: "Company J", profit2025: 14, profit2026: 9 }
+]
+
 export const lifeExpectancy = [
     { label: "Japan", male: 81, female: 87 },
     { label: "United States", male: 74, female: 80 },

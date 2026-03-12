@@ -1,0 +1,23 @@
+.parent {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    width: 100%;                 /* always full width */
+    gap: 12px;                   /* spacing between select and UI controls */
+    overflow: hidden;            /* parent hides overflow, but children can scroll */
+}
+
+/* Optional select container */
+.select-optional {
+    flex: 0 0 auto;              /* keep natural width, do NOT stretch */
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+/* UI-controls takes the remaining space */
+.UI-controls {
+    flex: 1 1 auto;              /* take whatever width is left */
+    min-width: 0;                /* IMPORTANT: allow children to shrink so scrolling works */
+    overflow: hidden;            /* ensures only legends scroll, not parent */
+}

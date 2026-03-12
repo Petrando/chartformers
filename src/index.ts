@@ -11,3 +11,4 @@ export { StockPriceChart} from './charts/stockprice'
 export { Sunburst } from './charts/sunburst'
 export { WaterfallChart } from './charts/waterfall';
 export { DumbbellChart } from  './charts/dumbbell'
+export { ChordDiagram } from './charts/chord'

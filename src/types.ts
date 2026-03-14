@@ -110,3 +110,5 @@ export type dumbbellDatum = {
   label: string;
   [key: string]: number | string;
 }
+
+export type chordData = number[][]

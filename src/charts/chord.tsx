@@ -1,13 +1,13 @@
 import React, {useState} from 'react';
-import { format, chord, descending, arc, ribbon, Chord } from 'd3';
+import { format, chord, descending, arc, ribbon, Chord, ChordGroup, tickStep, sum, range } from 'd3';
 import { useD3 } from '../hooks/useD3';
 import { useParentSize } from '../hooks/useParentSize';
 import { Tooltip, getTooltip, moveTooltip } from '../components/tooltip';
 import styles from './global.module.css';
-import { tooltipFormat } from '../types';
+import { tooltipFormat, chordData } from '../types';
 
 type ChordProps = {
-    data: any[];    
+    data: chordData;    
     tooltipFormat?: tooltipFormat;
 }
 
@@ -23,6 +23,12 @@ export function ChordDiagram({
     const isMediumScreen = width > 576;
     // Define the controls element (checkbox)    
     
+    function groupTicks(d: ChordGroup, step: number) {
+        const k = (d.endAngle - d.startAngle) / d.value;
+        return range(0, d.value, step).map(value => {
+            return {value: value, angle: value * k + d.startAngle};
+        });
+    }
     const animDuration = 750;
     const chartRef = useD3<HTMLDivElement>((container) => {
         if (width === 0 || height === 0) return;
@@ -37,8 +43,8 @@ export function ChordDiagram({
         const tooltip = getTooltip(container as any)
             .style("opacity", 0);        
 
-        const graphWidth = width - margin - margin
-        const graphHeight = height - margin - margin
+        const colors = ["#94a3b8", "#86efac", "#ec4899", "#db2777", "#008fc8", "#1d4ed8", "#047857", "#5b4f4b"]
+        const names = ["Apple", "HTC", "Huawei", "LG", "Nokia", "Samsung", "Sony", "Other"]
 
         const res = chord()
             .padAngle(0.05)     // padding between entities (black arc)
@@ -47,20 +53,30 @@ export function ChordDiagram({
 
         const radius = Math.min(width, height)
         const r = radius * 0.4
-        canvas.selectAll("g.nodes").remove()
-        canvas.selectAll<SVGGElement, any>("g.nodes")
-            .data(res.groups, function(d) { return d.index; })
-            .enter()
-            .append("g")
-            .attr("class", "nodes")
-            .append("path")
-                .style("fill", "grey")
-                .style("stroke", "black")
-                .attr("d", arc<any>()
-                    .innerRadius(r - 10)
-                    .outerRadius(r)
-                )
-                
+
+        canvas.selectAll("linearGradient").remove();
+        
+        const gradients = canvas.selectAll<SVGLinearGradientElement, Chord>("linearGradient")
+            .data(res).join("linearGradient")
+            .attr("id", (d, i) => `chord-gradient-${i}`)
+            .attr("gradientUnits", "userSpaceOnUse")
+            .attr("x1", d => Math.cos((d.source.startAngle + d.source.endAngle) / 2 - Math.PI/2) * r)
+            .attr("y1", d => Math.sin((d.source.startAngle + d.source.endAngle) / 2 - Math.PI/2) * r)
+            .attr("x2", d => Math.cos((d.target.startAngle + d.target.endAngle) / 2 - Math.PI/2) * r)
+            .attr("y2", d => Math.sin((d.target.startAngle + d.target.endAngle) / 2 - Math.PI/2) * r);                        
+
+        gradients.append("stop")
+            .attr("offset", "0%")
+            .attr("stop-color", d => {                            
+                return colors[d.source.index]
+            });
+
+        gradients.append("stop")
+            .attr("offset", "100%")
+            .attr("stop-color", d => {                            
+                return colors[d.target.index]
+            });
+    
         canvas.selectAll("path.link").remove()
         canvas
             .selectAll<SVGPathElement, Chord>("path.link")
@@ -69,8 +85,64 @@ export function ChordDiagram({
             .append("path")
             .attr("class", "link")
             .attr("d", ribbon<Chord, SVGPathElement>().radius(r - 10))
-            .style("fill", "#69b3a2")
-            .style("stroke", "black");
+            .style("fill", (d, i) => `url(#chord-gradient-${i})`)
+            .style("stroke", "none");
+
+        canvas.selectAll("g.nodes").remove()
+        const arcGen = arc<ChordGroup>()
+            .innerRadius(r - 10)
+            .outerRadius(r)
+
+        const node = canvas
+            .selectAll<SVGGElement, ChordGroup>("g.nodes")
+            .data(res.groups, d => d.index)
+            .enter()
+            .append("g")
+            .attr("class", "nodes")
+
+        node.append("path")
+            .style("fill", function(d, i){ return(colors[i]) })
+            .style("stroke", "black")
+            .attr("d", arcGen)
+
+        const chordTick = tickStep(0, sum(data.flat()), 100); // adjust depending on your data scale        
+
+        const ticks = node            
+            .selectAll("g.group-tick")
+            .data(d => groupTicks(d, chordTick))
+            .enter()
+            .append("g")
+            .attr("class", "group-tick")
+            .attr("transform", d =>
+                `rotate(${(d.angle * 180 / Math.PI - 90)}) translate(${r},0)`
+            );
+
+        ticks.append("line")
+            .attr("stroke", "black")
+            .attr("x2", 6);
+
+        ticks
+            .filter(d => d.value % (chordTick * 5) === 0)
+            .append("text")
+            .attr("x", 8)
+            .attr("dy", "0.35em")
+            .attr("transform", d =>
+                d.angle > Math.PI ? "rotate(180) translate(-16)" : null
+            )
+            .style("text-anchor", d =>
+                d.angle > Math.PI ? "end" : "start"
+            )
+            .text(d => format(".1~%")(d.value));
+
+        node
+            .select("text")
+            .attr("font-weight", "bold")
+            .text(function(d) {
+                const thisNode = this as Element
+                return thisNode.getAttribute("text-anchor") === "end"
+                    ? `↑ ${names[d.index]}`
+                    : `${names[d.index]} ↓`;
+            });
         
         
     }, [data, width, height,  {prefix, suffix, formatType}]);

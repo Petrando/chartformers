@@ -1,13 +1,15 @@
 import React, {useState} from 'react';
 import { format, chord, descending, arc, ribbon, Chord, ChordGroup, tickStep, sum, range } from 'd3';
+import { indexColor } from '../utils';
+import { useLayerIndex } from '../hooks/useLayerIndex';
 import { useD3 } from '../hooks/useD3';
 import { useParentSize } from '../hooks/useParentSize';
 import { Tooltip, getTooltip, moveTooltip } from '../components/tooltip';
 import styles from './global.module.css';
-import { tooltipFormat, chordData } from '../types';
+import { tooltipFormat, chordDatum } from '../types';
 
 type ChordProps = {
-    data: chordData;    
+    data: chordDatum[];    
     tooltipFormat?: tooltipFormat;
 }
 
@@ -29,6 +31,8 @@ export function ChordDiagram({
             return {value: value, angle: value * k + d.startAngle};
         });
     }
+
+    const layersRef = useLayerIndex(data.map(d => d.name))
     const animDuration = 750;
     const chartRef = useD3<HTMLDivElement>((container) => {
         if (width === 0 || height === 0) return;
@@ -42,14 +46,14 @@ export function ChordDiagram({
 
         const tooltip = getTooltip(container as any)
             .style("opacity", 0);        
-
-        const colors = ["#94a3b8", "#86efac", "#ec4899", "#db2777", "#008fc8", "#1d4ed8", "#047857", "#5b4f4b"]
-        const names = ["Apple", "HTC", "Huawei", "LG", "Nokia", "Samsung", "Sony", "Other"]
+        
+        const names = data.map(d => d.name)
+        const values = data.map(d => d.values)
 
         const res = chord()
             .padAngle(0.05)     // padding between entities (black arc)
             .sortSubgroups(descending)
-            (data)
+            (values)                
 
         const radius = Math.min(width, height)
         const r = radius * 0.4
@@ -68,13 +72,17 @@ export function ChordDiagram({
         gradients.append("stop")
             .attr("offset", "0%")
             .attr("stop-color", d => {                            
-                return colors[d.source.index]
+                const sourceName = names[d.source.index]
+                const colorIndex = layersRef.current.findIndex(layer => layer === sourceName)
+                return indexColor(colorIndex, false)
             });
 
         gradients.append("stop")
             .attr("offset", "100%")
             .attr("stop-color", d => {                            
-                return colors[d.target.index]
+                const targetName = names[d.target.index]
+                const colorIndex = layersRef.current.findIndex(layer => layer === targetName)
+                return indexColor(colorIndex, false)
             });
     
         canvas.selectAll("path.link").remove()
@@ -101,11 +109,15 @@ export function ChordDiagram({
             .attr("class", "nodes")
 
         node.append("path")
-            .style("fill", function(d, i){ return(colors[i]) })
-            .style("stroke", "black")
+            .style("fill", function(d, i){ 
+                const nodeName = names[d.index]
+                const colorIndex = layersRef.current.findIndex(layer => layer === nodeName)
+                return indexColor(colorIndex, false)                
+            })
+            .style("stroke", "#a89ea9")
             .attr("d", arcGen)
 
-        const chordTick = tickStep(0, sum(data.flat()), 100); // adjust depending on your data scale        
+        const chordTick = tickStep(0, sum(values.flat()), 100); // adjust depending on your data scale        
 
         const ticks = node            
             .selectAll("g.group-tick")

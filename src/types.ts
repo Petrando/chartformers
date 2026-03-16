@@ -86,22 +86,6 @@ export interface waterfallData {
     type: "total" | "variation";
 }
 
-/*export type dumbbellDatum = {
-  label: string
-  valueA: number
-  valueB: number
-}
-
-export type dumbbellDatum<
-    L extends string,
-    A extends string,
-    B extends string
-> = {
-    [K in L]: string
-} & {
-    [K in A | B]: number
-}*/
-
 export type numericKeys<T> = {
   [K in keyof T]: T[K] extends number ? K : never
 }[keyof T]
@@ -111,4 +95,7 @@ export type dumbbellDatum = {
   [key: string]: number | string;
 }
 
-export type chordData = number[][]
+export type chordDatum = {
+    name: string;
+    values: number[]
+}

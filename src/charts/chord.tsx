@@ -123,14 +123,14 @@ export function ChordDiagram({
             .selectAll("g.group-tick")
             .data(d => groupTicks(d, chordTick))
             .enter()
-            .append("g")
-            .attr("class", "group-tick")
+            .append("g")            
+            .attr("class", "group-tick")                        
             .attr("transform", d =>
                 `rotate(${(d.angle * 180 / Math.PI - 90)}) translate(${r},0)`
             );
 
         ticks.append("line")
-            .attr("stroke", "black")
+            .style("stroke", "#a8a29e")
             .attr("x2", 6);
 
         ticks
@@ -144,6 +144,7 @@ export function ChordDiagram({
             .style("text-anchor", d =>
                 d.angle > Math.PI ? "end" : "start"
             )
+            .style("fill", "#292524")
             .text(d => format(".1~%")(d.value));
 
         node

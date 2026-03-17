@@ -191,76 +191,75 @@ export function PieChart({data, innerRadius = 0, sortWithLegends = false, colorI
         }        
 
         const pieSlices = canvas.selectAll<SVGPathElement, PieArcDatum<pointData>>("path")
-                .data(dataReady, function(d){ return d.data.label })
-                .join(
-                    enter=>{
-                        const slices = enter.append('path')
-                            .attr("class", pieStyles.pieSlice)
-                            .attr('fill', function(_){ 
-                                const layerIndex = layersRef.current.findIndex(l => l ===_.data.label) + colorIdx                                                                
-                                return indexSelectedColor(layerIndex) 
-                            })                            
+            .data(dataReady, function(d){ return d.data.label })
+            .join(
+                enter=>{
+                    const slices = enter.append('path')
+                        .attr("class", pieStyles.pieSlice)
+                        .attr('fill', function(_){ 
+                            const layerIndex = layersRef.current.findIndex(l => l ===_.data.label) + colorIdx                                                                
+                            return indexSelectedColor(layerIndex) 
+                        })                            
 
-                        slices//.merge(slices)                                                                        
-                            .transition().duration(animDuration)
-                            .delay(firstTimeRender?0:(animDuration/* + exitDelay*/) )                        
-                        .attr('d', arcFn)                            
+                    slices//.merge(slices)                                                                        
+                        .transition().duration(animDuration)
+                        .delay(firstTimeRender?0:(animDuration/* + exitDelay*/) )                        
+                    .attr('d', arcFn)                            
+                    .attrTween('d', function(this: SVGPathElement, d){
+                        
+                        if(!firstTimeRender){
+                            return angleInterpolation(d, "not exit")
+                        }
+                        const startAngleI = interpolate(0, d.startAngle)
+                        const endAngleI = interpolate(0, d.endAngle)
+
+                        const isHovered = d.data.label === hovered
+                        return function(this: SVGPathElement, t: number): string {
+                            d.startAngle = startAngleI(t)
+                            d.endAngle = endAngleI(t)
+                            return isHovered?fullArc(d) as string:arcFn(d) as string;
+                        }
+                    })
+
+                    return slices
+                },
+                update=>{
+                    const slices = update
+                    
+                    update//.merge(slices)
+                            .transition().duration(animDuration)//.delay(exitDelay)
+                        .attr('fill', function(_, i){                                 
+                            const layerIndex = layersRef.current.findIndex(l => l ===_.data.label) + colorIdx                                                                                                                                                         
+                            return indexSelectedColor(layerIndex)
+                            })                        
+                        //.attr('d', arcFn)                            
                         .attrTween('d', function(this: SVGPathElement, d){
+                            const myPrev = prevData.find((prevD:PieArcDatum<pointData>) => prevD.data.label === d.data.label)
+                            const prevStartAngle = !myPrev?0:myPrev.startAngle?myPrev.startAngle:0
+                            const startAngleI = interpolate(prevStartAngle, d.startAngle)
+                            const prevEndAngle = !myPrev?0:myPrev.endAngle?myPrev.endAngle:0
+                            const endAngleI = interpolate(prevEndAngle, d.endAngle)
                             
-                            if(!firstTimeRender){
-                                return angleInterpolation(d, "not exit")
-                            }
-                            const startAngleI = interpolate(0, d.startAngle)
-                            const endAngleI = interpolate(0, d.endAngle)
-
                             const isHovered = d.data.label === hovered
                             return function(this: SVGPathElement, t: number): string {
                                 d.startAngle = startAngleI(t)
                                 d.endAngle = endAngleI(t)
-                                return isHovered?fullArc(d) as string:arcFn(d) as string;
+
+                                return isHovered?fullArc(d) || "":arcFn(d) || ""
                             }
                         })
 
-                        return slices
-                    },
-                    update=>{
-                        const slices = update
-                        
-                        update//.merge(slices)
-                                .transition().duration(animDuration)//.delay(exitDelay)
-                            .attr('fill', function(_, i){                                 
-                                const layerIndex = layersRef.current.findIndex(l => l ===_.data.label) + colorIdx                                                                                                                                                         
-                                return indexSelectedColor(layerIndex)
-                             })                        
-                            //.attr('d', arcFn)                            
-                            .attrTween('d', function(this: SVGPathElement, d){
-                                const myPrev = prevData.find((prevD:PieArcDatum<pointData>) => prevD.data.label === d.data.label)
-                                const prevStartAngle = !myPrev?0:myPrev.startAngle?myPrev.startAngle:0
-                                const startAngleI = interpolate(prevStartAngle, d.startAngle)
-                                const prevEndAngle = !myPrev?0:myPrev.endAngle?myPrev.endAngle:0
-                                const endAngleI = interpolate(prevEndAngle, d.endAngle)
-                                
-                                const isHovered = d.data.label === hovered
-                                return function(this: SVGPathElement, t: number): string {
-                                    d.startAngle = startAngleI(t)
-                                    d.endAngle = endAngleI(t)
-    
-                                    return isHovered?fullArc(d) || "":arcFn(d) || ""
-                                }
-                            })
-
-                        return slices
-                    },
-                    exit=>exit
-                        .attr("class", pieStyles.pieSliceExit)
-                        .transition().duration(animDuration)
-                        .attr('fill', inactiveColor)                        
-                        .attrTween('d', function(this: SVGPathElement, d){
-                            return angleInterpolation(d, "exit")
-                        })
-                        .remove()
-                    
-                )
+                    return slices
+                },
+                exit=>exit
+                    .attr("class", pieStyles.pieSliceExit)
+                    .transition().duration(animDuration)
+                    .attr('fill', inactiveColor)                        
+                    .attrTween('d', function(this: SVGPathElement, d){
+                        return angleInterpolation(d, "exit")
+                    })
+                    .remove()                    
+            )
         
         pieSlices
             .on("mouseover", function(e, d){

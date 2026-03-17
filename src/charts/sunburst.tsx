@@ -1,4 +1,4 @@
-import React, {SuspenseProps, useEffect, useState} from 'react';
+import React, {useEffect, useState} from 'react';
 import * as d3 from 'd3';
 import { useD3 } from '../hooks/useD3';
 import { useParentSize } from '../hooks/useParentSize';

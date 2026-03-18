@@ -145,15 +145,15 @@ export function ChordDiagram({
                         .style("fill-opacity", 0)
                         .style("stroke", "none")                        
 
-                    paths.transition().duration(animDuration).delay(animDuration/2)                        
+                    paths.transition().duration(animDuration).delay(freshRender?animDuration/2:animDuration)                        
                         .style("fill-opacity", 1)                                            
                         .attr("d", ribbonGen)
 
                     return paths
                 },
-                update=>update.
-                    style("fill-opacity", 1)
+                update=>update
                         .transition().duration(animDuration)                    
+                    .style("fill-opacity", 1)
                     .attrTween("d", function(d:Chord){
                         const prevD = prevRes.find((prevR:Chord)=>{
                             const prevSourceName = prevNames[prevR.source.index]

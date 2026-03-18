@@ -38,7 +38,7 @@ export function ChordDiagram({
 
     useEffect(()=>{
         if(JSON.stringify(data) !== JSON.stringify(defferedData)){
-            prevData.current = defferedData
+            prevData.current = defferedData.length > 0?defferedData:null
         }
     }, [ data, defferedData ])
     
@@ -76,6 +76,9 @@ export function ChordDiagram({
         const names = data.map(d => d.name)
         const values = data.map(d => d.values)
         const res = chordFn(values)                    
+
+        const freshRender = prevData === null
+        const withExit = !prevNames.every(d=>names.includes(d))
 
         const radius = Math.min(width, height)
         const r = radius * 0.4
@@ -124,18 +127,51 @@ export function ChordDiagram({
                 return indexColor(colorIndex, true)
             });
     
-        canvas.selectAll("path.link").remove()
+        const ribbonGen = ribbon<Chord, SVGPathElement>().radius(r - 10);
+
         canvas
             .selectAll<SVGPathElement, Chord>("path.link")
-            .data(res)
-            .enter()
-            .append("path")
-            .attr("class", "link")
-            .attr("d", ribbon<Chord, SVGPathElement>().radius(r - 10))
-            .style("fill", (d, i) => `url(#chord-gradient-${i})`)
-            .style("stroke", "none");
+            .data(
+                res, 
+                function(d){
+                    return names[d.source.index] + " " + names[d.target.index]
+            })
+            .join(
+                enter=>{
+                    const paths = enter
+                        .append("path")
+                        .attr("class", "link")                    
+                        .style("fill", (d, i) => `url(#chord-gradient-${i})`)
+                        .style("fill-opacity", 0)
+                        .style("stroke", "none")                        
 
-        //canvas.selectAll("g.nodes").remove()
+                    paths.transition().duration(animDuration).delay(animDuration/2)                        
+                        .style("fill-opacity", 1)                                            
+                        .attr("d", ribbonGen)
+
+                    return paths
+                },
+                update=>update.
+                    style("fill-opacity", 1)
+                        .transition().duration(animDuration)                    
+                    .attrTween("d", function(d:Chord){
+                        const prevD = prevRes.find((prevR:Chord)=>{
+                            const prevSourceName = prevNames[prevR.source.index]
+                            const prevTargetName = prevNames[prevR.target.index]
+
+                            const sourceName = names[d.source.index]
+                            const targetName = names[d.target.index]
+
+                            return prevSourceName === sourceName && prevTargetName === targetName
+                        }) as Chord
+
+                        const i = interpolate(prevD, d)
+                        return (t) => ribbonGen(i(t)) as unknown as string
+                    }),
+                exit=>exit.transition().duration(animDuration)
+                    .style("fill-opacity", 0).remove()
+            );
+        
         const arcGen = arc<ChordGroup>()
             .innerRadius(r - 10)
             .outerRadius(r)
@@ -200,7 +236,20 @@ export function ChordDiagram({
                         .transition().duration(animDuration)
                     .attr("d", arcGen) // Start at final shape...
                     .attrTween('d', function(this: SVGPathElement, d){
-                        return angleInterpolation(d, "not exit")                    
+                        if(!freshRender){
+                            return angleInterpolation(d, "not exit")                    
+                        }
+
+                        const startAngleI = interpolate(0, d.startAngle)
+                        const endAngleI = interpolate(0, d.endAngle)
+
+                         return function(this: SVGPathElement, t: number): string {
+                            d.startAngle = startAngleI(t)
+                            d.endAngle = endAngleI(t)
+                            return arcGen(d) as string
+                        }
+                        
+                        
                     })                         
                     
                     return slices
@@ -257,23 +306,31 @@ export function ChordDiagram({
                     const g = enter
                         .append("g")
                         .attr("class", "group-tick")
-                        .attr("transform", `translate(${r},0)`);
-                    
-                    g.append("line").style("stroke", "#a8a29e").attr("x2", 6);
-                    g.append("text").attr("dy", "0.35em").style("fill", "#292524").style("font-size", "8px");
-
-                    g.transition().duration(animDuration)
                         .attr("transform", d => `
                             rotate(${(d.angle * 180 / Math.PI - 90)}) 
                             translate(${r},0)
                         `)
+                        .style("opacity", 0);
+                    
+                    g.append("line").style("stroke", "#a8a29e").attr("x2", 6);
+                    g.append("text")
+                        .attr("dy", "0.35em")
+                        .style("fill", "#292524")
+                        .style("font-size", isMediumScreen?"10px":"8px")
+                        .attr("x", 8)
+                        .attr("transform", d => d.angle > Math.PI ? "rotate(180) translate(-16)" : null)
+                        .style("text-anchor", d => d.angle > Math.PI ? "end" : "start");
+
+                    g.transition().duration(animDuration).delay(animDuration)                        
+                        .style("opacity", 1)
                     return g;
                 },
                 update=>update.transition().duration(animDuration)
                     .attr("transform", d => `
                         rotate(${(d.angle * 180 / Math.PI - 90)}) 
                         translate(${r},0)
-                    `),
+                    `)
+                    .style("opacity", 1),
                 exit => exit.transition().duration(animDuration).style("opacity", 0).remove()
             );
 
@@ -292,65 +349,6 @@ export function ChordDiagram({
                     ? `↑ ${names[d.index]}`
                     : `${names[d.index]} ↓`;
             })
-
-        // Transition tick positions
-        //ticks;
-
-        /*
-        ticks.select("text")
-            .filter(d => d.value % (chordTick * 5) === 0)
-            .text(d => format(".1~%")(d.value))
-            .attr("x", 8)
-            .attr("transform", d => d.angle > Math.PI ? "rotate(180) translate(-16)" : null)
-            .style("text-anchor", d => d.angle > Math.PI ? "end" : "start");
-
-        node
-            .select("text")
-            .attr("font-weight", "bold")
-            .text(function(d) {
-                const thisNode = this as Element
-                return thisNode.getAttribute("text-anchor") === "end"
-                    ? `↑ ${names[d.index]}`
-                    : `${names[d.index]} ↓`;
-            });
-            /*                        
-        const ticks = node            
-            .selectAll("g.group-tick")
-            .data(d => groupTicks(d, chordTick))
-            .join("g")            
-            .attr("class", "group-tick")                        
-            .attr("transform", d =>
-                `rotate(${(d.angle * 180 / Math.PI - 90)}) translate(${r},0)`
-            );
-
-        ticks.append("line")
-            .style("stroke", "#a8a29e")
-            .attr("x2", 6);
-
-        ticks
-            .filter(d => d.value % (chordTick * 5) === 0)
-            .append("text")
-            .attr("x", 8)
-            .attr("dy", "0.35em")
-            .attr("transform", d =>
-                d.angle > Math.PI ? "rotate(180) translate(-16)" : null
-            )
-            .style("text-anchor", d =>
-                d.angle > Math.PI ? "end" : "start"
-            )
-            .style("fill", "#292524")
-            .text(d => format(".1~%")(d.value));
-
-        node
-            .select("text")
-            .attr("font-weight", "bold")
-            .text(function(d) {
-                const thisNode = this as Element
-                return thisNode.getAttribute("text-anchor") === "end"
-                    ? `↑ ${names[d.index]}`
-                    : `${names[d.index]} ↓`;
-            });*/
-        
         
     }, [data, width, height,  {prefix, suffix, formatType}]);
     

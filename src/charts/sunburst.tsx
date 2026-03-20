@@ -2,7 +2,6 @@ import React, {useEffect, useState} from 'react';
 import * as d3 from 'd3';
 import { useD3 } from '../hooks/useD3';
 import { useParentSize } from '../hooks/useParentSize';
-import { useUIControls } from '../hooks/useUIControls';
 import { Tooltip, getTooltip, moveTooltip } from '../components/tooltip';
 import { cloneObj, indexSelectedColor } from '../utils';
 import { inactiveColor } from '../../dev/data/constants';
@@ -19,10 +18,22 @@ type rect = {
 };
 
 type baseHierarchy = d3.HierarchyRectangularNode<hierarchyData>
+
+type oldRectType = {
+    oldData: rect | null;
+    oldTarget?: rect | null;
+}
+
+type rectMapGroup = {
+  oldData: Map<string, rect | null>;
+  oldTarget: Map<string, rect | null>;
+};
+
 type sunburstData = baseHierarchy & {
+    color?: string;
     current: sunburstData | rect;
     target?: rect | sunburstData;
-    oldRect?: rect | null;
+    oldRect?: oldRectType;
 }
 
 type sunburstProps = {
@@ -35,9 +46,7 @@ export function Sunburst({data}: sunburstProps) {
 
     const [ prevSunData, setPrevSunData ] = useState<sunburstData | null>(null)
 
-    const [isSorted, setIsSorted] = useState<boolean>(false);    
-    
-    const uiControls = useUIControls();
+    const [isSorted, setIsSorted] = useState<boolean>(false);            
 
     const dimension = Math.min(baseWidth, baseHeight)
     const radius = dimension / 2;
@@ -66,15 +75,7 @@ export function Sunburst({data}: sunburstProps) {
     
     const width = dimension, height = dimension        
 
-    const isMediumScreen = baseWidth > 576;
-    // Define the controls element (checkbox)
-    const controls = (
-        <div 
-            id="controls" 
-            className={`${styles[isMediumScreen?"controls-container":"controls-container-sm"]} ${uiControls?styles["fill-container"]:""}`}
-        >            
-        </div>
-    );
+    const isMediumScreen = baseWidth > 576;    
            
     const animDuration = 750;
     const chartRef = useD3<HTMLDivElement>((container) => {
@@ -92,7 +93,6 @@ export function Sunburst({data}: sunburstProps) {
 
         const color = d3.scaleOrdinal(d3.quantize(d3.interpolateRainbow, data.children!.length + 1));
         
-
         /*const hierarchy = d3.hierarchy<hierarchyData>(data)
             .sum(d => d.value!)
             //.sort((a, b) => b.value! - a.value!);
@@ -105,15 +105,25 @@ export function Sunburst({data}: sunburstProps) {
         function buildPreviousRectMap(
             node: sunburstData,
             depth = 0,
-            map = new Map<string, rect | null>()
-        ): Map<string, rect | null> {
+            map: rectMapGroup = {
+                oldData:new Map<string, rect | null>(),
+                oldTarget: new Map<string, rect | null>()
+            }
+        ): rectMapGroup {
 
             const rectValid = typeof node.x0 === "number" && typeof node.x1 === "number" &&
                 typeof node.y0 === "number" && typeof node.y1 === "number"
                             
-            map.set(
+            map.oldData.set(
                 `${depth}-${node.data.name}`, 
                 rectValid?{x0: node.x0, x1: node.x1, y0: node.y0, y1: node.y1}:null
+            )
+
+            map.oldTarget.set(
+                `${depth}-${node.data.name}`,
+                node.target?
+                    {x0: node.target.x0, x1: node.target.x1, y0: node.target.y0, y1:node.target.y1}:
+                    null
             )
             
 
@@ -128,7 +138,7 @@ export function Sunburst({data}: sunburstProps) {
 
         function attachOldRects(
             node: sunburstData,
-            prevMap: Map<string, rect | null>,
+            prevMap: rectMapGroup,
             depth = 0
         ): sunburstData {
 
@@ -138,7 +148,11 @@ export function Sunburst({data}: sunburstProps) {
                 typeof node.y0 === "number" && typeof node.y1 === "number"
 
             if (rectValid) {
-                node.oldRect = prevMap.get(key) ?? null
+                const oldRect = {
+                    oldData: prevMap.oldData.get(key) ?? null,
+                    oldTarget: prevMap.oldTarget.get(key) ?? null
+                }
+                node.oldRect = oldRect
             }
 
             if (node.children) {
@@ -149,16 +163,14 @@ export function Sunburst({data}: sunburstProps) {
 
             return node
         }
-        const baseRoot = partitionHierarchy(data)
-        const firstRender  = prevSunData === null || baseRoot.data.name === prevSunData.data.name
-        
+
         function processHierarchyData(
             newRoot: sunburstData,
             previousRoot?: sunburstData
-        ): sunburstData {
+        ): sunburstData {            
 
             if (!previousRoot) {
-                return attachOldRects(newRoot, new Map())
+                return attachOldRects(newRoot, {oldData:new Map(), oldTarget: new Map()})
             }
 
             const prevMap = buildPreviousRectMap(previousRoot)
@@ -166,7 +178,11 @@ export function Sunburst({data}: sunburstProps) {
             return attachOldRects(newRoot, prevMap)
         }
 
+        const baseRoot = partitionHierarchy(data)
+        const firstRender  = prevSunData === null || baseRoot.data.name === prevSunData.data.name
+                
         const root = processHierarchyData(baseRoot, firstRender?undefined:prevSunData?prevSunData:undefined)        
+        
         const maxDepth = root.height + 1;
         const depthScale = radius / maxDepth;
 
@@ -199,6 +215,15 @@ export function Sunburst({data}: sunburstProps) {
             .attr("text-anchor", "middle")
             .style("user-select", "none")
         const labelShadow = "0 1px 0 lightblue, 1px 0 0 lightblue, -1px 0 0 lightblue, 0 -1px 0 lightblue"
+
+        const fill = (d: sunburstData) => {                             
+            const colorName = d.depth > 1?d.parent!.data.name:d.data.name                            
+            const myColor = color(colorName)
+            if(!d.color){
+                d.color = myColor
+            }
+            return color(colorName); 
+        }
         
         const path = canvas                    
             .selectAll<SVGPathElement, sunburstData>("path.slice")
@@ -242,7 +267,27 @@ export function Sunburst({data}: sunburstProps) {
 
                     return slices
                 },
-                undefined, 
+                update=>update.transition().duration(animDuration)                                            
+                    //.attr("d", arc)                                    
+                    .attrTween("d", function (d) {                
+                        const i = d3.interpolate(
+                            d.oldRect?d.oldRect.oldTarget?d.oldRect.oldTarget:d.oldRect.oldData:d.current,
+                            {
+                                x0: d.x0,
+                                x1: d.x1,
+                                y0: d.y0,
+                                y1: d.y1
+                            }
+                        );
+                        return function (t) {
+                            d.current = i(t);                    
+                            return arc(d.current as sunburstData)!;
+                        };
+                    })
+                    .attr("fill", d => {                             
+                        const colorName = d.depth > 1?d.parent!.data.name:d.data.name                            
+                        return color(colorName); 
+                    }), 
                 exit=>exit.remove()
             )
             .on("pointerenter", function(e, d){
@@ -267,24 +312,7 @@ export function Sunburst({data}: sunburstProps) {
                 if(d.children){
                     clicked(e, d)
                 }
-            })
-            .transition().duration(animDuration)                                            
-            //.attr("d", arc)                                    
-            .attrTween("d", function (d) {                
-                const i = d3.interpolate(
-                    d.oldRect?d.oldRect:d.current,
-                    {
-                        x0: d.x0,
-                        x1: d.x1,
-                        y0: d.y0,
-                        y1: d.y1
-                    }
-                );
-                return function (t) {
-                    d.current = i(t);                    
-                    return arc(d.current as sunburstData)!;
-                };
-            })                    
+            })                                
 
         canvasSvg.select("circle.reset").remove()
         const parentCircle = canvasSvg.selectAll("circle")
@@ -361,7 +389,7 @@ export function Sunburst({data}: sunburstProps) {
                 .style("text-shadow", d => labelVisible(d)?labelShadow:"none")
                 .attrTween("transform", d => () => labelTransform(d.current as rect));
 
-            //setPrevSunData(p)
+            setPrevSunData(root)
         }
             
         function arcVisible(d: sunburstData) {

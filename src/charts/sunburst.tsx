@@ -1,9 +1,9 @@
-import React, {useEffect, useState} from 'react';
+import React, {useEffect, useState, useRef} from 'react';
 import * as d3 from 'd3';
 import { useD3 } from '../hooks/useD3';
 import { useParentSize } from '../hooks/useParentSize';
 import { Tooltip, getTooltip, moveTooltip } from '../components/tooltip';
-import { cloneObj, indexSelectedColor } from '../utils';
+import { cloneObj, indexSelectedColor, indexColor } from '../utils';
 import { inactiveColor } from '../../dev/data/constants';
 import { flareData } from '../../dev/data/loan-data'
 import styles from './global.module.css';
@@ -30,7 +30,6 @@ type rectMapGroup = {
 };
 
 type sunburstData = baseHierarchy & {
-    color?: string;
     current: sunburstData | rect;
     target?: rect | sunburstData;
     oldRect?: oldRectType;
@@ -72,11 +71,19 @@ export function Sunburst({data}: sunburstProps) {
 
         setPrevSunburstData()
     }, [data])
+        
+    const layersRef = useLayerIndex(data.children?.map(d => d.name) as string[])
+    const BASE_COLORS = d3.quantize(d3.interpolateRainbow, 20);
+    const colorRef = useRef(
+        d3.scaleOrdinal<string, string>()
+            .domain(layersRef.current)
+            .range(BASE_COLORS)
+    );
     
     const width = dimension, height = dimension        
 
-    const isMediumScreen = baseWidth > 576;    
-           
+    const isMediumScreen = baseWidth > 576;               
+    
     const animDuration = 750;
     const chartRef = useD3<HTMLDivElement>((container) => {
         if (baseWidth === 0 || baseHeight === 0) return;
@@ -89,9 +96,7 @@ export function Sunburst({data}: sunburstProps) {
         };                                
 
         const tooltip = getTooltip(container as any)
-            .style("opacity", 0);
-
-        const color = d3.scaleOrdinal(d3.quantize(d3.interpolateRainbow, data.children!.length + 1));
+            .style("opacity", 0);        
         
         /*const hierarchy = d3.hierarchy<hierarchyData>(data)
             .sum(d => d.value!)
@@ -178,7 +183,7 @@ export function Sunburst({data}: sunburstProps) {
             return attachOldRects(newRoot, prevMap)
         }
 
-        const baseRoot = partitionHierarchy(data)
+        const baseRoot = partitionHierarchy(cloneObj(data))
         const firstRender  = prevSunData === null || baseRoot.data.name === prevSunData.data.name
                 
         const root = processHierarchyData(baseRoot, firstRender?undefined:prevSunData?prevSunData:undefined)        
@@ -214,17 +219,36 @@ export function Sunburst({data}: sunburstProps) {
             .attr("pointer-events", "none")
             .attr("text-anchor", "middle")
             .style("user-select", "none")
-        const labelShadow = "0 1px 0 lightblue, 1px 0 0 lightblue, -1px 0 0 lightblue, 0 -1px 0 lightblue"
+        const labelShadow = "0 1px 0 lightblue, 1px 0 0 lightblue, -1px 0 0 lightblue, 0 -1px 0 lightblue"                                        
 
-        const fill = (d: sunburstData) => {                             
-            const colorName = d.depth > 1?d.parent!.data.name:d.data.name                            
-            const myColor = color(colorName)
-            if(!d.color){
-                d.color = myColor
+        const pathFill = (d: sunburstData) => {  
+            let node = d           
+            while (node.depth > 1) node = node.parent as sunburstData;                
+            const colorName = node.data.name
+            
+            //return color(colorName) as string            
+
+            const baseColor = colorRef.current(colorName)
+
+            const c = d3.color(baseColor);
+            if (!c) return baseColor;
+
+            // Depth-based adjustment
+            const depth = d.depth;
+
+            // You can tweak this factor
+            const factor = 0.5;
+
+            if (depth === 1) {
+                return c.formatHex(); // base color
             }
-            return color(colorName); 
+
+            // deeper = darker
+            //can use darker or brighter
+            return c.darker(depth * factor).formatHex();
+            
+            
         }
-        
         const path = canvas                    
             .selectAll<SVGPathElement, sunburstData>("path.slice")
             .data(
@@ -235,10 +259,7 @@ export function Sunburst({data}: sunburstProps) {
                 enter=>{
                     const slices = enter.append("path")
                         .attr("class", "slice")
-                        .attr("fill", d => {                             
-                            const colorName = d.depth > 1?d.parent!.data.name:d.data.name                            
-                            return color(colorName); 
-                        })
+                        .attr("fill", pathFill)
                         .style("cursor", function(d){
                             return d.children?"pointer":"default"
                         })                    
@@ -284,10 +305,7 @@ export function Sunburst({data}: sunburstProps) {
                             return arc(d.current as sunburstData)!;
                         };
                     })
-                    .attr("fill", d => {                             
-                        const colorName = d.depth > 1?d.parent!.data.name:d.data.name                            
-                        return color(colorName); 
-                    }), 
+                    .attr("fill", pathFill), 
                 exit=>exit.remove()
             )
             .on("pointerenter", function(e, d){

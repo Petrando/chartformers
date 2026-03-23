@@ -30,6 +30,7 @@ export function WaterfallChart({
     const [ isSorted, setIsSorted ] = useState(false)
     const changeBy = useRef("data")
     const isFirstRender = useRef(true);
+    const canLegendHover = useRef(true)
 
     useEffect(() => {
         if(mode === "waterfall"){
@@ -38,13 +39,15 @@ export function WaterfallChart({
         if(isFirstRender.current){
             isFirstRender.current = false
         }else{            
-            changeBy.current = "mode"
-        }        
+            changeBy.current = "mode"            
+        }   
+        canLegendHover.current = false     
     }, [ mode ])
 
     useEffect(()=>{
         setMode("waterfall")
         changeBy.current = "data"
+        canLegendHover.current = false
     }, [ data ])    
 
     const isMediumScreen = width > 576;
@@ -155,7 +158,8 @@ export function WaterfallChart({
                     .remove()
             )
             .on("mouseover", function(_, d){
-                if(mode !== "waterfall")return
+                if( mode !== "waterfall" ) return
+                if( !canLegendHover.current ) return
                 canvas.selectAll<SVGRectElement, waterfallData>("rect.bar")
                     .filter(dRect => {
                         if(d === "incomes"){
@@ -176,7 +180,8 @@ export function WaterfallChart({
                     .style("opacity", 0.25)
             })
             .on("mouseout", function(_, d){
-                if(mode !== "waterfall")return
+                if( mode !== "waterfall" ) return
+                if( !canLegendHover.current ) return
                 canvas.selectAll<SVGRectElement, waterfallData>(".bar")
                     .style("opacity", 1)
 
@@ -222,8 +227,9 @@ export function WaterfallChart({
             .attr("transform", `translate(0, 0)`)
             .transition().duration(animDuration).call(yAxis)
 
+        const xDomain = renderData.map(d => d.label)
         const xScale = scaleBand()
-            .domain(renderData.map(d => d.label))
+            .domain(xDomain)
             .rangeRound([0, graphWidth])
             .paddingInner(isMediumScreen?0.4:0.25)
             .paddingOuter(0.1)            
@@ -237,7 +243,7 @@ export function WaterfallChart({
                     `${barchartStyles.axisText} ${waterfallStyles["axis-label"]}`;
         canvas.select<SVGGElement>(".x-axis")            
             .transition().duration(animDuration).call(xAxis)            
-            .attr("transform", `translate(0, ${yScale(0)})`)
+            .attr("transform", `translate(0, ${yScale(0) || 0})`)
             .selectAll("text")
             .attr("class", `${xAxisTextClass}`)                        
 
@@ -311,32 +317,53 @@ export function WaterfallChart({
                             return changeBy.current === "data"?((i + 1) * barAnimDuration):0
                         })
                     .attr("y", yPos)
-                    .attr("height", rectHeight),
-                update=>{                    
-                    const bars = update
-
+                    .attr("height", rectHeight)
+                    .on("end", function(_, i){                        
+                        if(changeBy.current === "data" && mode === "waterfall"){
+                            if(i === formattedData.length - 1){
+                                canLegendHover.current = true
+                            }                            
+                        }else{
+                            canLegendHover.current = true
+                        }
+                    }),
+                update=>{                                        
                     if(mode === "waterfall" && changeBy.current === "data"){
-                        bars.transition().duration(barAnimDuration)
+                        update.transition().duration(barAnimDuration)
                             .style("fill", rectFill)
                             .attr("x", xPos)
                             .attr("width", xScale.bandwidth())
-                            .attr("y", (d)=> d.type === "total"?yScale(0):yScale(d.start))
+                            .attr("y", (d)=> {                      
+                                return d.type === "total"?yScale(0):yScale(d.start)
+                            })
                             .attr("height", 0)
                             .attr("rx", 5)
                             .attr("ry", 5)
                         .transition().duration(barAnimDuration).delay((d, i)=> (i + 1) * barAnimDuration)            
                             .attr("y", yPos)
                             .attr("height", rectHeight)
+                        .on("end", function(_, i){
+                            if(changeBy.current === "data" && mode === "waterfall"){
+                            if(i === formattedData.length - 1){
+                                    canLegendHover.current = true
+                                }                            
+                            }else{
+                                canLegendHover.current = true
+                            }
+                        })
                     }else{
-                        bars.transition().duration(animDuration)
+                        update.transition().duration(animDuration)
                             .style("fill", rectFill)
                             .attr("x", xPos)
                             .attr("width", xScale.bandwidth())
                             .attr("y", yPos)
                             .attr("height", rectHeight)
+                            .on("end", function(_, i){
+                                canLegendHover.current = true                                
+                            })
                     }
 
-                    return bars
+                    return update
                 },
                 exit=>exit.transition().duration(animDuration).style("opacity", 0).remove()
             )                                

@@ -18,3 +18,12 @@
   text-anchor: start;
   font-weight:300
 }
+
+.sort {
+  opacity: 0;
+  transition: opacity 0.5s ease; /* animation */
+}
+
+.sort.visible {
+  opacity: 1;
+}

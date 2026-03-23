@@ -1,4 +1,4 @@
-import React, {useState} from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import {scaleBand, scaleLinear, axisLeft, axisBottom, format} from 'd3';
 import { useD3 } from '../hooks/useD3';
 import { useParentSize } from '../hooks/useParentSize';
@@ -7,6 +7,7 @@ import styles from './global.module.css';
 import waterfallStyles from './waterfall.module.css'
 import barchartStyles from './barchart.module.css';
 import { tooltipFormat, waterfallData } from '../types';
+import { useContainerSize } from '../hooks/useContainerSize';
 
 type WaterfallProps = {
     data: waterfallData[];    
@@ -20,7 +21,31 @@ export function WaterfallChart({
         } = { prefix: "", suffix: "", formatType: "long"}
     }:WaterfallProps) {
     const [ref, parentSize] = useParentSize<HTMLDivElement>();    
-    const { width, height } = parentSize;        
+    const { width: parentWidth, height: parentHeight } = parentSize;
+    const [chartContainerRef, chartSize] = useContainerSize<HTMLDivElement>()
+    const { width, height } = chartSize
+
+    type modeType = "waterfall" | "incomes" | "outcomes";
+    const [ mode, setMode ] = useState<modeType>("waterfall")        
+    const [ isSorted, setIsSorted ] = useState(false)
+    const changeBy = useRef("data")
+    const isFirstRender = useRef(true);
+
+    useEffect(() => {
+        if(mode === "waterfall"){
+            setIsSorted(false)
+        }
+        if(isFirstRender.current){
+            isFirstRender.current = false
+        }else{            
+            changeBy.current = "mode"
+        }        
+    }, [ mode ])
+
+    useEffect(()=>{
+        setMode("waterfall")
+        changeBy.current = "data"
+    }, [ data ])    
 
     const isMediumScreen = width > 576;
     // Define the controls element (checkbox)    
@@ -44,12 +69,129 @@ export function WaterfallChart({
             prevEnd = end
 
             return { ...d, start, end }
-        })                
+        })
+                
+        const renderData = mode === "waterfall"?formattedData:
+            formattedData.filter(d =>  d.type === "variation" && 
+                (mode === "incomes"?d.start! <= d.end!:d.start > d.end))
+                    .sort((a, b) => isSorted?(Math.abs(b.value) - Math.abs(a.value)):0)
         
         const canvasSvg = container.select<SVGSVGElement>("svg")
         const svgNode = canvasSvg.node()
         const canvas = canvasSvg.select<SVGGElement>('.plot-area')
             .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+
+        const controls = container.select<HTMLDivElement>(".controls")
+        const legendsContainer = controls.select<HTMLDivElement>(".legends-container")
+
+        const legendWidth = isMediumScreen?80:50
+
+        const colors = { incomes:"#22c55e", outcomes: "#ef4444" }
+
+        const legendClass = function(d:string){            
+            const containerClass = styles[isMediumScreen?"legend-container":"legend-container-sm"]
+            const containerActiveClass = styles[isMediumScreen?"legend-container-active":"legend-container-active-sm"]            
+            return  `
+                ${containerClass}
+                ${(mode !== "waterfall" && mode === d)?containerActiveClass:""}
+                legend-item
+            `            
+        }
+
+        const legends = legendsContainer.selectAll<HTMLDivElement, modeType>(".legend-item")
+            .data(["incomes", "outcomes"], d=>d)
+            .join(
+                enter => {
+                    const divs = enter
+                        .append("div")
+                        .attr("class", legendClass)
+                        .style("left", (_, i)=> `${i * legendWidth}px`)
+                        .style("top", "-53px")
+                        .style("opacity", 0)
+                                                                                                                           
+                    divs.append("div")
+                        .attr("class", styles["legend-rect"])
+                        .style("background", (d) => {
+                            return d === "incomes"?colors.incomes:colors.outcomes
+                        })
+                    divs.append("span")
+                        .attr("class", styles["legend-label"])
+                        .style("color", (d)=>{                            
+                            return "#333"
+                        })
+                        .text(d=>d)
+                                                                                              
+                    divs.transition().duration(animDuration)                                                        
+                        .style("top", "0px")                              
+                        .style("opacity", 1)
+                    return divs;
+                },
+                update => {
+                    update
+                        .attr("class", legendClass) 
+                        .transition().duration(animDuration)
+                            .style("top", "0px")
+                            .style("left", (_, i)=> `${i * legendWidth}px`) 
+                            .style("opacity", 1)                      
+                        .select(`.${styles["legend-rect"]}`)
+                        .style("background", (d) => {
+                            return d === "incomes"?colors.incomes:colors.outcomes
+                        });
+
+                    // also update label text in case of rename or dynamic change
+                    update
+                        .select(`.${styles["legend-label"]}`)
+                        .style("color", (d)=>{                            
+                            return "#333"
+                        })
+                        .text(d => d);                            
+
+                    return update;
+                },
+                exit => exit                    
+                    .transition().duration(animDuration)
+                    .style("opacity", 0)
+                    .style("top", "53px")
+                    .remove()
+            )
+            .on("mouseover", function(_, d){
+                if(mode !== "waterfall")return
+                canvas.selectAll<SVGRectElement, waterfallData>("rect.bar")
+                    .filter(dRect => {
+                        if(d === "incomes"){
+                            return dRect.type === "total" || dRect.start! > dRect.end!
+                        }
+                        return dRect.type === "total" || dRect.start! <= dRect.end!
+                    })
+                    .style("opacity", 0.5)
+
+                canvas
+                    .selectAll<SVGTextElement, waterfallData>(".label")
+                    .filter(dRect => {
+                        if(d === "incomes"){
+                            return dRect.type === "total" || dRect.start! > dRect.end!
+                        }
+                        return dRect.type === "total" || dRect.start! < dRect.end!
+                    })
+                    .style("opacity", 0.25)
+            })
+            .on("mouseout", function(_, d){
+                if(mode !== "waterfall")return
+                canvas.selectAll<SVGRectElement, waterfallData>(".bar")
+                    .style("opacity", 1)
+
+                canvas
+                    .selectAll<SVGTextElement, waterfallData>(".label")
+                    .style("opacity", 1)
+            })
+            .on("click", function(_, d){
+                if(mode === d){
+                    setMode("waterfall")
+                }
+                else{
+                    setMode(d as modeType)
+                }
+            })
 
         const tooltip = getTooltip(container as any)
             .style("opacity", 0);        
@@ -57,16 +199,17 @@ export function WaterfallChart({
         const graphWidth = width - margin.left - margin.right
         const graphHeight = height - margin.top - margin.bottom
 
-        const mins = formattedData.map((d, i) => {
-            const isLastData = i === formattedData.length - 1
+        const mins = renderData.map((d, i) => {
+            const isLastData = i === renderData.length - 1
             return Math.min(d.start, !isLastData?d.end:d.value)
         })
-        const maxes = formattedData.map((d, i) => {
-            const isLastData = i === formattedData.length - 1
+        const maxes = renderData.map((d, i) => {
+            const isLastData = i === renderData.length - 1
             return Math.max(d.start, !isLastData?d.end:d.value)
         })
-        const valueMin = Math.min(...mins)
-        const valueMax = Math.max(...maxes)
+        const valueMin = mode === "waterfall"?Math.min(...mins):0
+        const valueMax = mode === "waterfall"?Math.max(...maxes):
+            Math.max(...renderData.map(d => Math.abs(d.value)))
 
         const yScale = scaleLinear()
             .domain([valueMin, valueMax])
@@ -80,7 +223,7 @@ export function WaterfallChart({
             .transition().duration(animDuration).call(yAxis)
 
         const xScale = scaleBand()
-            .domain(formattedData.map(d => d.label))
+            .domain(renderData.map(d => d.label))
             .rangeRound([0, graphWidth])
             .paddingInner(isMediumScreen?0.4:0.25)
             .paddingOuter(0.1)            
@@ -103,37 +246,45 @@ export function WaterfallChart({
             return xPosition
         }
 
-        function yPos(d: waterfallData, i: number){            
-            if(d.type === "total" && i > 0){
-                if(d.start! <= d.end!){
-                    return yScale(d.value)
-                }else{
-                    return yScale(0)
-                }                                
+        function yPos(d: waterfallData, i: number){
+            if(mode === "waterfall"){
+                if(d.type === "total" && i > 0){
+                    if(d.start! <= d.end!){
+                        return yScale(d.value)
+                    }else{
+                        return yScale(0)
+                    }                                
+                }
+                return yScale( Math.max(d.start!, d.end!));
             }
-            return yScale( Math.max(d.start!, d.end!));            
+            return yScale(Math.abs(d.value))            
+                        
         }
 
         function rectHeight(d: waterfallData, i: number){            
-            const barHeight = Math.abs( yScale(d.start!) - yScale(d.end!) )                
-            if(d.type === "total" && i > 0){
-                if(d.start! <= d.end!){
-                    const baseBarHeight = yScale(0) - yScale(d.value)
-                    return baseBarHeight < 0?barHeight:baseBarHeight
-                }else{
-                    return yScale(0) - yScale(-d.value)
-                }
-                
+            if(mode === "waterfall"){
+                const barHeight = Math.abs( yScale(d.start!) - yScale(d.end!) )                
+                if(d.type === "total" && i > 0){
+                    if(d.start! <= d.end!){
+                        const baseBarHeight = yScale(0) - yScale(d.value)
+                        return baseBarHeight < 0?barHeight:baseBarHeight
+                    }else{
+                        return yScale(0) - yScale(-d.value)
+                    }
+                    
+                }            
+                return barHeight;
             }
-            
-            return barHeight;            
+
+            return yScale(0) - yScale(Math.abs(d.value))
+                        
         }
 
         function rectFill(d: waterfallData){
             if(d.start! <= d.end!){
-                return "#22c55e"
+                return colors.incomes
             }else {
-                return "#ef4444"
+                return colors.outcomes
             }
         }
 
@@ -141,35 +292,54 @@ export function WaterfallChart({
 
         const bars =  canvas
             .selectAll<SVGRectElement, waterfallData>(".bar")
-            .data(formattedData, (d) => d.label)
+            .data(renderData, (d) => d.label)
             .join(
                 enter=>enter.append("rect")
                     .attr("class", "bar")
                     .attr("x", xPos)
                     .attr("width", xScale.bandwidth())
-                    .attr("y", (d)=> d.type === "total"?yScale(0):yScale(d.start))                    
+                    .attr("y", (d, i)=> changeBy.current === "data" ?
+                        (d.type === "total"?yScale(0):yScale(d.start)):
+                        yScale(0)
+                    )                    
                     .attr("height", 0)
                     .attr("rx", 5)
                     .attr("ry", 5)
                     .style("fill", rectFill)
-                        .transition().duration(barAnimDuration).delay((d, i)=> (i + 1) * barAnimDuration)
+                        .transition().duration(barAnimDuration)
+                        .delay((_, i)=> {
+                            return changeBy.current === "data"?((i + 1) * barAnimDuration):0
+                        })
                     .attr("y", yPos)
                     .attr("height", rectHeight),
-                undefined,
-                exit=>exit.remove()
-            )            
-            
-        bars.transition().duration(barAnimDuration)
-                .style("fill", rectFill)
-                .attr("x", xPos)
-                .attr("width", xScale.bandwidth())
-                .attr("y", (d)=> d.type === "total"?yScale(0):yScale(d.start))
-                .attr("height", 0)
-                .attr("rx", 5)
-                .attr("ry", 5)
-            .transition().duration(barAnimDuration).delay((d, i)=> (i + 1) * barAnimDuration)            
-                .attr("y", yPos)
-                .attr("height", rectHeight)
+                update=>{                    
+                    const bars = update
+
+                    if(mode === "waterfall" && changeBy.current === "data"){
+                        bars.transition().duration(barAnimDuration)
+                            .style("fill", rectFill)
+                            .attr("x", xPos)
+                            .attr("width", xScale.bandwidth())
+                            .attr("y", (d)=> d.type === "total"?yScale(0):yScale(d.start))
+                            .attr("height", 0)
+                            .attr("rx", 5)
+                            .attr("ry", 5)
+                        .transition().duration(barAnimDuration).delay((d, i)=> (i + 1) * barAnimDuration)            
+                            .attr("y", yPos)
+                            .attr("height", rectHeight)
+                    }else{
+                        bars.transition().duration(animDuration)
+                            .style("fill", rectFill)
+                            .attr("x", xPos)
+                            .attr("width", xScale.bandwidth())
+                            .attr("y", yPos)
+                            .attr("height", rectHeight)
+                    }
+
+                    return bars
+                },
+                exit=>exit.transition().duration(animDuration).style("opacity", 0).remove()
+            )                                
 
         const labelSize = 12
 
@@ -195,7 +365,7 @@ export function WaterfallChart({
 
         const labels =  canvas
             .selectAll<SVGTextElement, waterfallData>(".label")
-            .data(formattedData, (d) => d.label)
+            .data(renderData, (d) => d.label)
             .join(
                 enter=>enter.append("text")
                     .attr("class", `label ${waterfallStyles["label"]}`)
@@ -247,30 +417,59 @@ export function WaterfallChart({
 
         console.log(formattedData1)*/
         
-    }, [data, width, height,  {prefix, suffix, formatType}]);
+    }, [data, width, height, mode, isSorted, {prefix, suffix, formatType}]);
     
     return (
         <div 
             ref={ref} 
-            style={{ width, height, display:'flex', flexDirection:'column' }}
+            style={{ width: parentWidth, height: parentHeight, display:'flex', flexDirection:'column' }}
         >            
             <div
                 ref={chartRef} 
                 className={`${styles["fill-container"]}`}
-                style={{ display:"flex", flexDirection:"column", position: "relative",}}>         
-                <svg                
-                    className={`${styles["chart-svg"]} ${styles["fill-container"]}`}
-                    style={{}}
-                    viewBox={`0 0 ${width} ${height}`}
-                >
-                    <g className="plot-area">
-                        <g className={`${styles["value-axis"]} y-axis`} />
-                        <g className={`${waterfallStyles["x-axis"]} x-axis`} />    
-                    </g>                        
-                </svg>            
+                style={{ display:"flex", flexDirection:"column" }}>
+                <div                     
+                    className={`controls ${styles[isMediumScreen?"controls-container":"controls-container-sm"]}`}
+                >          
+                    <label 
+                        className={`
+                            ${styles["controls-label"]} 
+                            ${waterfallStyles.sort} 
+                            ${mode!=="waterfall"?waterfallStyles.visible:""}
+                        `} 
+                        style={{paddingRight: '12px'}}
+                    >
+                        <input 
+                            type="checkbox" 
+                            className={styles["controls-checkbox"]} 
+                            checked={isSorted}
+                            onChange={(e) => setIsSorted(e.target.checked)}
+                        />
+                            Sort
+                    </label>          
+                    <div                         
+                        className={`legends-container ${styles["legends-container"]}`}
+                    />
+                </div>
+                <div 
+                    ref={chartContainerRef}
+                    className={`${styles["fill-container"]}`}
+                    style={{ display:"flex", flexDirection:"column" }}>
+            
+                    <svg                
+                        className={`${styles["chart-svg"]} ${styles["fill-container"]}`}
+                        style={{}}
+                        viewBox={`0 0 ${width} ${height}`}
+                    >
+                        <g className="plot-area">
+                            <g className={`${styles["value-axis"]} y-axis`} />
+                            <g className={`${waterfallStyles["x-axis"]} x-axis`} />    
+                        </g>                        
+                    </svg>            
                 
                 <Tooltip />
-            </div> 
+                </div>
+            </div>
         </div>
     );
 }

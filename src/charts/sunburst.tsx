@@ -73,7 +73,7 @@ export function Sunburst({data}: sunburstProps) {
     }, [data])
         
     const layersRef = useLayerIndex(data.children?.map(d => d.name) as string[])
-    const BASE_COLORS = d3.quantize(d3.interpolateRainbow, 20);
+    const BASE_COLORS = d3.quantize(d3.interpolateRainbow, 10);
     const colorRef = useRef(
         d3.scaleOrdinal<string, string>()
             .domain(layersRef.current)
@@ -224,9 +224,7 @@ export function Sunburst({data}: sunburstProps) {
         const pathFill = (d: sunburstData) => {  
             let node = d           
             while (node.depth > 1) node = node.parent as sunburstData;                
-            const colorName = node.data.name
-            
-            //return color(colorName) as string            
+            const colorName = node.data.name                        
 
             const baseColor = colorRef.current(colorName)
 
@@ -306,7 +304,7 @@ export function Sunburst({data}: sunburstProps) {
                         };
                     })
                     .attr("fill", pathFill), 
-                exit=>exit.remove()
+                exit=>exit.transition().duration(animDuration).style("opacity", 0).remove()
             )
             .on("pointerenter", function(e, d){
                 if(focus !== root){
@@ -357,19 +355,16 @@ export function Sunburst({data}: sunburstProps) {
                         .transition().duration(animDuration)
                     .style("fill-opacity", d => labelVisible(d) ? 1 : 0)
                     .style("text-shadow", d => labelVisible(d)?labelShadow:"none")
-                    .attr("transform", labelTransform)
-                    ,
+                    .attr("transform", labelTransform),
                 undefined,
-                exit=>exit.remove()
+                exit=>exit.transition().duration(animDuration).style("opacity", 0).remove()
             )
                 .transition().duration(animDuration)
             .style("fill-opacity", d => labelVisible(d) ? 1 : 0)
             .style("text-shadow", d => labelVisible(d)?labelShadow:"none")
             .attr("transform", labelTransform)
             .attr("dy", "0.35em")                
-
-        //clicked(undefined, root, true)
-            
+                    
         function clicked(event: PointerEvent | undefined, data: sunburstData | undefined, initialCall: boolean = false) {                
             const p = data as sunburstData
             focus = p;            
@@ -384,8 +379,6 @@ export function Sunburst({data}: sunburstProps) {
                 y0: Math.max(0, d.y0 - p.depth),
                 y1: Math.max(0, d.y1 - p.depth)
             });
-
-            const t = canvasSvg.transition().duration(animDuration);
 
             canvas                    
                 .selectAll<SVGPathElement, sunburstData>("path.slice")
@@ -418,9 +411,6 @@ export function Sunburst({data}: sunburstProps) {
 
             const rectData = (d.target ?? d.current) as rect;
             const { x0, x1, y0, y1 } = rectData;
-
-            //toggle center label
-            //if (y0 === 0) return false;
 
             const angularWidth = x1 - x0;
             const radialCenter = (y0 + y1) / 2;

@@ -25,7 +25,7 @@ export function WaterfallChart({
     const [chartContainerRef, chartSize] = useContainerSize<HTMLDivElement>()
     const { width, height } = chartSize
 
-    type modeType = "waterfall" | "incomes" | "outcomes";
+    type modeType = "waterfall" | "inflows" | "outflows";
     const [ mode, setMode ] = useState<modeType>("waterfall")        
     const [ isSorted, setIsSorted ] = useState(false)
     const changeBy = useRef("data")
@@ -76,7 +76,7 @@ export function WaterfallChart({
                 
         const renderData = mode === "waterfall"?formattedData:
             formattedData.filter(d =>  d.type === "variation" && 
-                (mode === "incomes"?d.start! <= d.end!:d.start > d.end))
+                (mode === "inflows"?d.start! <= d.end!:d.start > d.end))
                     .sort((a, b) => isSorted?(Math.abs(b.value) - Math.abs(a.value)):0)
         
         const canvasSvg = container.select<SVGSVGElement>("svg")
@@ -89,7 +89,7 @@ export function WaterfallChart({
 
         const legendWidth = isMediumScreen?80:50
 
-        const colors = { incomes:"#22c55e", outcomes: "#ef4444" }
+        const colors = { inflows:"#22c55e", outflows: "#ef4444" }
 
         const legendClass = function(d:string){            
             const containerClass = styles[isMediumScreen?"legend-container":"legend-container-sm"]
@@ -102,7 +102,7 @@ export function WaterfallChart({
         }
 
         const legends = legendsContainer.selectAll<HTMLDivElement, modeType>(".legend-item")
-            .data(["incomes", "outcomes"], d=>d)
+            .data(["inflows", "outflows"], d=>d)
             .join(
                 enter => {
                     const divs = enter
@@ -115,7 +115,7 @@ export function WaterfallChart({
                     divs.append("div")
                         .attr("class", styles["legend-rect"])
                         .style("background", (d) => {
-                            return d === "incomes"?colors.incomes:colors.outcomes
+                            return d === "inflows"?colors.inflows:colors.outflows
                         })
                     divs.append("span")
                         .attr("class", styles["legend-label"])
@@ -138,7 +138,7 @@ export function WaterfallChart({
                             .style("opacity", 1)                      
                         .select(`.${styles["legend-rect"]}`)
                         .style("background", (d) => {
-                            return d === "incomes"?colors.incomes:colors.outcomes
+                            return d === "inflows"?colors.inflows:colors.outflows
                         });
 
                     // also update label text in case of rename or dynamic change
@@ -162,7 +162,7 @@ export function WaterfallChart({
                 if( !canLegendHover.current ) return
                 canvas.selectAll<SVGRectElement, waterfallData>("rect.bar")
                     .filter(dRect => {
-                        if(d === "incomes"){
+                        if(d === "inflows"){
                             return dRect.type === "total" || dRect.start! > dRect.end!
                         }
                         return dRect.type === "total" || dRect.start! <= dRect.end!
@@ -172,7 +172,7 @@ export function WaterfallChart({
                 canvas
                     .selectAll<SVGTextElement, waterfallData>(".label")
                     .filter(dRect => {
-                        if(d === "incomes"){
+                        if(d === "inflows"){
                             return dRect.type === "total" || dRect.start! > dRect.end!
                         }
                         return dRect.type === "total" || dRect.start! < dRect.end!
@@ -288,9 +288,9 @@ export function WaterfallChart({
 
         function rectFill(d: waterfallData){
             if(d.start! <= d.end!){
-                return colors.incomes
+                return colors.inflows
             }else {
-                return colors.outcomes
+                return colors.outflows
             }
         }
 

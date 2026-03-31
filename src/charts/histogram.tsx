@@ -1,5 +1,7 @@
 import React, {useState} from 'react';
-import {select, scaleBand, scaleLinear, axisLeft, axisBottom, max, format, histogram, bin} from 'd3';
+import {select, scaleBand, scaleLinear, axisLeft, axisBottom, max, format, Bin, bin,
+    thresholdFreedmanDiaconis, thresholdScott, thresholdSturges
+} from 'd3';
 import { useD3 } from '../hooks/useD3';
 import { useParentSize } from '../hooks/useParentSize';
 import { Tooltip, getTooltip, moveTooltip } from '../components/tooltip';
@@ -32,12 +34,9 @@ export function Histogram({
     }:HistogramProps) {
     const [ref, parentSize] = useParentSize<HTMLDivElement>();    
     const { width, height } = parentSize;
-    
-            
-
+                
     const isMediumScreen = width > 576;
     // Define the controls element (checkbox)
-    
 
     const color = {idx, type}
     const animDuration = 750;
@@ -50,9 +49,7 @@ export function Histogram({
             bottom: orientation==='vertical'?50:30, 
             left: orientation === 'vertical'?25:50
         };
-        
-        
-
+                
         const canvasSvg = container.select<SVGSVGElement>("svg")
         const svgNode = canvasSvg.node()
         const canvas = canvasSvg.select<SVGGElement>('.plot-area')
@@ -67,16 +64,19 @@ export function Histogram({
         const graphWidth = width - margin.left - margin.right
         const graphHeight = height - margin.top - margin.bottom
 
+        const baseXPositiveMin = Math.min(...data)
+        const xMin = baseXPositiveMin >= 0?0:baseXPositiveMin
         const x = scaleLinear()
-            .domain([0, 1000])     // can use this instead of 1000 to have the max of data: d3.max(data, function(d) { return +d.price })
-            .range([0, graphWidth]);
+            .domain([xMin, Math.max(...data)])     // can use this instead of 1000 to have the max of data: d3.max(data, function(d) { return +d.price })
+            .range([0, graphWidth])
+            .nice();
 
         const histogramFn = bin()
             .value(function(d) { return d; })   // I need to give the vector of value
             .domain(x.domain() as [number, number])  // then the domain of the graphic
             .thresholds(x.ticks(70));
 
-        const bins = histogramFn(data)                
+        const bins: Bin<number, number>[] = histogramFn(data)                        
 
         const xAxis = axisBottom(x)
             .ticks(10)
@@ -95,27 +95,40 @@ export function Histogram({
         const yAxis = axisLeft(y).ticks(5, "s").tickSize(-graphWidth)
 
         canvas.select<SVGGElement>(".y-axis")
+                .transition().duration(animDuration)
             .attr("transform", `translate(0, 0)`)
-            .transition().duration(animDuration).call(yAxis)
+            .call(yAxis)        
 
-        const bars = canvas.selectAll<SVGRectElement, number>("rect.bar")
-            .data(bins)
+        const bars = canvas.selectAll<SVGRectElement, Bin<Number, number>>("rect.bar")
+            .data(bins, (d)=> d.x0 + "-" + d.x1)
             .join(
                 enter=>enter.append("rect")
                     .attr("class", "bar")
-                    .attr("x", function(d){ return x(d.x0 as number)})
-                    .attr("width", function(d){ return x(d.x1 as number) - x(d.x0 as number)})
-                    .attr("y", function(d){ return y(d.length)})
-                    .attr("height", function(d){ return graphHeight - y(d.length)})
-                    .style("fill", "#0ea5e9")
-                    .style("stroke", "#394447"),
-                update=>update
-                    .attr("x", function(d){ return x(d.x0 as number)})
-                    .attr("width", function(d){ return x(d.x1 as number) - x(d.x0 as number)})
-                    .attr("y", function(d){ return y(d.length)})
-                    .attr("height", function(d){ return graphHeight - y(d.length)}),
-                exit=>exit.remove()
-            )
+                    .attr("x", function(d){ return x(d.x0 as number) || 0})
+                    .attr("width", function(d){ return x(d.x1 as number) - x(d.x0 as number) || 0})
+                    .style("fill", "#4ade80")
+                    .style("stroke", "#394447")
+                    .attr("y", y(0))
+                    .attr("height", 0),                        
+                undefined,
+                exit=>exit                
+                        .transition().duration(animDuration)
+                    .attr("y", y(0))
+                    .attr("height", 0)
+                    .style("fill", "#a1a1aa")
+                    .style("opacity", 0)
+                    .remove()
+            )                        
+                .transition().duration(animDuration)
+            //.style("fill", barFill)         
+            .style("fill", function(d){
+                const xPos = x(d.x0 as number) || 0
+                return xPos < x(0)?"#f43f5e":"#0284c7"
+            })           
+            .attr("x", function(d){ return x(d.x0 as number) || 0})
+            .attr("width", function(d){ return x(d.x1 as number) - x(d.x0 as number) || 0})
+            .attr("y", function(d){ return y(d.length) || 0})
+            .attr("height", function(d){ return graphHeight - y(d.length) || 0})
             
 
     }, [data, color, width, height, orientation, {prefix, suffix, formatType}]);

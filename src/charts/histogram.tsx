@@ -11,8 +11,8 @@ import styles from './global.module.css';
 import barchartStyles from './barchart.module.css';
 import { pointData, tooltipFormat, histogramDatum, histogramRow } from '../types';
 
-type HistogramProps = {
-    data: histogramRow;
+type HistogramProps<T extends histogramDatum> = {
+    data: histogramRow<T>;
     color?: {
         idx?: number;
         type?: 'fixed' | 'colorful';
@@ -21,7 +21,7 @@ type HistogramProps = {
     tooltipFormat?: tooltipFormat;
 }
 
-export function Histogram({
+export function Histogram<T extends histogramDatum>({
         data, 
         color: {
             idx = 0,               // default idx
@@ -31,7 +31,7 @@ export function Histogram({
         tooltipFormat: {
             prefix = "", suffix = "", formatType = "long"
         } = { prefix: "", suffix: "", formatType: "long"}
-    }:HistogramProps) {
+    }:HistogramProps<T>) {
     const [ref, parentSize] = useParentSize<HTMLDivElement>();    
     const { width, height } = parentSize;
                 
@@ -74,14 +74,14 @@ export function Histogram({
             .range([0, graphWidth])
             .nice();        
 
-        const histogramFn = bin<histogramRow, number>()
-            .value((d: histogramRow) => (d as any)[data.valueKey] as number)
+        const histogramFn = bin<T, number>()
+            .value((d: T) => d[data.valueKey] as number)
             .domain(x.domain() as [number, number])
             .thresholds(x.ticks(70));
 
-        type binnedData = Bin<histogramRow, number>
+        type binnedData = Bin<T, number>
 
-        const bins:binnedData[] = histogramFn(data.data as histogramRow[])        
+        const bins:binnedData[] = histogramFn(data.data)        
             
         const xAxis = axisBottom(x)
             .ticks(10)

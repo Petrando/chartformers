@@ -9,10 +9,10 @@ import { cloneObj, indexSelectedColor } from '../utils';
 import { inactiveColor } from '../../dev/data/constants';
 import styles from './global.module.css';
 import barchartStyles from './barchart.module.css';
-import { pointData, tooltipFormat } from '../types';
+import { pointData, tooltipFormat, histogramDatum, histogramRow } from '../types';
 
 type HistogramProps = {
-    data: number[];
+    data: histogramRow;
     color?: {
         idx?: number;
         type?: 'fixed' | 'colorful';
@@ -63,21 +63,26 @@ export function Histogram({
 
         const graphWidth = width - margin.left - margin.right
         const graphHeight = height - margin.top - margin.bottom
-
-        const baseXPositiveMin = Math.min(...data)
-        const xMin = baseXPositiveMin >= 0?0:baseXPositiveMin
+        
+        const validData = data.data.filter(d => !isNaN(parseFloat(d[data.valueKey] as string)))
+        const values: number[] = validData.map(d => parseFloat(d[data.valueKey] as string))
+        const baseXPositiveMin = Math.min(...values)
+        const xMin = baseXPositiveMin//baseXPositiveMin >= 0?0:baseXPositiveMin
+        const xMax = Math.max(...values)
         const x = scaleLinear()
-            .domain([xMin, Math.max(...data)])     // can use this instead of 1000 to have the max of data: d3.max(data, function(d) { return +d.price })
+            .domain([xMin, xMax])     // can use this instead of 1000 to have the max of data: d3.max(data, function(d) { return +d.price })
             .range([0, graphWidth])
-            .nice();
+            .nice();        
 
-        const histogramFn = bin()
-            .value(function(d) { return d; })   // I need to give the vector of value
-            .domain(x.domain() as [number, number])  // then the domain of the graphic
+        const histogramFn = bin<histogramRow, number>()
+            .value((d: histogramRow) => (d as any)[data.valueKey] as number)
+            .domain(x.domain() as [number, number])
             .thresholds(x.ticks(70));
 
-        const bins: Bin<number, number>[] = histogramFn(data)                        
+        type binnedData = Bin<histogramRow, number>
 
+        const bins:binnedData[] = histogramFn(data.data as histogramRow[])        
+            
         const xAxis = axisBottom(x)
             .ticks(10)
             .tickSizeOuter(0)
@@ -97,9 +102,9 @@ export function Histogram({
         canvas.select<SVGGElement>(".y-axis")
                 .transition().duration(animDuration)
             .attr("transform", `translate(0, 0)`)
-            .call(yAxis)        
+            .call(yAxis)
 
-        const bars = canvas.selectAll<SVGRectElement, Bin<Number, number>>("rect.bar")
+        const bars = canvas.selectAll<SVGRectElement, binnedData>("rect.bar")
             .data(bins, (d)=> d.x0 + "-" + d.x1)
             .join(
                 enter=>enter.append("rect")
@@ -118,8 +123,8 @@ export function Histogram({
                     .style("fill", "#a1a1aa")
                     .style("opacity", 0)
                     .remove()
-            )                        
-                .transition().duration(animDuration)
+            ) 
+            .transition().duration(animDuration)
             //.style("fill", barFill)         
             .style("fill", function(d){
                 const xPos = x(d.x0 as number) || 0
@@ -129,8 +134,6 @@ export function Histogram({
             .attr("width", function(d){ return x(d.x1 as number) - x(d.x0 as number) || 0})
             .attr("y", function(d){ return y(d.length) || 0})
             .attr("height", function(d){ return graphHeight - y(d.length) || 0})
-            
-
     }, [data, color, width, height, orientation, {prefix, suffix, formatType}]);
     
     return (

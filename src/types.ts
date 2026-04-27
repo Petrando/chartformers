@@ -99,3 +99,11 @@ export type chordDatum = {
     name: string;
     values: number[]
 }
+
+export type histogramDatum = Record<string, unknown>;
+
+export type histogramRow = {
+    title: string;
+    valueKey: string;
+    data: Record<string, unknown>[];
+};

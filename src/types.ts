@@ -102,8 +102,8 @@ export type chordDatum = {
 
 export type histogramDatum = Record<string, unknown>;
 
-export type histogramRow<T extends histogramDatum> = {
+export type histogramChartData<T extends histogramDatum> = {
     title: string;
-    valueKey: string;
-    data: T[];
+    valueKey?: string;
+    data: T[] | histogramChartData<T>[];
 };

@@ -9,10 +9,10 @@ import { cloneObj, indexSelectedColor } from '../utils';
 import { inactiveColor } from '../../dev/data/constants';
 import styles from './global.module.css';
 import barchartStyles from './barchart.module.css';
-import { pointData, tooltipFormat, histogramDatum, histogramRow } from '../types';
+import { pointData, tooltipFormat, histogramDatum, histogramChartData } from '../types';
 
 type HistogramProps<T extends histogramDatum> = {
-    data: histogramRow<T>;
+    data: histogramChartData<T>;
     color?: {
         idx?: number;
         type?: 'fixed' | 'colorful';
@@ -63,9 +63,45 @@ export function Histogram<T extends histogramDatum>({
 
         const graphWidth = width - margin.left - margin.right
         const graphHeight = height - margin.top - margin.bottom
-        
-        const validData = data.data.filter(d => !isNaN(parseFloat(d[data.valueKey] as string)))
-        const values: number[] = validData.map(d => parseFloat(d[data.valueKey] as string))
+                
+        /*
+            NOTE:
+            data can be single or double. For single data, the main data will has a 'valueKey' property.
+            For double data, the main data does not have this, instead it will be embeded in each member of
+            the main data's data property e.g each data.data will has a 'valueKey' property
+        */
+        const validateData = (rawData: histogramChartData<T>) => {
+            const validatedData = (rawData.data as T[]).filter((d) => {
+                const rawValue = (d as Record<string, unknown>)[rawData.valueKey!] as unknown;
+                const value = typeof rawValue === 'string' || typeof rawValue === 'number' ? String(rawValue) : "";
+                return !isNaN(parseFloat(value));
+            })
+
+            return { title: rawData.title, valueKey: rawData.valueKey, data:validatedData }
+        }
+        const validatedData = data.valueKey ? validateData(data) :
+            data.data.reduce((acc: histogramChartData<T>[], curr) => {                
+                const validCurrData = validateData(curr as histogramChartData<T>)                                
+                acc.push(validCurrData)
+                return acc
+            }, [])
+
+        const validData:histogramChartData<T> = data.valueKey?(validatedData as histogramChartData<T>):
+            ({title: data.title, data: validatedData} as histogramChartData<T>)
+                
+        const values:number[] = data.valueKey
+            ? validData
+                .data
+                .map(d => parseFloat(String((d as Record<string, unknown>)[data.valueKey!])))
+            : validData.data.reduce((acc: number[], curr) => {
+                if (!curr.valueKey) return acc;
+                const currValueKey = curr.valueKey as string;
+                const currValues: number[] = (curr.data as T[])
+                    .map(d => parseFloat(String((d as Record<string, unknown>)[currValueKey])))
+                acc.push(...currValues)
+                return acc
+            }, [])
+
         const baseXPositiveMin = Math.min(...values)
         const xMin = baseXPositiveMin//baseXPositiveMin >= 0?0:baseXPositiveMin
         const xMax = Math.max(...values)
@@ -73,16 +109,29 @@ export function Histogram<T extends histogramDatum>({
             .domain([xMin, xMax])     // can use this instead of 1000 to have the max of data: d3.max(data, function(d) { return +d.price })
             .range([0, graphWidth])
             .nice();        
-
-        const histogramFn = bin<T, number>()
-            .value((d: T) => d[data.valueKey] as number)
-            .domain(x.domain() as [number, number])
-            .thresholds(x.ticks(70));
-
-        type binnedData = Bin<T, number>
-
-        const bins:binnedData[] = histogramFn(data.data)        
+        
+        console.log(validData)
             
+        type binnedData = Bin<T, number>;
+
+        const binnedDataFactory = (dataForBin: histogramChartData<T>) => {
+            if(!dataForBin){
+                return []
+            }
+            const vKey = dataForBin.valueKey || ""
+            const histogramFn = bin<T, number>()
+                .value((d: T) => d[vKey!] as number)//attention here!!!
+                .domain(x.domain() as [number, number])
+                .thresholds(x.ticks(70));
+
+            const bins:binnedData[] = histogramFn(dataForBin.data as T[])
+
+            return bins
+        }        
+
+        const dataToRender = validData.valueKey?validData:validData.data[0]        
+        const bins = binnedDataFactory(dataToRender as histogramChartData<T>)        
+
         const xAxis = axisBottom(x)
             .ticks(10)
             .tickSizeOuter(0)
@@ -124,6 +173,9 @@ export function Histogram<T extends histogramDatum>({
                     .style("opacity", 0)
                     .remove()
             ) 
+            .on("mouseover", function(e, d){
+                console.log(d)
+            })
             .transition().duration(animDuration)
             //.style("fill", barFill)         
             .style("fill", function(d){
@@ -134,6 +186,8 @@ export function Histogram<T extends histogramDatum>({
             .attr("width", function(d){ return x(d.x1 as number) - x(d.x0 as number) || 0})
             .attr("y", function(d){ return y(d.length) || 0})
             .attr("height", function(d){ return graphHeight - y(d.length) || 0})
+            
+        
     }, [data, color, width, height, orientation, {prefix, suffix, formatType}]);
     
     return (

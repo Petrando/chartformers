@@ -1,5 +1,5 @@
 import React, {useState} from 'react';
-import {select, scaleBand, scaleLinear, axisLeft, axisBottom, max, format, Bin, bin,
+import {select, scaleBand, scaleLinear, axisLeft, axisBottom, max, format, Bin, bin, Selection,
     thresholdFreedmanDiaconis, thresholdScott, thresholdSturges
 } from 'd3';
 import { useD3 } from '../hooks/useD3';
@@ -55,6 +55,9 @@ export function Histogram<T extends histogramDatum>({
         const canvas = canvasSvg.select<SVGGElement>('.plot-area')
             .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
 
+        const layer1 = canvas.select<SVGGElement>('.layer-1')
+        const layer2 = canvas.select<SVGGElement>('.layer-2')
+
         const tooltip = getTooltip(container as any)
             .style("opacity", 0);
         
@@ -62,7 +65,7 @@ export function Histogram<T extends histogramDatum>({
                     barchartStyles.axisText;
 
         const graphWidth = width - margin.left - margin.right
-        const graphHeight = height - margin.top - margin.bottom
+        const graphHeight = height - margin.top - margin.bottom    
                 
         /*
             NOTE:
@@ -108,14 +111,12 @@ export function Histogram<T extends histogramDatum>({
         const x = scaleLinear()
             .domain([xMin, xMax])     // can use this instead of 1000 to have the max of data: d3.max(data, function(d) { return +d.price })
             .range([0, graphWidth])
-            .nice();        
-        
-        console.log(validData)
+            .nice();                
             
         type binnedData = Bin<T, number>;
 
         const binnedDataFactory = (dataForBin: histogramChartData<T>) => {
-            if(!dataForBin){
+            if(!dataForBin || !dataForBin.data || dataForBin.data.length === 0){
                 return []
             }
             const vKey = dataForBin.valueKey || ""
@@ -130,7 +131,9 @@ export function Histogram<T extends histogramDatum>({
         }        
 
         const dataToRender = validData.valueKey?validData:validData.data[0]        
-        const bins = binnedDataFactory(dataToRender as histogramChartData<T>)        
+        const bins = binnedDataFactory(dataToRender as histogramChartData<T>)
+        const testBin = binnedDataFactory({title: "test", data: []})
+        console.log(testBin)        
 
         const xAxis = axisBottom(x)
             .ticks(10)
@@ -153,39 +156,44 @@ export function Histogram<T extends histogramDatum>({
             .attr("transform", `translate(0, 0)`)
             .call(yAxis)
 
-        const bars = canvas.selectAll<SVGRectElement, binnedData>("rect.bar")
-            .data(bins, (d)=> d.x0 + "-" + d.x1)
-            .join(
-                enter=>enter.append("rect")
-                    .attr("class", "bar")
-                    .attr("x", function(d){ return x(d.x0 as number) || 0})
-                    .attr("width", function(d){ return x(d.x1 as number) - x(d.x0 as number) || 0})
-                    .style("fill", "#4ade80")
-                    .style("stroke", "#394447")
-                    .attr("y", y(0))
-                    .attr("height", 0),                        
-                undefined,
-                exit=>exit                
-                        .transition().duration(animDuration)
-                    .attr("y", y(0))
-                    .attr("height", 0)
-                    .style("fill", "#a1a1aa")
-                    .style("opacity", 0)
-                    .remove()
-            ) 
-            .on("mouseover", function(e, d){
-                console.log(d)
-            })
-            .transition().duration(animDuration)
-            //.style("fill", barFill)         
-            .style("fill", function(d){
-                const xPos = x(d.x0 as number) || 0
-                return xPos < x(0)?"#f43f5e":"#0284c7"
-            })           
-            .attr("x", function(d){ return x(d.x0 as number) || 0})
-            .attr("width", function(d){ return x(d.x1 as number) - x(d.x0 as number) || 0})
-            .attr("y", function(d){ return y(d.length) || 0})
-            .attr("height", function(d){ return graphHeight - y(d.length) || 0})
+        function renderLayer(layerBin:binnedData[], layerCanvas: Selection<SVGGElement, unknown, null, undefined>){
+            const layerIdx = layerCanvas === layer1?1:2
+            const bars = layerCanvas.selectAll<SVGRectElement, binnedData>("rect.bar")
+                .data(layerBin, (d)=> d.x0 + "-" + d.x1)
+                .join(
+                    enter=>enter.append("rect")
+                        .attr("class", "bar")
+                        .attr("x", function(d){ return x(d.x0 as number) || 0})
+                        .attr("width", function(d){ return x(d.x1 as number) - x(d.x0 as number) || 0})
+                        .style("fill", "#4ade80")
+                        .style("stroke", "#394447")
+                        .attr("y", y(0))
+                        .attr("height", 0),                        
+                    undefined,
+                    exit=>exit                
+                            .transition().duration(animDuration)
+                        .attr("y", y(0))
+                        .attr("height", 0)
+                        .style("fill", "#a1a1aa")
+                        .style("opacity", 0)
+                        .remove()
+                ) 
+                .on("mouseover", function(e, d){
+                    console.log(d)
+                })
+                .transition().duration(animDuration)
+                //.style("fill", barFill)         
+                .style("fill", function(d){
+                    const xPos = x(d.x0 as number) || 0
+                    return xPos < x(0)?layerIdx === 1?"#f43f5e":"#dc2626":layerIdx === 1?"#2563eb":"#22c55e"
+                })           
+                .attr("x", function(d){ return x(d.x0 as number) || 0})
+                .attr("width", function(d){ return x(d.x1 as number) - x(d.x0 as number) || 0})
+                .attr("y", function(d){ return y(d.length) || 0})
+                .attr("height", function(d){ return graphHeight - y(d.length) || 0})
+        }
+
+        renderLayer(bins, layer1)
             
         
     }, [data, color, width, height, orientation, {prefix, suffix, formatType}]);
@@ -208,6 +216,8 @@ export function Histogram<T extends histogramDatum>({
                     <g className="plot-area">
                         <g className={`${orientation === 'vertical'?styles["value-axis"]:""} y-axis`} />
                         <g className={`${orientation === 'horizontal'?styles["value-axis"]:""} x-axis`} />    
+                        <g className='layer-1' />
+                        <g className='layer-2' />
                     </g>                        
                 </svg>                            
                 <Tooltip />

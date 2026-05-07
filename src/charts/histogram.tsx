@@ -8,7 +8,6 @@ import { Tooltip, getTooltip, moveTooltip } from '../components/tooltip';
 import { cloneObj, indexSelectedColor } from '../utils';
 import { inactiveColor } from '../../dev/data/constants';
 import styles from './global.module.css';
-import barchartStyles from './barchart.module.css';
 import { pointData, tooltipFormat, histogramDatum, histogramChartData } from '../types';
 import { useContainerSize } from '../hooks/useContainerSize';
 
@@ -49,7 +48,9 @@ export function Histogram<T extends histogramDatum>({
 
     useEffect(()=>{
         setIsSorted(false)
-    }, [data])
+    }, [data, compareMode])
+
+    const isSingleData = data.valueKey
 
     const color = {idx, type}
     const animDuration = 750;
@@ -57,7 +58,7 @@ export function Histogram<T extends histogramDatum>({
         if (width === 0 || height === 0) return;
         
         const margin = { 
-            top: 20, 
+            top: 30, 
             right: 30, 
             bottom: orientation==='vertical'?50:30, 
             left: orientation === 'vertical'?25:50
@@ -88,12 +89,7 @@ export function Histogram<T extends histogramDatum>({
         }
 
         const tooltip = getTooltip(container as any)
-            .style("opacity", 0);
-        
-        const xAxisTextClass = !isMediumScreen?barchartStyles.rotatedAxisText:
-                    barchartStyles.axisText;
-
-            
+            .style("opacity", 0);                    
                 
         /*
             NOTE:
@@ -110,7 +106,7 @@ export function Histogram<T extends histogramDatum>({
 
             return { title: rawData.title, valueKey: rawData.valueKey, data:validatedData }
         }
-        const isSingleData = data.valueKey
+        
         const validatedData = isSingleData ? validateData(data) :
             data.data.reduce((acc: histogramChartData<T>[], curr) => {                
                 const validCurrData = validateData(curr as histogramChartData<T>)                                
@@ -185,16 +181,16 @@ export function Histogram<T extends histogramDatum>({
         const valueMax = Math.max(max1, max2);        
 
         function renderLayer(layerBin:binnedData[], layerCanvas: Selection<SVGGElement, unknown, null, undefined>){
+            
             const layerIdx = layerCanvas === layer1?1:2
             const dualView = !isSingleData && compareMode === "compare"
 
             if(isSorted){
+                layerBin = layerBin.filter(d => d.length > 0)
                 layerBin.sort((a: binnedData, b: binnedData) => b.length - a.length)
             }
-            
-                            
-            const ranges = layerBin.map(d => d.x0 + "-" + d.x1)
-            console.log(ranges)
+                                        
+            const ranges = layerBin.map(d => d.x0 + "-" + d.x1)                        
 
             const xRange = scaleLinear()
                 .domain([xMin, xMax])     // can use this instead of 1000 to have the max of data: d3.max(data, function(d) { return +d.price })
@@ -209,10 +205,17 @@ export function Histogram<T extends histogramDatum>({
             const y = scaleLinear()
                 .domain([0, valueMax])
                 .nice();
+
+            
             if(layerIdx === 1){
                 //if(orientation === "vertical"){}
+                const xAxisTextClass = (!isMediumScreen || isSorted)?
+                    (isSingleData?styles.rotatedAxisText:styles.rotatedTopAxisText):
+                        styles.axisText;
 
-                const xAxis = !isSorted ? axisBottom(xRange) : axisBottom(xSorted)
+                const xAxis = isSingleData?
+                    (isSorted?axisBottom(xSorted):axisBottom(xRange)):
+                    (isSorted ? axisTop(xSorted) : axisTop(xRange))
                 //!dualView?axisBottom(x):axisTop(x);
                 xAxis
                     .ticks(10)
@@ -221,10 +224,10 @@ export function Histogram<T extends histogramDatum>({
                 layerCanvas.select<SVGGElement>(".x-axis")
                     .attr(
                         "transform", 
-                        //`translate(0, ${!dualView?graphHeight:0})`
-                        `translate(0, ${graphHeight})`
+                        `translate(0, ${isSingleData?graphHeight:0})`                        
                     )
                     .transition().duration(animDuration).call(xAxis)
+                    .style("opacity", (isSingleData || isSorted)?1:0)
                     .selectAll("text")
                     .attr("class", xAxisTextClass);
 
@@ -237,10 +240,23 @@ export function Histogram<T extends histogramDatum>({
                 
 
             }else {
+                const xAxisTextClass = (!isMediumScreen || isSorted)?
+                    styles.rotatedAxisText:
+                        styles.axisText;
+
                 const xAxis = !isSorted ? axisBottom(xRange) : axisBottom(xSorted)
                 xAxis
                     .ticks(10)
                     .tickSizeOuter(0)
+
+                layerCanvas.select<SVGGElement>(".x-axis")
+                    .attr(
+                        "transform", 
+                        `translate(0, ${!dualView?graphHeight:graphHeight/2})`                        
+                    )
+                    .transition().duration(animDuration).call(xAxis)                    
+                    .selectAll("text")
+                    .attr("class", xAxisTextClass);
 
                 y                    
                     .range(

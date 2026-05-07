@@ -220,3 +220,18 @@
 .legend-container-active .legend-label, .legend-container-active-sm .legend-label {
     font-weight: 700;
 }
+
+.rotatedTopAxisText {
+    text-anchor: start;
+    transform: rotate(-25deg);
+}
+
+.rotatedAxisText {
+    text-anchor: start;
+    transform: rotate(25deg);
+}
+
+.axisText {
+    text-anchor: middle;
+    transform: rotate(0deg);
+}

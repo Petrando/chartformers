@@ -8,6 +8,7 @@ import { Tooltip, getTooltip, moveTooltip } from '../components/tooltip';
 import { cloneObj, indexSelectedColor } from '../utils';
 import { inactiveColor } from '../../dev/data/constants';
 import styles from './global.module.css';
+import histogramStyles from './histogram.module.css'
 import { pointData, tooltipFormat, histogramDatum, histogramChartData } from '../types';
 import { useContainerSize } from '../hooks/useContainerSize';
 
@@ -21,6 +22,9 @@ type HistogramProps<T extends histogramDatum> = {
     orientation?: 'horizontal' | 'vertical';
     tooltipFormat?: tooltipFormat;
 }
+
+type legendRange = "positive" | "negative"
+type HistogramLegend = legendRange[] & { title: string; };
 
 export function Histogram<T extends histogramDatum>({
         data, 
@@ -50,7 +54,7 @@ export function Histogram<T extends histogramDatum>({
         setIsSorted(false)
     }, [data, compareMode])
 
-    const isSingleData = data.valueKey
+    const isSingleData = data.valueKey !== undefined
 
     const color = {idx, type}
     const animDuration = 750;
@@ -70,23 +74,7 @@ export function Histogram<T extends histogramDatum>({
         const canvasSvg = container.select<SVGSVGElement>("svg")
         const svgNode = canvasSvg.node()
         const canvas = canvasSvg.select<SVGGElement>('.plot-area')
-            .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
-
-        const layer1 = canvas.select<SVGGElement>('.layer-1')
-        const layer2 = canvas.select<SVGGElement>('.layer-2')
-        if(orientation === "vertical"){
-            layer2.transition().duration(animDuration)
-                .attr(
-                    "transform", 
-                    `translate(0, ${compareMode === "compare"?(graphHeight/2):0})`
-                )
-        }else{
-            layer1.transition().duration(animDuration)
-                .attr(
-                    "transform",
-                    `translate(${compareMode === "compare"?(graphWidth/2):0})`
-                )
-        }
+            .attr("transform", "translate(" + margin.left + "," + margin.top + ")");        
 
         const tooltip = getTooltip(container as any)
             .style("opacity", 0);                    
@@ -112,7 +100,10 @@ export function Histogram<T extends histogramDatum>({
                 const validCurrData = validateData(curr as histogramChartData<T>)                                
                 acc.push(validCurrData)
                 return acc
-            }, [])
+            }, [])                                
+        
+        //isSingleData?(validatedData as histogramChartData<T>).data.map(d => d):
+            //[(data as histogramChartData<T>[])[0].data.map(d => d)]
 
         const validData:histogramChartData<T> = isSingleData?(validatedData as histogramChartData<T>):
             ({title: data.title, data: validatedData} as histogramChartData<T>)
@@ -134,7 +125,7 @@ export function Histogram<T extends histogramDatum>({
         const xMin = baseXPositiveMin//baseXPositiveMin >= 0?0:baseXPositiveMin
         const xMax = Math.max(...values)
                       
-        const xBin = scaleLinear()
+        const rangeScaleBin = scaleLinear()
             .domain([xMin, xMax])
             .range([0, graphWidth])
             .nice()
@@ -149,157 +140,423 @@ export function Histogram<T extends histogramDatum>({
             const histogramFn = bin<T, number>()
                 .value((d: T) => d[vKey!] as number)//attention here!!!
                 .domain([xMin, xMax])
-                .thresholds(xBin.ticks(70));
+                .thresholds(rangeScaleBin.ticks(70));
 
             const bins:binnedData[] = histogramFn(dataForBin.data as T[])
 
             return bins
         }        
 
-        const dataToRender = isSingleData?
+        const dataToRender:binnedData[][] = isSingleData?
             [
                 binnedDataFactory(validData), []
             ]:
             [
                 binnedDataFactory(validData.data[0] as histogramChartData<T>), 
                 binnedDataFactory(validData.data[1] as histogramChartData<T>)
-            ]        
-        //const bins = binnedDataFactory(dataToRender as histogramChartData<T>)                
+            ]                
+        
+        const withNegativeData = 
+            (dataToRender[0][0]?.x0 as number) < 0 ||
+            (dataToRender[1][0]?.x0 as number) < 0        
 
-        /*const xAxis = axisBottom(x)
-            .ticks(10)
-            .tickSizeOuter(0)*/
+        const legendsData:HistogramLegend[] = !Array.isArray(validatedData)?
+            withNegativeData?[
+                Object.assign(["positive", "negative"] as HistogramLegend, { title: validatedData.title })
+            ]:[]:
+            [
+                Object.assign(
+                    !withNegativeData?
+                        ["positive"] as HistogramLegend:
+                        ["positive", "negative"] as HistogramLegend,
+                    { title: validatedData[0].title}
+                ),
+                Object.assign(
+                    !withNegativeData?
+                        ["positive"] as HistogramLegend:
+                        ["positive", "negative"] as HistogramLegend,
+                    { title: validatedData[1].title}
+                )
+            ]
+        const layers = legendsData.map(d => d.title)                
 
-        /*canvas.select<SVGGElement>(".x-axis")
-            .attr("transform", `translate(0, ${graphHeight})`)
-            .transition().duration(animDuration).call(xAxis)
-            .selectAll("text")
-            .attr("class", xAxisTextClass);*/
+        const legendWidth = isMediumScreen?80:60
+        
+        const legendClass = function(){
+            const containerClass = styles[isMediumScreen?"legend-container":"legend-container-sm"]            
+            return  `${containerClass} legend-item`            
+        }                
+        
+        const colors = {
+            base: "#7c3aed",
+            layer1:{
+                positive: "#2563eb", negative: "#f43f5e"
+            },
+            layer2:{
+                positive: "#22c55e", negative: "#dc2626"
+            }
+        }
 
+        const controls = container.select<HTMLDivElement>(".controls")
+        const legendsContainer = controls.select<HTMLDivElement>(".legends-container")        
+
+        const legends = legendsContainer.selectAll<HTMLDivElement, HistogramLegend>(".legend-item")
+            .data(
+                legendsData, 
+                d=>d.title
+            )
+            .join(
+                enter => {
+                    const divs = enter
+                        .append("div")
+                        .attr("class", legendClass)
+                        .style("left", (_, i)=> `${i * legendWidth}px`)
+                        .style("top", "-53px")
+                        .style("opacity", 0)
+                        
+                    const legendRectsContainer = divs.append("div")
+                        .attr("class", function(_:HistogramLegend, i:number){
+                            return `
+                                legends-rect
+                                ${histogramStyles[i === 0?"legends-layer1":"legends-layer2"]} 
+                                ${histogramStyles["histogram-legends-container"]}
+                            `
+                        })
+                        .style("width", `${legendWidth}px`)                   
+
+                    const positiveLegend = legendRectsContainer.append("div")
+                        .attr(
+                            "class", 
+                            `${
+                                styles["legend-rect"]} 
+                                ${isSingleData?histogramStyles.base:histogramStyles.positive} 
+                            `)
+
+                    positiveLegend.append("p")
+                        .text("+")
+                        .style("opacity", `${withNegativeData?1:0}`)
+
+                    if(withNegativeData){
+                        const negativeLegend = legendRectsContainer.append("div")
+                            .attr("class", `${styles["legend-rect"]} ${histogramStyles.negative}`)
+                        
+                        negativeLegend.append("p")
+                            .text("-")                            
+                    }          
+                    
+                    divs.append("p")
+                        .text((_, i) => {                            
+                            return layers[i]
+                        })
+                        .attr("class", histogramStyles["legend-label"])
+                                                                                                                                                                                                                                             
+                    divs.transition().duration(animDuration)                                                        
+                        .style("top", "0px")                              
+                        .style("opacity", 1)
+                    return divs;
+                },
+                update => {
+                    update
+                        .attr("class", legendClass)
+                        
+                    const legendRectsContainer = update.selectAll("div.legends-rect")
+                    legendRectsContainer
+                        .attr("class", function(_, i:number){                            
+                            const layerIndex = layers.indexOf((_ as HistogramLegend).title)
+                            return `
+                                legends-rect
+                                ${histogramStyles[layerIndex === 0?"legends-layer1":"legends-layer2"]} 
+                                ${histogramStyles["histogram-legends-container"]}
+                            `
+                        })
+                        .style("width", `${legendWidth}px`)
+
+                    const noNegativeRect = legendRectsContainer.selectAll(`div.${histogramStyles["negative"]}`).empty()
+                    if(noNegativeRect && withNegativeData){
+                        const negativeLegend = legendRectsContainer.append("div")
+                            .attr("class", `${styles["legend-rect"]} ${histogramStyles.negative}`)
+                        
+                        negativeLegend.append("p")
+                            .text("-")
+                    }
+                    if(!noNegativeRect && !withNegativeData){
+                        legendRectsContainer.selectAll(`div.${histogramStyles.negative}`)                            
+                            .remove()
+                    }
+                    if(isSingleData){
+                        legendRectsContainer.selectAll(`div.${histogramStyles.positive}`)
+                            .attr("class", `${styles["legend-rect"]} ${histogramStyles.base}`)                            
+
+                        
+                    }else{
+                        legendRectsContainer.selectAll(`div.${histogramStyles.base}`)
+                            .attr("class", `${styles["legend-rect"]} ${histogramStyles.positive}`)                            
+                    }
+
+                    legendRectsContainer.selectAll("p")
+                        .transition().duration(animDuration)
+                        .style("opacity", `${withNegativeData?1:0}`)
+
+                    update
+                        .transition().duration(animDuration)
+                            .style("top", "0px")
+                            .style("left", (_, i)=> `${i * legendWidth}px`) 
+                            .style("opacity", 1)
+                                                                      
+
+                    return update;
+                },
+                exit => exit
+                    .style("color", inactiveColor)
+                    .transition().duration(animDuration)
+                    .style("opacity", 0)
+                    .style("top", "53px")
+                    .remove()
+            )
+
+        /*const legendRects = legends.selectAll<HTMLDivElement, HistogramLegend>("div.legends-rect")
+            .selectAll<HTMLDivElement, legendRange>("div")
+            .data(
+                (d: HistogramLegend) => {                    
+                    return d
+                }, 
+                //(d) => d
+            )
+            .join(
+                enter=>enter.append("div"),
+                undefined,
+                exit=>exit.remove()
+            )            
+            .attr(
+                "class", 
+                function(d){
+                    return `${styles["legend-rect"]} ${histogramStyles[d]}`
+                }
+            )
+        console.log(legendsData)
+        console.log(legendRects)*/    
+        
         const max1 = Math.max(...dataToRender[0].map((bin) => bin?.length))
         const max2 = Math.max(...dataToRender[1].map((bin) => bin?.length))
-        const valueMax = Math.max(max1, max2);        
+        const valueMax = Math.max(max1, max2);            
 
-        function renderLayer(layerBin:binnedData[], layerCanvas: Selection<SVGGElement, unknown, null, undefined>){
+        //this below is needed by layer 2's y axis when isSingleData and "horizontal"
+        const sortedFirstDataRanges = isSingleData?
+            binnedDataFactory(validData).filter(d => d.length > 0)
+            .sort((a: binnedData, b: binnedData) => b.length - a.length)
+            .map(d => d.x0 + "-" + d.x1):[]
+        
+        function renderLayer(layerBin:binnedData[], layerIdx: number){            
+
+            const dualView = !isSingleData && compareMode === "compare"            
             
-            const layerIdx = layerCanvas === layer1?1:2
-            const dualView = !isSingleData && compareMode === "compare"
+            const layerCanvas = layerIdx === 1?
+                canvas.select<SVGGElement>('.layer-1'):
+                canvas.select<SVGGElement>('.layer-2')
 
+            if(layerIdx === 1){
+                layerCanvas.transition().duration(animDuration)
+                    .attr(
+                        "transform",
+                        `translate(${
+                            (orientation === "horizontal" && dualView)?
+                            (graphWidth/2):0
+                        }, 0)`
+                    )
+            }else {
+                layerCanvas.transition().duration(animDuration)
+                    .attr(
+                        "transform", 
+                        `translate(
+                            0, 
+                            ${(orientation === "vertical" && dualView)?(graphHeight/2):0})`
+                    )
+            }
+                                        
             if(isSorted){
                 layerBin = layerBin.filter(d => d.length > 0)
                 layerBin.sort((a: binnedData, b: binnedData) => b.length - a.length)
             }
-                                        
-            const ranges = layerBin.map(d => d.x0 + "-" + d.x1)                        
 
-            const xRange = scaleLinear()
+            const binRanges = scaleLinear()
                 .domain([xMin, xMax])     // can use this instead of 1000 to have the max of data: d3.max(data, function(d) { return +d.price })
-                .range([0, graphWidth])
+                .range(orientation === 'vertical'?
+                    [0, graphWidth]:[0, graphHeight])
                 .nice()
-                    
-            const xSorted = scaleBand()
+
+            const sortedRanges = layerBin.map(d => d.x0 + "-" + d.x1)                    
+            const ranges = layerIdx === 2 && sortedRanges.length === 0?
+                sortedFirstDataRanges:sortedRanges
+            const binSorted = scaleBand()
                 .domain(ranges)
                 .rangeRound(orientation === 'vertical'?
-                    [0, graphWidth]:[graphHeight, 0]);  
+                    [0, graphWidth]:[0, graphHeight]);  
 
-            const y = scaleLinear()
+            const valueScale = scaleLinear()
                 .domain([0, valueMax])
                 .nice();
-
-            
+                        
             if(layerIdx === 1){
                 //if(orientation === "vertical"){}
-                const xAxisTextClass = (!isMediumScreen || isSorted)?
+                
+                valueScale                    
+                    .range(
+                        orientation === "vertical"?
+                            [!dualView?graphHeight:(graphHeight/2), 0]:                                                    
+                            [0, dualView?graphWidth/2:graphWidth]                        
+                    )
+                    .nice();
+                    //.range([0, graphHeight])
+                    
+                const xAxisTextClass = (orientation === "vertical" && (!isMediumScreen || isSorted))?
                     (isSingleData?styles.rotatedAxisText:styles.rotatedTopAxisText):
                         styles.axisText;
 
-                const xAxis = isSingleData?
-                    (isSorted?axisBottom(xSorted):axisBottom(xRange)):
-                    (isSorted ? axisTop(xSorted) : axisTop(xRange))
-                //!dualView?axisBottom(x):axisTop(x);
-                xAxis
-                    .ticks(10)
-                    .tickSizeOuter(0)                                
+                const xAxis = orientation === "vertical"?
+                    ((isSorted?axisTop(binSorted):axisTop(binRanges))):
+                        axisTop(valueScale)
+                
+                orientation === "vertical"?xAxis.tickSizeOuter(0).ticks(10)
+                    :xAxis
+                        .tickSizeOuter(0)
+                        .ticks(5, "s")                
+                        .tickSize(-graphHeight)                                
 
-                layerCanvas.select<SVGGElement>(".x-axis")
+                layerCanvas.select<SVGGElement>(".x-axis")                    
+                    .transition().duration(animDuration).call(xAxis)
                     .attr(
                         "transform", 
-                        `translate(0, ${isSingleData?graphHeight:0})`                        
+                        `translate(0, 0)`                        
                     )
-                    .transition().duration(animDuration).call(xAxis)
-                    .style("opacity", (isSingleData || isSorted)?1:0)
+                    .style(
+                        "opacity", 
+                            orientation === "horizontal"?1:
+                            (!isSingleData && isSorted)?1:0
+                    )
                     .selectAll("text")
-                    .attr("class", xAxisTextClass);
+                    .attr("class", xAxisTextClass); 
+                    
+                const yAxis = orientation === "vertical"?
+                    axisLeft(valueScale):                    
+                        (isSorted?axisRight(binSorted):axisRight(binRanges))
 
-                y                    
-                    .range([
-                        !dualView?graphHeight:(graphHeight/2), 
+                orientation === 'vertical'?
+                    yAxis.ticks(5, "s").tickSize(-graphWidth):
+                    yAxis.tickSizeOuter(0)
+
+                layerCanvas.select<SVGGElement>(".y-axis")
+                    .transition().duration(animDuration)                
+                .attr(
+                    "transform", 
+                    `translate(
+                        ${(orientation === "horizontal" && dualView)?graphWidth/2:0}, 
                         0
-                    ]);
-                    //.range([0, graphHeight])
-                
+                    )`
+                )
+                .style("opacity", dualView?1:0)
+                .call(yAxis)
 
             }else {
-                const xAxisTextClass = (!isMediumScreen || isSorted)?
+                valueScale                    
+                    .range(
+                        orientation === "vertical"?
+                        !dualView?
+                            [graphHeight, 0]:
+                            [0, graphHeight/2]:
+                        !dualView?
+                            [0, graphWidth]:
+                            [graphWidth/2, 0]
+                    )
+                    .nice();
+                //.range([0, graphHeight])
+
+                const xAxisTextClass = (orientation === "vertical" && (!isMediumScreen || isSorted))?
                     styles.rotatedAxisText:
                         styles.axisText;
 
-                const xAxis = !isSorted ? axisBottom(xRange) : axisBottom(xSorted)
-                xAxis
-                    .ticks(10)
-                    .tickSizeOuter(0)
+                const xAxis = orientation === "vertical"?
+                    !isSorted ? axisBottom(binRanges) : axisBottom(binSorted):
+                    axisTop(valueScale)
+
+                orientation === "vertical"?xAxis.tickSizeOuter(0).ticks(10)
+                    :xAxis
+                        .tickSizeOuter(0)
+                        .ticks(5, "s")                
+                        .tickSize(graphHeight) 
 
                 layerCanvas.select<SVGGElement>(".x-axis")
                     .attr(
                         "transform", 
-                        `translate(0, ${!dualView?graphHeight:graphHeight/2})`                        
+                        `translate(0, ${(orientation === "vertical" && dualView)?graphHeight/2:graphHeight})`                        
                     )
                     .transition().duration(animDuration).call(xAxis)                    
                     .selectAll("text")
                     .attr("class", xAxisTextClass);
+                
+                const yAxis = orientation === "vertical"?
+                    axisLeft(valueScale):
+                    (isSorted?axisLeft(binSorted):axisLeft(binRanges))                
+                
+                orientation === 'vertical'?
+                    yAxis.ticks(5, "s").tickSize(-graphWidth):
+                    yAxis.tickSizeOuter(0)
 
-                y                    
-                    .range(
-                        !dualView?
-                        [graphHeight, 0]:
-                        [0, graphHeight/2]
-                    );
-                    //.range([0, graphHeight])
-            }
-
-            const yAxis = axisLeft(y).ticks(5, "s").tickSize(-graphWidth)
-
-            layerCanvas.select<SVGGElement>(".y-axis")
-                    .transition().duration(animDuration)
-                .style("opacity", (layerIdx === 2 && !dualView)?0:1)
-                .attr("transform", `translate(0, 0)`)
-                .call(yAxis)
+                layerCanvas.select<SVGGElement>(".y-axis")
+                    .transition().duration(animDuration)                    
+                    .call(yAxis)
+            }                                    
+            
             const bars = layerCanvas.selectAll<SVGRectElement, binnedData>("rect.bar")
                 .data(layerBin, (d)=> d.x0 + "-" + d.x1)
                 .join(
                     enter=>enter.append("rect")
                         .attr("class", "bar")
-                        .attr("x", function(d){ 
-                            return (!isSorted?xRange(d.x0 as number) || 0:
-                                xSorted(d.x0 + "-" + d.x1)) || 0                            
-                            
+                        .attr("x", function(d){
+                            if(orientation === "vertical"){
+                                return (!isSorted?binRanges(d.x0 as number) || 0:
+                                    binSorted(d.x0 + "-" + d.x1)) || 0
+                            } else {
+                                return valueScale(0)
+                            }                                                                                    
                         })
                         .attr("width", function(d){ 
-                            if(!isSorted){
-                                return xRange(d.x1 as number) - xRange(d.x0 as number) || 0
-                            }else{
-                                return xSorted.bandwidth()
+                            if(orientation === "vertical"){
+                                if(!isSorted){
+                                    return binRanges(d.x1 as number) - binRanges(d.x0 as number) || 0
+                                }else{
+                                    return binSorted.bandwidth()
+                                }
+                            }else {
+                                return 0
                             }
+                            
                             
                         })
                         .style("fill", "#4ade80")
                         .style("stroke", "#394447")
-                        .attr("y", y(0))
-                        .attr("height", 0),                        
+                        .attr("y", function(d){
+                            if(orientation === "vertical"){
+                                return valueScale(0)
+                            }else {
+                                return (!isSorted?binRanges(d.x0 as number) || 0:
+                                    binSorted(d.x0 + "-" + d.x1)) || 0
+                            }
+                        })
+                        .attr("height", function(d){
+                            if(orientation === "vertical"){
+                                return 0
+                            }else{
+                                if(!isSorted){
+                                    return binRanges(d.x1 as number) - binRanges(d.x0 as number) || 0
+                                }else{
+                                    return binSorted.bandwidth()
+                                }
+                            }
+                        }),                        
                     undefined,
                     exit=>exit                
                             .transition().duration(animDuration)
-                        .attr("y", y(0))
+                        .attr("y", valueScale(0))
                         .attr("height", 0)
                         .style("fill", "#a1a1aa")
                         .style("opacity", 0)
@@ -311,40 +568,80 @@ export function Histogram<T extends histogramDatum>({
                 .transition().duration(animDuration)
                 //.style("fill", barFill)         
                 .style("fill", function(d){
-                    const xPos = xRange(d.x0 as number) || 0
-                    return xPos < xRange(0)?layerIdx === 1?"#f43f5e":"#dc2626":
-                        isSingleData?"#7c3aed":layerIdx === 1?"#2563eb":"#22c55e"
+                    const xPos = binRanges(d.x0 as number) || 0
+                    return xPos < binRanges(0)?layerIdx === 1?
+                            colors.layer1.negative:colors.layer2.negative:
+                        isSingleData?colors.base:layerIdx === 1?
+                            colors.layer1.positive:colors.layer2.positive
                 })           
-                .attr("x", function(d){ 
-                            return (!isSorted?xRange(d.x0 as number) || 0:
-                                xSorted(d.x0 + "-" + d.x1)) || 0                            
-                            
-                        })
-                        .attr("width", function(d){ 
-                            if(!isSorted){
-                                return xRange(d.x1 as number) - xRange(d.x0 as number) || 0
-                            }else{
-                                return xSorted.bandwidth()
-                            }
-                            
-                        })
-                .attr("y", function(d){ 
-                    if(layerIdx === 2 && compareMode === "compare"){
-                        return y(0)
+                .attr("x", function(d){
+                    if(orientation === "vertical"){
+                        return (!isSorted?binRanges(d.x0 as number) || 0:
+                            binSorted(d.x0 + "-" + d.x1)) || 0
+                    } else{
+                        if(layerIdx === 2 && dualView){
+                            return valueScale(d.length)
+                        }
+                        return valueScale(0)
+                    }                                                                    
+                })
+                .attr("width", function(d){
+                    if(orientation === "vertical"){
+                        if(!isSorted){
+                            const x0 = d.x0 as number
+                            const baseX1 = d.x1 as number
+                            const x1 = baseX1 === x0?x0 + 1:baseX1
+                            return binRanges(x1) - binRanges(x0) || 0
+                        }else{
+                            return binSorted.bandwidth()
+                        }
+                    } else {
+                        if(layerIdx === 2 && dualView){
+                            const layerWidth = graphWidth/2
+                            return layerWidth - valueScale(d.length)
+                        }else {
+                            return valueScale(d.length)
+                        }
                     }
-                    return y(d.length) || 0                    
+                    
+                    
+                })
+                .attr("y", function(d){
+                    if(orientation === "vertical"){
+                        if(layerIdx === 2 && compareMode === "compare"){
+                            return valueScale(0)
+                        }
+                        return valueScale(d.length) || 0
+                    } else {
+                        return (!isSorted?binRanges(d.x0 as number) || 0:
+                            binSorted(d.x0 + "-" + d.x1)) || 0
+                    }
+                                        
                 })
                 .attr("height", function(d){
-                    if(layerIdx === 2 && compareMode === "compare"){
-                        return y(d.length)
+                    if(orientation === "vertical"){
+                        if(layerIdx === 2 && compareMode === "compare"){
+                            return valueScale(d.length)
+                        }
+                        const layerHeight = !dualView?graphHeight:(graphHeight/2) 
+                        return layerHeight - valueScale(d.length) || 0
+                    }else {
+                        if(!isSorted){
+                            const x0 = d.x0 as number
+                            const baseX1 = d.x1 as number
+                            const x1 = baseX1 === x0?x0 + 1:baseX1
+                            return binRanges(x1) - binRanges(x0) || 0
+                        }else{
+                            return binSorted.bandwidth()
+                        }
                     }
-                    const layerHeight = !dualView?graphHeight:(graphHeight/2) 
-                    return layerHeight - y(d.length) || 0                    
+                                        
                 })
+            
         }
 
-        renderLayer(dataToRender[0], layer1)
-        renderLayer(dataToRender[1], layer2)
+        renderLayer(dataToRender[0], 1)
+        renderLayer(dataToRender[1], 2)
             
         
     }, [data, compareMode, color, width, height, isSorted, orientation, {prefix, suffix, formatType}]);
@@ -389,14 +686,12 @@ export function Histogram<T extends histogramDatum>({
                         style={{}}
                         viewBox={`0 0 ${width} ${height}`}
                     >
-                        <g className="plot-area">
-                            <g className={`${orientation === 'vertical'?styles["value-axis"]:""} y-axis`} />
-                            <g className={`${orientation === 'horizontal'?styles["value-axis"]:""} x-axis`} />    
-                            <g className='layer-1'>
+                        <g className="plot-area">                                
+                            <g className='layer-2'>
                                 <g className={`${orientation === 'vertical'?styles["value-axis"]:""} y-axis`} />
                                 <g className={`${orientation === 'horizontal'?styles["value-axis"]:""} x-axis`} />    
                             </g>
-                            <g className='layer-2'>
+                            <g className='layer-1'>
                                 <g className={`${orientation === 'vertical'?styles["value-axis"]:""} y-axis`} />
                                 <g className={`${orientation === 'horizontal'?styles["value-axis"]:""} x-axis`} />    
                             </g>

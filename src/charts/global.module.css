@@ -148,6 +148,9 @@
 .legend-rect{    
     border: 1px solid #ccc;    
     transition: all 0.2s ease-in-out;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 
 .legend-container .legend-rect, .legend-container-active .legend-rect, .legend-container-inactive .legend-rect {

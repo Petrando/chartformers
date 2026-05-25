@@ -350,7 +350,7 @@ export function StackedBarChart({ data, focusOnPlot = false, colorIdx = 0, orien
             newSeries.key = seriesKey;
             return newSeries;
         });           
-        
+                   
         const serie = canvas
             .selectAll<SVGGElement, ExtendedSeries>(".serie")
             .data(extendedDataLayers, (d: ExtendedSeries) => d.key)
@@ -418,7 +418,7 @@ export function StackedBarChart({ data, focusOnPlot = false, colorIdx = 0, orien
                     .attr("height", 0)
                     .remove()
             );
-
+        
         const labelScalePos = (d: ExtendedSeriesPoint) => {             
             return labelScale(d.data.label + "") ?? 0
         }
@@ -624,7 +624,12 @@ export function StackedBarChart({ data, focusOnPlot = false, colorIdx = 0, orien
     return (
         <div 
             ref={ref} 
-            style={{ width: `${parentWidth}px`, height: `${parentHeight}px`, display:'flex', flexDirection:'column' }}
+            style={{ 
+                width: `${parentWidth}px`, 
+                height: `${parentHeight}px`, 
+                display:'flex', 
+                flexDirection:'column' 
+            }}
         >                        
             <div
                 ref={chartRef} 

@@ -1,3 +1,78 @@
+.histogram-legends-container {
+    display: flex;
+    flex-direction: row;
+    align-items: center;    
+    justify-content: space-around;    
+    cursor: pointer;
+    
+    text-align: center;        
+}
+
+.legends-layer1 .base {
+    background-color: #7c3aed;
+    order: 2;
+}
+
+.legends-layer1 .positive {
+    background-color: #2563eb;
+    order: 2;
+}
+
+.legends-layer1 .negative {
+    background-color: #f43f5e;
+    order: 1;
+}
+
+.legends-layer2 .positive {
+    background-color: #22c55e;
+    order: 2;
+}
+
+.legends-layer2 .negative {
+    background-color: #dc2626;
+    order: 1;
+}
+
+.base p, .positive p, .negative p {
+    font-size: 12px;
+    font-weight: bold;
+    color: antiquewhite;
+}
+
+.base p {
+    opacity: 0;
+}
+
+.positive p {
+    opacity: 1;
+}
+
+.legend-label {
+    margin-top: 4px;
+    font-size: 12px;
+    font-weight: 500px;
+}
+
+@media (max-width: 768px) {
+  /* styles for tablets and up */
+  .legend-label {
+    white-space: normal;        /* allow line breaks */
+    word-break: break-word;     /* break long words if needed */
+    font-size: 10px;    
+  }
+  .base p, .positive p, .negative p {
+    font-size: 10px;
+  }
+}
+
+.negative {
+    order: 1;
+}
+
+.positive {
+    order: 2;
+}
+
 .controls {
     height: 0px;
     display: flex;

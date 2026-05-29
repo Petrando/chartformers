@@ -14,6 +14,10 @@ import histogramStyles from './histogram.module.css'
 import { tooltipFormat, histogramDatum, histogramChartData } from '../types';
 import { useContainerSize } from '../hooks/useContainerSize';
 
+type sortOption = {
+    sortable?: boolean;
+    filterEmptyBin?: boolean;
+}
 type binOption = {
     mode: "arbitrary" | "fixed" | "interval" | "algorithm" | "custom";
     value: number | "Freedman-Diaconis" | "Scott" | "Sturges";
@@ -22,7 +26,8 @@ type binOption = {
 type HistogramProps<T extends histogramDatum> = {
     data: histogramChartData<T>;
     compareMode?: "default" | "compare";
-    binOption?: binOption;    
+    binOption?: binOption;
+    sortOption?: sortOption;    
     orientation?: 'horizontal' | 'vertical';
     tooltipFormat?: tooltipFormat;
 }
@@ -35,6 +40,11 @@ export function Histogram<T extends histogramDatum>({
         compareMode = "default",
         binOption = {
             mode: "algorithm", value: "Freedman-Diaconis", compareConsolidate: false
+        },
+        sortOption:{
+            sortable= true, filterEmptyBin = false
+        } = {
+            sortable: true, filterEmptyBin: false
         },
         orientation = 'vertical',
         tooltipFormat: {
@@ -57,6 +67,8 @@ export function Histogram<T extends histogramDatum>({
         setIsSorted(false)
     }, [data, compareMode])
 
+    useEffect(() => { if(!sortable){ setIsSorted(false) } }, [sortable])
+
     const isSingleData = data.valueKey !== undefined
     
     const animDuration = 750;
@@ -65,7 +77,7 @@ export function Histogram<T extends histogramDatum>({
         
         const margin = { 
             top: 30, 
-            right: 30, 
+            right: orientation === 'vertical'?30:50, 
             bottom: orientation==='vertical'?50:30, 
             left: orientation === 'vertical'?25:50
         };
@@ -426,7 +438,9 @@ export function Histogram<T extends histogramDatum>({
             }
                                         
             if(isSorted){
-                layerBin = layerBin.filter(d => d.length > 0)
+                if(filterEmptyBin){
+                    layerBin = layerBin.filter(d => d.length > 0)
+                }                
                 layerBin.sort((a: binnedData, b: binnedData) => b.length - a.length)
             }
 
@@ -449,7 +463,6 @@ export function Histogram<T extends histogramDatum>({
                 .nice();
                         
             if(layerIdx === 1){
-                //if(orientation === "vertical"){}
                 
                 valueScale                    
                     .range(
@@ -457,8 +470,7 @@ export function Histogram<T extends histogramDatum>({
                             [!dualView?graphHeight:(graphHeight/2), 0]:                                                    
                             [0, dualView?graphWidth/2:graphWidth]                        
                     )
-                    .nice();
-                    //.range([0, graphHeight])
+                    .nice();                                        
                     
                 const xAxisTextClass = (orientation === "vertical" && (!isMediumScreen || isSorted))?
                     (isSingleData?styles.rotatedAxisText:styles.rotatedTopAxisText):
@@ -696,8 +708,8 @@ export function Histogram<T extends histogramDatum>({
         renderLayer(dataToRender[1], 2)
             
         
-    }, [data, compareMode, binOption, width, height, isSorted, orientation, {prefix, suffix, formatType}]);
-    
+    }, [data, compareMode, binOption, filterEmptyBin, width, height, isSorted, orientation, {prefix, suffix, formatType}]);
+        
     return (
         <div 
             ref={ref} 
@@ -716,15 +728,20 @@ export function Histogram<T extends histogramDatum>({
                     ref={controlsRef}
                     className={`controls ${styles[isMediumScreen?"controls-container":"controls-container-sm"]}`}
                 >
-                    <label className={styles["controls-label"]} style={{paddingRight: '12px'}}>
-                        <input 
-                            type="checkbox" 
-                            className={styles["controls-checkbox"]}
-                            checked={isSorted}
-                            onChange={(e) => setIsSorted(e.target.checked)}                                             
-                        />
-                            Sort
-                    </label>
+                    {
+                        sortable &&
+                        <label className={styles["controls-label"]} style={{paddingRight: '12px'}}>
+                            <input 
+                                type="checkbox" 
+                                className={styles["controls-checkbox"]}
+                                checked={isSorted}
+                                onChange={(e) => setIsSorted(e.target.checked)}                                             
+                            />
+                                Sort
+                        </label> 
+
+                    }
+                    
                     <div                         
                         className={`legends-container ${styles["legends-container"]}`}
                     />

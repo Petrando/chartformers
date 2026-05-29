@@ -1,6 +1,8 @@
 import React, {useEffect, useState} from 'react';
 import {select, scaleBand, scaleLinear, axisLeft, axisBottom, axisTop, axisRight,
-    max, format, Bin, bin, Selection, thresholdFreedmanDiaconis, thresholdScott, thresholdSturges
+    max, format, Bin, bin, Selection, 
+    thresholdFreedmanDiaconis, thresholdScott, thresholdSturges,
+    median, mean, range
 } from 'd3';
 import { useD3 } from '../hooks/useD3';
 import { useParentSize } from '../hooks/useParentSize';
@@ -9,16 +11,18 @@ import { cloneObj, indexSelectedColor } from '../utils';
 import { inactiveColor } from '../../dev/data/constants';
 import styles from './global.module.css';
 import histogramStyles from './histogram.module.css'
-import { pointData, tooltipFormat, histogramDatum, histogramChartData } from '../types';
+import { tooltipFormat, histogramDatum, histogramChartData } from '../types';
 import { useContainerSize } from '../hooks/useContainerSize';
 
+type binOption = {
+    mode: "arbitrary" | "fixed" | "interval" | "algorithm" | "custom";
+    value: number | "Freedman-Diaconis" | "Scott" | "Sturges";
+    compareConsolidate?: boolean;
+}
 type HistogramProps<T extends histogramDatum> = {
     data: histogramChartData<T>;
     compareMode?: "default" | "compare";
-    color?: {
-        idx?: number;
-        type?: 'fixed' | 'colorful';
-    };
+    binOption?: binOption;    
     orientation?: 'horizontal' | 'vertical';
     tooltipFormat?: tooltipFormat;
 }
@@ -29,10 +33,9 @@ type HistogramLegend = legendRange[] & { title: string; };
 export function Histogram<T extends histogramDatum>({
         data, 
         compareMode = "default",
-        color: {
-            idx = 0,               // default idx
-            type = 'fixed',        // default type
-        } = { idx: 0, type: 'fixed' },
+        binOption = {
+            mode: "algorithm", value: "Freedman-Diaconis", compareConsolidate: false
+        },
         orientation = 'vertical',
         tooltipFormat: {
             prefix = "", suffix = "", formatType = "long"
@@ -55,8 +58,7 @@ export function Histogram<T extends histogramDatum>({
     }, [data, compareMode])
 
     const isSingleData = data.valueKey !== undefined
-
-    const color = {idx, type}
+    
     const animDuration = 750;
     const chartRef = useD3<HTMLDivElement>((container) => {
         if (width === 0 || height === 0) return;
@@ -120,27 +122,100 @@ export function Histogram<T extends histogramDatum>({
                 acc.push(...currValues)
                 return acc
             }, [])
-
-        const baseXPositiveMin = Math.min(...values)
-        const xMin = baseXPositiveMin//baseXPositiveMin >= 0?0:baseXPositiveMin
-        const xMax = Math.max(...values)
+        
+        const rangeMin = Math.min(...values)
+        const rangeMax = Math.max(...values)
                       
         const rangeScaleBin = scaleLinear()
-            .domain([xMin, xMax])
+            .domain([rangeMin, rangeMax])
             .range([0, graphWidth])
-            .nice()
+            //.nice()
 
         type binnedData = Bin<T, number>;
+
+        
 
         const binnedDataFactory = (dataForBin: histogramChartData<T>) => {
             if(!dataForBin || !dataForBin.data || dataForBin.data.length === 0){
                 return []
-            }
+            }            
+
+            const dataForBinValues = dataForBin.data.map(d => parseFloat(String((d as Record<string, unknown>)[dataForBin.valueKey!])))
+            const dataForBinMin = Math.min(...dataForBinValues)
+            const dataForBinMax = Math.max(...dataForBinValues)
+            const binCount = 15;
+
+            const thresholds = range(
+                dataForBinMin,//rangeMin
+                dataForBinMax,//rangeMax
+                //(rangeMax - rangeMin) / binCount
+                (dataForBinMax - dataForBinMin) / binCount
+            );
+
+            const { mode, value, compareConsolidate } = binOption 
             const vKey = dataForBin.valueKey || ""
             const histogramFn = bin<T, number>()
-                .value((d: T) => d[vKey!] as number)//attention here!!!
-                .domain([xMin, xMax])
-                .thresholds(rangeScaleBin.ticks(70));
+                .value((d: T) => d[vKey!] as number)
+                .domain(
+                    compareConsolidate?
+                    [rangeMin, rangeMax]:
+                    [dataForBinMin, dataForBinMax]
+                )
+
+                       
+
+            function createHistogramThresholds(
+                rangeMin: number,
+                rangeMax: number,
+                interval: number
+            ): number[] {
+                if (interval <= 0) {
+                    throw new Error("interval must be greater than 0");
+                }
+
+                let start = Math.floor(rangeMin / interval) * interval;
+                let end = Math.ceil(rangeMax / interval) * interval;
+
+                if (start >= rangeMin) {
+                    start -= interval;
+                }
+
+                if (end <= rangeMax) {
+                    end += interval;
+                }
+
+                const thresholds: number[] = [];
+
+                for (let value = start; value <= end; value += interval) {
+                    thresholds.push(value);
+                }
+
+                return thresholds;
+            }
+
+            if(mode === "arbitrary"){
+                histogramFn.thresholds(rangeScaleBin.ticks(value as number))
+            }
+            else if(mode === "fixed"){
+                histogramFn.thresholds(
+                    range(
+                        dataForBinMin,//rangeMin
+                        dataForBinMax,//rangeMax
+                        (dataForBinMax - dataForBinMin) / (value as number)
+                    )
+                )
+            }else if(mode === "interval"){
+                const thresholds = createHistogramThresholds(dataForBinMin, dataForBinMax, value as number)
+                histogramFn.thresholds(thresholds)
+            }else if(mode === "algorithm"){
+                if(value === "Freedman-Diaconis"){
+                    histogramFn.thresholds(thresholdFreedmanDiaconis)
+                }else if(value === "Scott"){
+                    histogramFn.thresholds(thresholdScott)
+                }else if(value === "Sturges"){
+                    histogramFn.thresholds(thresholdSturges)
+                }
+            }
 
             const bins:binnedData[] = histogramFn(dataForBin.data as T[])
 
@@ -312,42 +387,19 @@ export function Histogram<T extends histogramDatum>({
                     .style("opacity", 0)
                     .style("top", "53px")
                     .remove()
-            )
-
-        /*const legendRects = legends.selectAll<HTMLDivElement, HistogramLegend>("div.legends-rect")
-            .selectAll<HTMLDivElement, legendRange>("div")
-            .data(
-                (d: HistogramLegend) => {                    
-                    return d
-                }, 
-                //(d) => d
-            )
-            .join(
-                enter=>enter.append("div"),
-                undefined,
-                exit=>exit.remove()
-            )            
-            .attr(
-                "class", 
-                function(d){
-                    return `${styles["legend-rect"]} ${histogramStyles[d]}`
-                }
-            )
-        console.log(legendsData)
-        console.log(legendRects)*/    
+            )       
         
         const max1 = Math.max(...dataToRender[0].map((bin) => bin?.length))
         const max2 = Math.max(...dataToRender[1].map((bin) => bin?.length))
         const valueMax = Math.max(max1, max2);            
 
-        //this below is needed by layer 2's y axis when isSingleData and "horizontal"
+        //this sortedFirstDataRanges below is needed by layer 2's y axis when isSingleData and "horizontal"
         const sortedFirstDataRanges = isSingleData?
             binnedDataFactory(validData).filter(d => d.length > 0)
             .sort((a: binnedData, b: binnedData) => b.length - a.length)
             .map(d => d.x0 + "-" + d.x1):[]
         
-        function renderLayer(layerBin:binnedData[], layerIdx: number){            
-
+        function renderLayer(layerBin:binnedData[], layerIdx: number){                        
             const dualView = !isSingleData && compareMode === "compare"            
             
             const layerCanvas = layerIdx === 1?
@@ -379,7 +431,7 @@ export function Histogram<T extends histogramDatum>({
             }
 
             const binRanges = scaleLinear()
-                .domain([xMin, xMax])     // can use this instead of 1000 to have the max of data: d3.max(data, function(d) { return +d.price })
+                .domain([rangeMin, rangeMax])     // can use this instead of 1000 to have the max of data: d3.max(data, function(d) { return +d.price })
                 .range(orientation === 'vertical'?
                     [0, graphWidth]:[0, graphHeight])
                 .nice()
@@ -644,7 +696,7 @@ export function Histogram<T extends histogramDatum>({
         renderLayer(dataToRender[1], 2)
             
         
-    }, [data, compareMode, color, width, height, isSorted, orientation, {prefix, suffix, formatType}]);
+    }, [data, compareMode, binOption, width, height, isSorted, orientation, {prefix, suffix, formatType}]);
     
     return (
         <div 

@@ -23,8 +23,8 @@ type binOption = {
     value: number | "Freedman-Diaconis" | "Scott" | "Sturges";
     compareConsolidate?: boolean;
 }
-type HistogramProps<T extends histogramDatum> = {
-    data: histogramChartData<T>;
+type HistogramProps = {
+    data: histogramChartData<histogramDatum>;
     compareMode?: "default" | "compare";
     binOption?: binOption;
     sortOption?: sortOption;    
@@ -35,7 +35,7 @@ type HistogramProps<T extends histogramDatum> = {
 type legendRange = "positive" | "negative"
 type HistogramLegend = legendRange[] & { title: string; };
 
-export function Histogram<T extends histogramDatum>({
+export function Histogram({
         data, 
         compareMode = "default",
         binOption = {
@@ -50,7 +50,7 @@ export function Histogram<T extends histogramDatum>({
         tooltipFormat: {
             prefix = "", suffix = "", formatType = "long"
         } = { prefix: "", suffix: "", formatType: "long"}
-    }:HistogramProps<T>) {
+    }:HistogramProps) {
     const [ref, parentSize] = useParentSize<HTMLDivElement>();    
     const { width: parentWidth, height: parentHeight } = parentSize;
     const [controlsRef, controlsSize] = useContainerSize<HTMLDivElement>();        
@@ -99,8 +99,8 @@ export function Histogram<T extends histogramDatum>({
             For double data, the main data does not have this, instead it will be embeded in each member of
             the main data's data property e.g each data.data will has a 'valueKey' property
         */
-        const validateData = (rawData: histogramChartData<T>) => {
-            const validatedData = (rawData.data as T[]).filter((d) => {
+        const validateData = (rawData: histogramChartData<histogramDatum>) => {
+            const validatedData = (rawData.data as histogramDatum[]).filter((d) => {
                 const rawValue = (d as Record<string, unknown>)[rawData.valueKey!] as unknown;
                 const value = typeof rawValue === 'string' || typeof rawValue === 'number' ? String(rawValue) : "";
                 return !isNaN(parseFloat(value));
@@ -110,17 +110,17 @@ export function Histogram<T extends histogramDatum>({
         }
         
         const validatedData = isSingleData ? validateData(data) :
-            data.data.reduce((acc: histogramChartData<T>[], curr) => {                
-                const validCurrData = validateData(curr as histogramChartData<T>)                                
+            data.data.reduce((acc: histogramChartData<histogramDatum>[], curr) => {                
+                const validCurrData = validateData(curr as histogramChartData<histogramDatum>)                                
                 acc.push(validCurrData)
                 return acc
             }, [])                                
         
-        //isSingleData?(validatedData as histogramChartData<T>).data.map(d => d):
-            //[(data as histogramChartData<T>[])[0].data.map(d => d)]
+        //isSingleData?(validatedData as histogramChartData<histogramDatum>).data.map(d => d):
+            //[(data as histogramChartData<histogramDatum>[])[0].data.map(d => d)]
 
-        const validData:histogramChartData<T> = isSingleData?(validatedData as histogramChartData<T>):
-            ({title: data.title, data: validatedData} as histogramChartData<T>)
+        const validData:histogramChartData<histogramDatum> = isSingleData?(validatedData as histogramChartData<histogramDatum>):
+            ({title: data.title, data: validatedData} as histogramChartData<histogramDatum>)
                 
         const values:number[] = isSingleData
             ? validData
@@ -129,7 +129,7 @@ export function Histogram<T extends histogramDatum>({
             : validData.data.reduce((acc: number[], curr) => {
                 if (!curr.valueKey) return acc;
                 const currValueKey = curr.valueKey as string;
-                const currValues: number[] = (curr.data as T[])
+                const currValues: number[] = (curr.data as histogramDatum[])
                     .map(d => parseFloat(String((d as Record<string, unknown>)[currValueKey])))
                 acc.push(...currValues)
                 return acc
@@ -143,11 +143,11 @@ export function Histogram<T extends histogramDatum>({
             .range([0, graphWidth])
             //.nice()
 
-        type binnedData = Bin<T, number>;
+        type binnedData = Bin<histogramDatum, number>;
 
         
 
-        const binnedDataFactory = (dataForBin: histogramChartData<T>) => {
+        const binnedDataFactory = (dataForBin: histogramChartData<histogramDatum>) => {
             if(!dataForBin || !dataForBin.data || dataForBin.data.length === 0){
                 return []
             }            
@@ -166,8 +166,8 @@ export function Histogram<T extends histogramDatum>({
 
             const { mode, value, compareConsolidate } = binOption 
             const vKey = dataForBin.valueKey || ""
-            const histogramFn = bin<T, number>()
-                .value((d: T) => d[vKey!] as number)
+            const histogramFn = bin<histogramDatum, number>()
+                .value((d: histogramDatum) => d[vKey!] as number)
                 .domain(
                     compareConsolidate?
                     [rangeMin, rangeMax]:
@@ -229,7 +229,7 @@ export function Histogram<T extends histogramDatum>({
                 }
             }
 
-            const bins:binnedData[] = histogramFn(dataForBin.data as T[])
+            const bins:binnedData[] = histogramFn(dataForBin.data as histogramDatum[])
 
             return bins
         }        
@@ -239,8 +239,8 @@ export function Histogram<T extends histogramDatum>({
                 binnedDataFactory(validData), []
             ]:
             [
-                binnedDataFactory(validData.data[0] as histogramChartData<T>), 
-                binnedDataFactory(validData.data[1] as histogramChartData<T>)
+                binnedDataFactory(validData.data[0] as histogramChartData<histogramDatum>), 
+                binnedDataFactory(validData.data[1] as histogramChartData<histogramDatum>)
             ]                
         
         const withNegativeData = 

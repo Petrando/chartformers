@@ -8,6 +8,7 @@ import waterfallStyles from './waterfall.module.css'
 import barchartStyles from '../barchart.module.css';
 import { tooltipFormat, waterfallDatum } from '../../types';
 import { useContainerSize } from '../../hooks/useContainerSize';
+import { formatWaterfallData } from './utils';
 
 type WaterfallProps = {
     data: waterfallDatum[];    
@@ -64,15 +65,7 @@ export function WaterfallChart({
             left: 25
         };
         
-        let start = 0, end = 0, prevEnd = end
-
-        const formattedData = data.map((d, i)=> {
-            start = prevEnd
-            end = start + d.value              
-            prevEnd = end
-
-            return { ...d, start, end }
-        })
+        const formattedData = formatWaterfallData(data)
                 
         const renderData = mode === "waterfall"?formattedData:
             formattedData.filter(d =>  d.type === "variation" && 

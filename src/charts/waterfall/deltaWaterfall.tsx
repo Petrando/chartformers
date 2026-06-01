@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef } from 'react';
-import {scaleBand, scaleLinear, axisLeft, axisBottom, format} from 'd3';
+import {scaleBand, scaleLinear, axisLeft, axisBottom, format, min, max} from 'd3';
 import { useD3 } from '../../hooks/useD3';
 import { useParentSize } from '../../hooks/useParentSize';
 import { Tooltip, getTooltip, moveTooltip } from '../../components/tooltip';
@@ -8,6 +8,7 @@ import waterfallStyles from './waterfall.module.css'
 import barchartStyles from '../barchart.module.css';
 import { tooltipFormat, deltaWaterfallDatum } from '../../types';
 import { useContainerSize } from '../../hooks/useContainerSize';
+import { formatWaterfallData } from './utils';
 
 type WaterfallProps = {
     data: deltaWaterfallDatum[];    
@@ -47,9 +48,75 @@ export function DeltaWaterfall({
             left: 25
         };
         
-        let start = 0, end = 0, prevEnd = end
+        const formattedData = data.map(d => ({
+            label: d.label, data: formatWaterfallData(d.data)
+        }))
+        const groupedBarData = formattedData.map(d => ({
+            label: d.label,
+            open: d.data.find(dt => dt.label === "Opening")?.value ?? 0,
+            close: d.data.find(dt => dt.label === "Closing")?.value ?? 0,
+        }));
+        type BarKey = "open" | "close";
+        const keys: BarKey[] = ["open", "close"];
 
-        
+        const x0 = scaleBand()
+            .domain(groupedBarData.map(d => d.label))
+            .range([margin.left, width - margin.right])
+            .padding(0.2);
+
+        const x1 = scaleBand()
+            .domain(keys)
+            .range([0, x0.bandwidth()])
+            .padding(0.05);
+
+        const allValues = groupedBarData.flatMap(d =>
+            keys.map(key => d[key] as number ?? 0)
+        );
+
+        const y = scaleLinear()
+            .domain([
+                Math.min(0, min(allValues) ?? 0),
+                Math.max(0, max(allValues) ?? 0)
+            ])
+            .nice()
+            .range([height - margin.bottom, margin.top]);
+
+        const canvasSvg = container.select<SVGSVGElement>("svg")
+        const svgNode = canvasSvg.node()
+        const canvas = canvasSvg.select<SVGGElement>('.plot-area')
+            .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+        canvas.selectAll(".month-group").remove()
+
+        const groups = canvas.selectAll(".month-group")
+            .data(groupedBarData)
+            .join("g")
+            .attr("class", "month-group")
+            .attr("transform", d => `translate(${x0(d.label)},0)`);
+
+        groups.selectAll("rect")
+            .data(d =>
+                keys.map(key => ({
+                    key,
+                    value: d[key]
+                }))
+            )
+            .join("rect")
+            .attr("x", d => x1(d.key) ?? 0)
+            .attr("width", x1.bandwidth())
+            .attr("y", d =>
+                d.value >= 0
+                    ? y(d.value)
+                    : y(0)
+            )
+            .attr("height", d =>
+                Math.abs(y(d.value) - y(0))
+            )
+            .attr("fill", d => {
+                if (d.key === "open") return "steelblue";
+                if (d.key === "close") return "orange";
+                return "green";
+            });
+
     }, [data, width, height, mode, isSorted, {prefix, suffix, formatType}]);
     
     return (

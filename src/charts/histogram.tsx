@@ -20,7 +20,7 @@ type sortOption = {
 }
 type binOption = {
     mode: "arbitrary" | "fixed" | "interval" | "algorithm" | "custom";
-    value: number | "Freedman-Diaconis" | "Scott" | "Sturges";
+    value: number | number[] | "Freedman-Diaconis" | "Scott" | "Sturges";
     compareConsolidate?: boolean;
 }
 type HistogramProps = {
@@ -144,9 +144,7 @@ export function Histogram({
             //.nice()
 
         type binnedData = Bin<histogramDatum, number>;
-
         
-
         const binnedDataFactory = (dataForBin: histogramChartData<histogramDatum>) => {
             if(!dataForBin || !dataForBin.data || dataForBin.data.length === 0){
                 return []
@@ -172,9 +170,7 @@ export function Histogram({
                     compareConsolidate?
                     [rangeMin, rangeMax]:
                     [dataForBinMin, dataForBinMax]
-                )
-
-                       
+                )                       
 
             function createHistogramThresholds(
                 rangeMin: number,
@@ -219,7 +215,10 @@ export function Histogram({
             }else if(mode === "interval"){
                 const thresholds = createHistogramThresholds(dataForBinMin, dataForBinMax, value as number)
                 histogramFn.thresholds(thresholds)
-            }else if(mode === "algorithm"){
+            }else if(mode === "custom"){
+                histogramFn.thresholds(value as number[])
+            }
+            else if(mode === "algorithm"){
                 if(value === "Freedman-Diaconis"){
                     histogramFn.thresholds(thresholdFreedmanDiaconis)
                 }else if(value === "Scott"){

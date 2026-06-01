@@ -78,7 +78,7 @@ export interface PackLink {
     target: PackNode;
 }
 
-export interface waterfallData {
+export interface waterfallDatum {
     label: string;
     start?: number;
     value: number;
@@ -87,8 +87,8 @@ export interface waterfallData {
 }
 
 export interface deltaWaterfallDatum {
-    period: string | number;
-    data: waterfallData[];
+    label: string;
+    data: waterfallDatum[];
 }
 
 export type numericKeys<T> = {

@@ -6,11 +6,11 @@ import { Tooltip, getTooltip, moveTooltip } from '../../components/tooltip';
 import styles from '../global.module.css';
 import waterfallStyles from './waterfall.module.css'
 import barchartStyles from '../barchart.module.css';
-import { tooltipFormat, waterfallData } from '../../types';
+import { tooltipFormat, waterfallDatum } from '../../types';
 import { useContainerSize } from '../../hooks/useContainerSize';
 
 type WaterfallProps = {
-    data: waterfallData[];    
+    data: waterfallDatum[];    
     tooltipFormat?: tooltipFormat;
 }
 
@@ -160,7 +160,7 @@ export function WaterfallChart({
             .on("mouseover", function(_, d){
                 if( mode !== "waterfall" ) return
                 if( !canLegendHover.current ) return
-                canvas.selectAll<SVGRectElement, waterfallData>("rect.bar")
+                canvas.selectAll<SVGRectElement, waterfallDatum>("rect.bar")
                     .filter(dRect => {
                         if(d === "inflows"){
                             return dRect.type === "total" || dRect.start! > dRect.end!
@@ -170,7 +170,7 @@ export function WaterfallChart({
                     .style("opacity", 0.5)
 
                 canvas
-                    .selectAll<SVGTextElement, waterfallData>(".label")
+                    .selectAll<SVGTextElement, waterfallDatum>(".label")
                     .filter(dRect => {
                         if(d === "inflows"){
                             return dRect.type === "total" || dRect.start! > dRect.end!
@@ -182,11 +182,11 @@ export function WaterfallChart({
             .on("mouseout", function(_, d){
                 if( mode !== "waterfall" ) return
                 if( !canLegendHover.current ) return
-                canvas.selectAll<SVGRectElement, waterfallData>(".bar")
+                canvas.selectAll<SVGRectElement, waterfallDatum>(".bar")
                     .style("opacity", 1)
 
                 canvas
-                    .selectAll<SVGTextElement, waterfallData>(".label")
+                    .selectAll<SVGTextElement, waterfallDatum>(".label")
                     .style("opacity", 1)
             })
             .on("click", function(_, d){
@@ -247,12 +247,12 @@ export function WaterfallChart({
             .selectAll("text")
             .attr("class", `${xAxisTextClass}`)                        
 
-        function xPos(d: waterfallData){
+        function xPos(d: waterfallDatum){
             const xPosition = xScale(d.label as string) ?? 0        
             return xPosition
         }
 
-        function yPos(d: waterfallData, i: number){
+        function yPos(d: waterfallDatum, i: number){
             if(mode === "waterfall"){
                 if(d.type === "total" && i > 0){
                     if(d.start! <= d.end!){
@@ -267,7 +267,7 @@ export function WaterfallChart({
                         
         }
 
-        function rectHeight(d: waterfallData, i: number){            
+        function rectHeight(d: waterfallDatum, i: number){            
             if(mode === "waterfall"){
                 const barHeight = Math.abs( yScale(d.start!) - yScale(d.end!) )                
                 if(d.type === "total" && i > 0){
@@ -286,7 +286,7 @@ export function WaterfallChart({
                         
         }
 
-        function rectFill(d: waterfallData){
+        function rectFill(d: waterfallDatum){
             if(d.start! <= d.end!){
                 return colors.inflows
             }else {
@@ -297,7 +297,7 @@ export function WaterfallChart({
         const barAnimDuration = 300
 
         const bars =  canvas
-            .selectAll<SVGRectElement, waterfallData>(".bar")
+            .selectAll<SVGRectElement, waterfallDatum>(".bar")
             .data(renderData, (d) => d.label)
             .join(
                 enter=>enter.append("rect")
@@ -370,7 +370,7 @@ export function WaterfallChart({
 
         const labelSize = 12
 
-        function textYPos(d: waterfallData, i: number){
+        function textYPos(d: waterfallDatum, i: number){
             const yPosition = yPos(d, i)
             const textPadding = 12
             /*if(d.start! <= d.end!){
@@ -383,7 +383,7 @@ export function WaterfallChart({
             return yPosition + (height/2) + (labelSize/2)
         }
 
-        function textXPos(d: waterfallData, i: number){
+        function textXPos(d: waterfallDatum, i: number){
             const baseXPosition = xPos(d)
             const barWidth = xScale.bandwidth()
 
@@ -391,7 +391,7 @@ export function WaterfallChart({
         }
 
         const labels =  canvas
-            .selectAll<SVGTextElement, waterfallData>(".label")
+            .selectAll<SVGTextElement, waterfallDatum>(".label")
             .data(renderData, (d) => d.label)
             .join(
                 enter=>enter.append("text")
@@ -428,7 +428,7 @@ export function WaterfallChart({
 
         canvas.select<SVGGElement>(".x-axis").raise()  
         labels.raise()          
-        /*const formattedData1 = data.reduce((acc: waterfallData[], item:waterfallData) => {
+        /*const formattedData1 = data.reduce((acc: waterfallDatum[], item:waterfallDatum) => {
             // Determine the current running total from the previous entries
             const previousTotal = acc.length > 0 
                 ? acc[acc.length - 1].previousTotal ?? 0 + acc[acc.length - 1].value 

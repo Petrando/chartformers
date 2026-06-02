@@ -96,37 +96,43 @@ export function DeltaWaterfall({
         const svgNode = canvasSvg.node()
         const canvas = canvasSvg.select<SVGGElement>('.plot-area')
             .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
-        //canvas.selectAll(".month-group").remove()
+        //canvas.selectAll(".month-group").remove()        
 
-        const groups = canvas.selectAll<SVGGElement, groupedBarData>(".month-group")
-            .data(groupedBarData, function(d){return d.label})
-            .join("g")
-            .attr("class", "month-group")
-            .attr("transform", d => `translate(${x0(d.label)},0)`);
-
-        groups.selectAll<SVGRectElement, groupedBarRectData>("rect")
-            .data(d => keys.map(key => ({
-                    key,
-                    value: d[key]
-                })),
-                (d) => d.key
+        canvas.selectAll<SVGRectElement, groupedBarData>("rect.open")
+            .data(groupedBarData,
+                (d) => d.label + " - open"
             )
             .join("rect")
-            .attr("x", d => x1(d.key) ?? 0)
+            .attr("class", "open")
+            .attr("x", d => (x0(d.label) ?? 0) + (x1("open") ?? 0))
             .attr("width", x1.bandwidth())
             .attr("y", d =>
-                d.value >= 0
-                    ? y(d.value)
+                d.open >= 0
+                    ? y(d.open)
                     : y(0)
             )
             .attr("height", d =>
-                Math.abs(y(d.value) - y(0))
+                Math.abs(y(d.open) - y(0))
             )
-            .attr("fill", d => {
-                if (d.key === "open") return "steelblue";
-                if (d.key === "close") return "orange";
-                return "green";
-            });
+            .attr("fill", "steelblue");
+
+        canvas.selectAll<SVGRectElement, groupedBarData>("rect.close")
+            .data(groupedBarData,
+                (d) => d.label + " - close"
+            )
+            .join("rect")
+            .attr("class", "close")
+            .attr("x", d => (x0(d.label) ?? 0) + (x1("close") ?? 0))
+            .attr("width", x1.bandwidth())
+            .attr("y", d =>
+                d.close >= 0
+                    ? y(d.close)
+                    : y(0)
+            )
+            .attr("height", d =>
+                Math.abs(y(d.close) - y(0))
+            )
+            .attr("fill", "orange");
 
     }, [data, width, height, mode, isSorted, {prefix, suffix, formatType}]);
     

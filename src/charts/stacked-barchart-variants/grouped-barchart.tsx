@@ -322,12 +322,12 @@ export function GroupedBarChart({
             const seriesKey = series.key
             const newSeries = series.map((point) => {
                 const sortedLayers = Object.keys(point.data)
-                .filter((prop) => prop !== "label" && prop !== "total" && (!focusOnPlot?!plotted.includes(prop):true))
-                .map((prop) => ({
-                    label: prop,
-                    value: point.data[prop],
-                }))
-                .sort((a, b) => Number(a.value!) - Number(b.value!));
+                    .filter((prop) => prop !== "label" && prop !== "total" && (!focusOnPlot?!plotted.includes(prop):true))
+                    .map((prop) => ({
+                        label: prop,
+                        value: point.data[prop],
+                    }))
+                    .sort((a, b) => Number(a.value!) - Number(b.value!));
 
                 return {
                     ...point,

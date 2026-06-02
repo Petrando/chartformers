@@ -15,6 +15,17 @@ type WaterfallProps = {
     tooltipFormat?: tooltipFormat;
 }
 
+type groupedBarData = {
+    label: string;
+    open: number;
+    close: number;
+}
+
+type groupedBarRectData = {
+    key: "open" | "close";
+    value: number;
+}
+
 export function DeltaWaterfall({
         data,         
         tooltipFormat: {
@@ -51,7 +62,7 @@ export function DeltaWaterfall({
         const formattedData = data.map(d => ({
             label: d.label, data: formatWaterfallData(d.data)
         }))
-        const groupedBarData = formattedData.map(d => ({
+        const groupedBarData: groupedBarData[] = formattedData.map(d => ({
             label: d.label,
             open: d.data.find(dt => dt.label === "Opening")?.value ?? 0,
             close: d.data.find(dt => dt.label === "Closing")?.value ?? 0,
@@ -85,20 +96,20 @@ export function DeltaWaterfall({
         const svgNode = canvasSvg.node()
         const canvas = canvasSvg.select<SVGGElement>('.plot-area')
             .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
-        canvas.selectAll(".month-group").remove()
+        //canvas.selectAll(".month-group").remove()
 
-        const groups = canvas.selectAll(".month-group")
-            .data(groupedBarData)
+        const groups = canvas.selectAll<SVGGElement, groupedBarData>(".month-group")
+            .data(groupedBarData, function(d){return d.label})
             .join("g")
             .attr("class", "month-group")
             .attr("transform", d => `translate(${x0(d.label)},0)`);
 
-        groups.selectAll("rect")
-            .data(d =>
-                keys.map(key => ({
+        groups.selectAll<SVGRectElement, groupedBarRectData>("rect")
+            .data(d => keys.map(key => ({
                     key,
                     value: d[key]
-                }))
+                })),
+                (d) => d.key
             )
             .join("rect")
             .attr("x", d => x1(d.key) ?? 0)

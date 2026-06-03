@@ -1,4 +1,4 @@
-.x-axis .tick, .x-axis .domain {
+.x-axis .tick, .x-axis .domain .x-axis path {
   display: none;
 }
 
@@ -17,6 +17,10 @@
 .axis-label-sm {
   text-anchor: start;
   font-weight:300
+}
+
+.axis-label path, .axis-label-sm path {
+  display: none;
 }
 
 .sort {

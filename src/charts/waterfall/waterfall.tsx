@@ -5,7 +5,6 @@ import { useParentSize } from '../../hooks/useParentSize';
 import { Tooltip, getTooltip, moveTooltip } from '../../components/tooltip';
 import styles from '../global.module.css';
 import waterfallStyles from './waterfall.module.css'
-import barchartStyles from '../barchart.module.css';
 import { tooltipFormat, waterfallDatum } from '../../types';
 import { useContainerSize } from '../../hooks/useContainerSize';
 import { formatWaterfallData } from './utils';
@@ -232,8 +231,8 @@ export function WaterfallChart({
             .scale(xScale)
             .tickSizeOuter(0)
 
-        const xAxisTextClass = !isMediumScreen?`${barchartStyles.rotatedAxisText} ${waterfallStyles["axis-label-sm"]}`:
-                    `${barchartStyles.axisText} ${waterfallStyles["axis-label"]}`;
+        const xAxisTextClass = !isMediumScreen?`${styles.rotatedAxisText} ${waterfallStyles["axis-label-sm"]}`:
+                    `${styles.axisText} ${waterfallStyles["axis-label"]}`;
         canvas.select<SVGGElement>(".x-axis")            
             .transition().duration(animDuration).call(xAxis)            
             .attr("transform", `translate(0, ${yScale(0) || 0})`)

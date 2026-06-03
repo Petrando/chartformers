@@ -5,7 +5,6 @@ import { useParentSize } from '../../hooks/useParentSize';
 import { Tooltip, getTooltip, moveTooltip } from '../../components/tooltip';
 import styles from '../global.module.css';
 import waterfallStyles from './waterfall.module.css'
-import barchartStyles from '../barchart.module.css';
 import { tooltipFormat, deltaWaterfallDatum } from '../../types';
 import { useContainerSize } from '../../hooks/useContainerSize';
 import { formatWaterfallData } from './utils';
@@ -42,8 +41,7 @@ export function DeltaWaterfall({
     const [ isSorted, setIsSorted ] = useState(false)
     const changeBy = useRef("data")
     const isFirstRender = useRef(true);
-    const canLegendHover = useRef(true)
-       
+    const canLegendHover = useRef(true)       
 
     const isMediumScreen = width > 576;
     // Define the controls element (checkbox)    
@@ -53,10 +51,10 @@ export function DeltaWaterfall({
         if (width === 0 || height === 0) return;
 
         const margin = { 
-            top: 20, 
-            right: 25, 
+            top: 40, 
+            right: 40, 
             bottom: 50, 
-            left: 25
+            left: 40
         };
         
         const formattedData = data.map(d => ({
@@ -70,33 +68,64 @@ export function DeltaWaterfall({
         type BarKey = "open" | "close";
         const keys: BarKey[] = ["open", "close"];
 
-        const x0 = scaleBand()
-            .domain(groupedBarData.map(d => d.label))
-            .range([margin.left, width - margin.right])
-            .padding(0.2);
+        const canvasSvg = container.select<SVGSVGElement>("svg")
+        const svgNode = canvasSvg.node()
+        const canvas = canvasSvg.select<SVGGElement>('.plot-area')
+            .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
 
-        const x1 = scaleBand()
-            .domain(keys)
-            .range([0, x0.bandwidth()])
-            .padding(0.05);
+        const graphWidth = width - margin.left - margin.right
+        const graphHeight = height - margin.top - margin.bottom        
 
         const allValues = groupedBarData.flatMap(d =>
             keys.map(key => d[key] as number ?? 0)
         );
 
+        const yMin = Math.min(0, min(allValues) ?? 0)
+        const yMax = Math.max(0, max(allValues) ?? 0)
         const y = scaleLinear()
-            .domain([
-                Math.min(0, min(allValues) ?? 0),
-                Math.max(0, max(allValues) ?? 0)
-            ])
+            .domain([ yMin, yMax ])
             .nice()
             .range([height - margin.bottom, margin.top]);
 
-        const canvasSvg = container.select<SVGSVGElement>("svg")
-        const svgNode = canvasSvg.node()
-        const canvas = canvasSvg.select<SVGGElement>('.plot-area')
-            .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
-        //canvas.selectAll(".month-group").remove()        
+        const yAxis = axisLeft(y).ticks(5, "s").tickSize(-graphWidth)
+
+        canvas.select<SVGGElement>(".y-axis")
+            .attr("transform", `translate(0, 0)`)
+            .transition().duration(animDuration).call(yAxis)
+
+        const xAxisTextClass = !isMediumScreen?`${styles.rotatedAxisText} ${waterfallStyles["axis-label-sm"]}`:
+            `${styles.axisText} ${waterfallStyles["axis-label"]}`;
+
+        const x0 = scaleBand()
+            .domain(groupedBarData.map(d => d.label))
+            .range([margin.left, width - margin.right])
+            .padding(0.2);
+
+        const xAxis = axisBottom(x0)            
+            .tickValues(x0.domain())
+            .scale(x0)
+            .tickSizeOuter(0)        
+
+        const x1 = scaleBand()
+            .domain(keys)
+            .range([0, x0.bandwidth()])
+            .padding(0.05);
+                      
+        canvas.select<SVGGElement>(".x-axis")            
+            .transition().duration(animDuration).call(xAxis)            
+            .attr("transform", `translate(0, ${y(yMin) || 0})`)
+            .selectAll("text")
+            .attr("class", `${xAxisTextClass}`)
+
+        canvas.select<SVGGElement>(".x-axis") 
+            .selectAll("path")
+            .style("display", "none")
+
+        const zeroLine = canvas.select("line.zero-line")
+            .attr("x1", 0).attr("y1", 0)
+            .attr("x2", graphWidth).attr("y2", 0)
+                .transition().duration(animDuration)
+            .attr("transform", `translate(0, ${y(0) || 0})`)
 
         canvas.selectAll<SVGRectElement, groupedBarData>("rect.open")
             .data(groupedBarData,
@@ -177,7 +206,7 @@ export function DeltaWaterfall({
             
                     <svg                
                         className={`${styles["chart-svg"]} ${styles["fill-container"]}`}
-                        style={{ border: "1px solid black"}}
+                        style={{ }}
                         viewBox={`0 0 ${width} ${height}`}
                     >
                         {/* Left Chevron */}
@@ -239,10 +268,13 @@ export function DeltaWaterfall({
                                 strokeLinejoin="round"
                             />
                         </g>
-                        <g className="plot-area">
+                        
+                        <g className="plot-area">                            
                             <g className={`${styles["value-axis"]} y-axis`} />
-                            <g className={`${waterfallStyles["x-axis"]} x-axis`} />    
-                        </g>                        
+                            <g className={`${waterfallStyles["x-axis"]} x-axis`} />
+                            <line className='zero-line' stroke="currentColor" strokeWidth={1} />     
+                        </g>  
+                                             
                     </svg>            
                 
                 <Tooltip />

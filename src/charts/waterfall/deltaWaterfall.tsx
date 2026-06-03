@@ -136,6 +136,8 @@ export function DeltaWaterfall({
 
     }, [data, width, height, mode, isSorted, {prefix, suffix, formatType}]);
     
+    const CHEVRON_SIZE = 20
+    const chevronFill = "#4ade80"
     return (
         <div 
             ref={ref} 
@@ -175,9 +177,68 @@ export function DeltaWaterfall({
             
                     <svg                
                         className={`${styles["chart-svg"]} ${styles["fill-container"]}`}
-                        style={{}}
+                        style={{ border: "1px solid black"}}
                         viewBox={`0 0 ${width} ${height}`}
                     >
+                        {/* Left Chevron */}
+                        <g
+                            transform={`translate(10, ${height / 2})`}
+                            style={{ cursor: "pointer" }}
+                            onClick={() => console.log("left")}
+                        >
+                            <path
+                                d={`
+                                    M ${CHEVRON_SIZE / 2} ${-CHEVRON_SIZE / 2}
+                                    L ${-CHEVRON_SIZE / 2} 0
+                                    L ${CHEVRON_SIZE / 2} ${CHEVRON_SIZE / 2}
+                                `}
+                                fill={chevronFill}
+                                stroke="none"
+                                strokeWidth={2}
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                            />
+                        </g>
+
+                        {/* Right Chevron */}
+                        <g
+                            transform={`translate(${width - 10}, ${height / 2})`}
+                            style={{ cursor: "pointer" }}
+                            onClick={() => console.log("right")}
+                        >
+                            <path
+                                d={`
+                                    M ${-CHEVRON_SIZE / 2} ${-CHEVRON_SIZE / 2}
+                                    L ${CHEVRON_SIZE / 2} 0
+                                    L ${-CHEVRON_SIZE / 2} ${CHEVRON_SIZE / 2}
+                                `}
+                                fill={ chevronFill }
+                                stroke="none"
+                                strokeWidth={2}
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                            />
+                        </g>
+
+                        {/* Up Chevron */}
+                        <g
+                            transform={`translate(${width / 2}, 10)`}
+                            style={{ cursor: "pointer" }}
+                            onClick={() => console.log("up")}
+                        >
+                            <path
+                                d={`
+                                    M ${-CHEVRON_SIZE / 2} ${CHEVRON_SIZE / 2}
+                                    L 0 ${-CHEVRON_SIZE / 2}
+                                    L ${CHEVRON_SIZE / 2} ${CHEVRON_SIZE / 2}
+                                `}
+                                fill={ chevronFill }
+                                stroke="none"
+                                strokeWidth={2}
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                            />
+                        </g>
                         <g className="plot-area">
                             <g className={`${styles["value-axis"]} y-axis`} />
                             <g className={`${waterfallStyles["x-axis"]} x-axis`} />    

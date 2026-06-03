@@ -20,11 +20,6 @@ type groupedBarData = {
     close: number;
 }
 
-type groupedBarRectData = {
-    key: "open" | "close";
-    value: number;
-}
-
 export function DeltaWaterfall({
         data,         
         tooltipFormat: {
@@ -35,6 +30,7 @@ export function DeltaWaterfall({
     const { width: parentWidth, height: parentHeight } = parentSize;
     const [chartContainerRef, chartSize] = useContainerSize<HTMLDivElement>()
     const { width, height } = chartSize
+    const [ plottedTimeframe, setPlottedTimeframe ] = useState(-1)
 
     type modeType = "waterfall" | "inflows" | "outflows";
     const [ mode, setMode ] = useState<modeType>("waterfall")        
@@ -76,97 +72,113 @@ export function DeltaWaterfall({
         const graphWidth = width - margin.left - margin.right
         const graphHeight = height - margin.top - margin.bottom        
 
-        const allValues = groupedBarData.flatMap(d =>
-            keys.map(key => d[key] as number ?? 0)
-        );
+        
 
-        const yMin = Math.min(0, min(allValues) ?? 0)
-        const yMax = Math.max(0, max(allValues) ?? 0)
-        const y = scaleLinear()
-            .domain([ yMin, yMax ])
-            .nice()
-            .range([height - margin.bottom, margin.top]);
+        if(plottedTimeframe === -1){
+            const allValues = groupedBarData.flatMap(d =>
+                keys.map(key => d[key] as number ?? 0)
+            );
 
-        const yAxis = axisLeft(y).ticks(5, "s").tickSize(-graphWidth)
+            const yMin = Math.min(0, min(allValues) ?? 0)
+            const yMax = Math.max(0, max(allValues) ?? 0)
+            const y = scaleLinear()
+                .domain([ yMin, yMax ])
+                .nice()
+                .range([height - margin.bottom, margin.top]);
 
-        canvas.select<SVGGElement>(".y-axis")
-            .attr("transform", `translate(0, 0)`)
-            .transition().duration(animDuration).call(yAxis)
+            const yAxis = axisLeft(y).ticks(5, "s").tickSize(-graphWidth)
 
-        const xAxisTextClass = !isMediumScreen?`${styles.rotatedAxisText} ${waterfallStyles["axis-label-sm"]}`:
-            `${styles.axisText} ${waterfallStyles["axis-label"]}`;
+            canvas.select<SVGGElement>(".y-axis")
+                .attr("transform", `translate(0, 0)`)
+                .transition().duration(animDuration).call(yAxis)
 
-        const x0 = scaleBand()
-            .domain(groupedBarData.map(d => d.label))
-            .range([margin.left, width - margin.right])
-            .padding(0.2);
+            const axisClass = !isMediumScreen
+                ? `${styles.rotatedAxisText} ${waterfallStyles["axis-label-sm"]}`
+                : `${styles.axisText} ${waterfallStyles["axis-label"]}`;
 
-        const xAxis = axisBottom(x0)            
-            .tickValues(x0.domain())
-            .scale(x0)
-            .tickSizeOuter(0)        
+            const xAxisTextClass = `${axisClass} ${waterfallStyles["clickable-label"]}`;
 
-        const x1 = scaleBand()
-            .domain(keys)
-            .range([0, x0.bandwidth()])
-            .padding(0.05);
-                      
-        canvas.select<SVGGElement>(".x-axis")            
-            .transition().duration(animDuration).call(xAxis)            
-            .attr("transform", `translate(0, ${y(yMin) || 0})`)
-            .selectAll("text")
-            .attr("class", `${xAxisTextClass}`)
+            const xLabels = groupedBarData.map(d => d.label)
+            const x0 = scaleBand()
+                .domain(xLabels)
+                .range([margin.left, width - margin.right])
+                .padding(0.2);
 
-        canvas.select<SVGGElement>(".x-axis") 
-            .selectAll("path")
-            .style("display", "none")
+            const xAxis = axisBottom(x0)            
+                .tickValues(x0.domain())
+                .scale(x0)
+                .tickSizeOuter(0)        
 
-        const zeroLine = canvas.select("line.zero-line")
-            .attr("x1", 0).attr("y1", 0)
-            .attr("x2", graphWidth).attr("y2", 0)
-                .transition().duration(animDuration)
-            .attr("transform", `translate(0, ${y(0) || 0})`)
+            const x1 = scaleBand()
+                .domain(keys)
+                .range([0, x0.bandwidth()])
+                .padding(0.05);
+                        
+            canvas.select<SVGGElement>(".x-axis")            
+                .transition().duration(animDuration).call(xAxis)            
+                .attr("transform", `translate(0, ${y(yMin) || 0})`)
+                .selectAll("text")
+                .attr("class", `${xAxisTextClass}`)                
 
-        canvas.selectAll<SVGRectElement, groupedBarData>("rect.open")
-            .data(groupedBarData,
-                (d) => d.label + " - open"
-            )
-            .join("rect")
-            .attr("class", "open")
-            .attr("x", d => (x0(d.label) ?? 0) + (x1("open") ?? 0))
-            .attr("width", x1.bandwidth())
-            .attr("y", d =>
-                d.open >= 0
-                    ? y(d.open)
-                    : y(0)
-            )
-            .attr("height", d =>
-                Math.abs(y(d.open) - y(0))
-            )
-            .attr("fill", "steelblue");
+            canvas.select<SVGGElement>(".x-axis") 
+                .selectAll("path")
+                .style("display", "none")
 
-        canvas.selectAll<SVGRectElement, groupedBarData>("rect.close")
-            .data(groupedBarData,
-                (d) => d.label + " - close"
-            )
-            .join("rect")
-            .attr("class", "close")
-            .attr("x", d => (x0(d.label) ?? 0) + (x1("close") ?? 0))
-            .attr("width", x1.bandwidth())
-            .attr("y", d =>
-                d.close >= 0
-                    ? y(d.close)
-                    : y(0)
-            )
-            .attr("height", d =>
-                Math.abs(y(d.close) - y(0))
-            )
-            .attr("fill", "orange");
+            canvas.select<SVGGElement>(".x-axis")
+                .selectAll("text")
+                .on("click", function(_, d){
+                    setPlottedTimeframe(xLabels.indexOf(d as string))
+                })
 
-    }, [data, width, height, mode, isSorted, {prefix, suffix, formatType}]);
+            const zeroLine = canvas.select("line.zero-line")
+                .attr("x1", 0).attr("y1", 0)
+                .attr("x2", graphWidth).attr("y2", 0)
+                    .transition().duration(animDuration)
+                .attr("transform", `translate(0, ${y(0) || 0})`)
+
+            canvas.selectAll<SVGRectElement, groupedBarData>("rect.open")
+                .data(groupedBarData,
+                    (d) => d.label + " - open"
+                )
+                .join("rect")
+                .attr("class", "open")
+                .attr("x", d => (x0(d.label) ?? 0) + (x1("open") ?? 0))
+                .attr("width", x1.bandwidth())
+                .attr("y", d =>
+                    d.open >= 0
+                        ? y(d.open)
+                        : y(0)
+                )
+                .attr("height", d =>
+                    Math.abs(y(d.open) - y(0))
+                )
+                .attr("fill", "steelblue");
+
+            canvas.selectAll<SVGRectElement, groupedBarData>("rect.close")
+                .data(groupedBarData,
+                    (d) => d.label + " - close"
+                )
+                .join("rect")
+                .attr("class", "close")
+                .attr("x", d => (x0(d.label) ?? 0) + (x1("close") ?? 0))
+                .attr("width", x1.bandwidth())
+                .attr("y", d =>
+                    d.close >= 0
+                        ? y(d.close)
+                        : y(0)
+                )
+                .attr("height", d =>
+                    Math.abs(y(d.close) - y(0))
+                )
+                .attr("fill", "orange");
+        }
+        
+
+    }, [data, width, height, mode, isSorted, plottedTimeframe, {prefix, suffix, formatType}]);
     
     const CHEVRON_SIZE = 20
     const chevronFill = "#4ade80"
+    
     return (
         <div 
             ref={ref} 
@@ -212,8 +224,17 @@ export function DeltaWaterfall({
                         {/* Left Chevron */}
                         <g
                             transform={`translate(10, ${height / 2})`}
-                            style={{ cursor: "pointer" }}
-                            onClick={() => console.log("left")}
+                            style={{ 
+                                cursor: "pointer", 
+                                opacity: plottedTimeframe > 0?1:0,
+                                pointerEvents: plottedTimeframe > 0?"auto":"none"
+                            }}
+                            onClick={() => {                                
+                                if(plottedTimeframe > 0){
+                                    setPlottedTimeframe(plottedTimeframe - 1)
+                                }
+                            }}
+                            className='chevron chevron-left'
                         >
                             <path
                                 d={`
@@ -232,8 +253,18 @@ export function DeltaWaterfall({
                         {/* Right Chevron */}
                         <g
                             transform={`translate(${width - 10}, ${height / 2})`}
-                            style={{ cursor: "pointer" }}
-                            onClick={() => console.log("right")}
+                            style={{ 
+                                cursor: "pointer", 
+                                opacity: (plottedTimeframe < data.length - 1 && plottedTimeframe > -1)?
+                                    1:0,
+                                pointerEvents: (plottedTimeframe < data.length - 1 && plottedTimeframe > -1)?"auto":"none"
+                            }}
+                            onClick={() => {                                
+                                if(plottedTimeframe < data.length - 1){
+                                    setPlottedTimeframe(plottedTimeframe + 1)
+                                }
+                            }}
+                            className='chevron chevron-right'
                         >
                             <path
                                 d={`
@@ -252,8 +283,15 @@ export function DeltaWaterfall({
                         {/* Up Chevron */}
                         <g
                             transform={`translate(${width / 2}, 10)`}
-                            style={{ cursor: "pointer" }}
-                            onClick={() => console.log("up")}
+                            style={{ 
+                                cursor: "pointer", 
+                                opacity: plottedTimeframe > -1?1:0,
+                                pointerEvents: plottedTimeframe > -1?"auto":"none"
+                            }}
+                            onClick={() => {                                
+                                setPlottedTimeframe(-1)
+                            }}
+                            className='chevron chevron-top'
                         >
                             <path
                                 d={`

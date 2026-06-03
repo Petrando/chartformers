@@ -19,6 +19,10 @@
   font-weight:300
 }
 
+.clickable-label {
+  cursor: pointer;
+}
+
 .axis-label path, .axis-label-sm path {
   display: none;
 }

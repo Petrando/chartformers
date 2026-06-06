@@ -5,9 +5,9 @@ import { useParentSize } from '../../hooks/useParentSize';
 import { Tooltip, getTooltip, moveTooltip } from '../../components/tooltip';
 import styles from '../global.module.css';
 import waterfallStyles from './waterfall.module.css'
-import { tooltipFormat, deltaWaterfallDatum } from '../../types';
+import { tooltipFormat, deltaWaterfallDatum, waterfallDatum } from '../../types';
 import { useContainerSize } from '../../hooks/useContainerSize';
-import { formatWaterfallData } from './utils';
+import { formatWaterfallData, colors } from './utils';
 
 type WaterfallProps = {
     data: deltaWaterfallDatum[];    
@@ -18,6 +18,11 @@ type groupedBarData = {
     label: string;
     open: number;
     close: number;
+}
+
+interface openCloseData {
+    label: string;
+    data: waterfallDatum;
 }
 
 export function DeltaWaterfall({
@@ -37,7 +42,9 @@ export function DeltaWaterfall({
     const [ isSorted, setIsSorted ] = useState(false)
     const changeBy = useRef("data")
     const isFirstRender = useRef(true);
-    const canLegendHover = useRef(true)       
+    const canLegendHover = useRef(true)
+    
+    useEffect(() => { setPlottedTimeframe(-1) }, [data])
 
     const isMediumScreen = width > 576;
     // Define the controls element (checkbox)    
@@ -48,9 +55,9 @@ export function DeltaWaterfall({
 
         const margin = { 
             top: 40, 
-            right: 40, 
+            right: 50, 
             bottom: 50, 
-            left: 40
+            left: 50
         };
         
         const formattedData = data.map(d => ({
@@ -61,8 +68,33 @@ export function DeltaWaterfall({
             open: d.data.find(dt => dt.label === "Opening")?.value ?? 0,
             close: d.data.find(dt => dt.label === "Closing")?.value ?? 0,
         }));
+
+        console.log(formattedData)
+
+        const baseOpenData:openCloseData[] = formattedData.map(d => {
+            const baseData = d.data.find(dt => dt.label === "Opening") as waterfallDatum
+            const data = baseData?baseData:d.data[0]
+
+            return { label: d.label, data:{...data, label:"Opening "} }
+        })
+        const openData = plottedTimeframe === -1?baseOpenData:[baseOpenData[plottedTimeframe]]
+
+        const baseCloseData:openCloseData[] = formattedData.map(d => {
+            const baseData = d.data.find(dt => dt.label === "Closing") as waterfallDatum
+            const data = baseData?baseData:d.data[d.data.length - 1]
+
+            return { label: d.label, data:{...data, label: "Closing" } }
+        })
+        const closeData = plottedTimeframe === -1?baseCloseData:[baseCloseData[plottedTimeframe]]
+
+        const openCloseData = plottedTimeframe === -1?
+            groupedBarData:[ groupedBarData[plottedTimeframe] ]
         type BarKey = "open" | "close";
         const keys: BarKey[] = ["open", "close"];
+
+        const plottedData = plottedTimeframe === -1?null:
+            formattedData[plottedTimeframe]
+        const baseWaterfallData = plottedData !== null?plottedData.data:[]
 
         const canvasSvg = container.select<SVGSVGElement>("svg")
         const svgNode = canvasSvg.node()
@@ -70,108 +102,311 @@ export function DeltaWaterfall({
             .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
 
         const graphWidth = width - margin.left - margin.right
-        const graphHeight = height - margin.top - margin.bottom        
-
+        const graphHeight = height - margin.top - margin.bottom
         
-
-        if(plottedTimeframe === -1){
-            const allValues = groupedBarData.flatMap(d =>
+        const openDataValues = openData.map(d => d.data.value)
+        const closeDataValues = closeData.map(d => d.data.value)
+        const allValues = [ ...openDataValues, ...closeDataValues ]
+            /*groupedBarData.flatMap(d =>
                 keys.map(key => d[key] as number ?? 0)
+            );*/
+
+        const waterfallMins = baseWaterfallData.map((d, i) => {
+            const isLastData = i === baseWaterfallData.length - 1
+            return Math.min(d.start, !isLastData?d.end:d.value)
+        })
+        const waterfallMaxes = baseWaterfallData.map((d, i) => {
+            const isLastData = i === baseWaterfallData.length - 1
+            return Math.max(d.start, !isLastData?d.end:d.value)
+        })        
+
+        const valueMin = Math.min(...waterfallMins)//mode === "waterfall"?Math.min(...mins):0
+        const valueMax = Math.max(...waterfallMaxes)//mode === "waterfall"?Math.max(...maxes):
+            //Math.max(...renderData.map(d => Math.abs(d.value)))
+
+        const yMin = Math.min(0, min(allValues) ?? 0)
+        const yMax = Math.max(0, max(allValues) ?? 0)
+        const y = scaleLinear()
+            .domain(
+                plottedTimeframe === -1?
+                [ yMin, yMax ]:
+                [ valueMin, valueMax ]
+            )            
+            .range([graphHeight, 0])
+            .nice();
+
+        const yAxis = axisLeft(y).ticks(5, "s").tickSize(-graphWidth)
+
+        canvas.select<SVGGElement>(".y-axis")
+            .attr("transform", `translate(0, 0)`)
+            .transition().duration(animDuration).call(yAxis)
+
+        const axisClass = !isMediumScreen
+            ? `${styles.rotatedAxisText} ${waterfallStyles["axis-label-sm"]}`
+            : `${styles.axisText} ${waterfallStyles["axis-label"]}`;
+
+        const xAxisTextClass = `${axisClass} ${waterfallStyles["clickable-label"]}`;
+
+        const xLabels = groupedBarData.map(d => d.label)
+        
+        const waterfallXLabels = baseWaterfallData.map(d => d.label)
+            .map(d => d === "Opening" ? "open" :
+                    d === "Closing" ? "close" :
+                        d
+            )
+        
+        const x0 = scaleBand()
+            .domain(
+                plottedTimeframe === -1?xLabels:waterfallXLabels
+            )
+            .rangeRound([0, graphWidth])
+            .padding(0.2);
+
+        const xAxis = axisBottom(x0)            
+            .tickValues(x0.domain())
+            .scale(x0)
+            .tickSizeOuter(0)        
+
+        const x1 = scaleBand()
+            .domain(keys)
+            .range([0, x0.bandwidth()])
+            .padding(0.05);
+                    
+        canvas.select<SVGGElement>(".x-axis")            
+            .transition().duration(animDuration).call(xAxis)            
+            .attr("transform", `translate(0, ${graphHeight})`)
+            .selectAll("text")
+            .attr("class", `${xAxisTextClass}`)                
+
+        canvas.select<SVGGElement>(".x-axis") 
+            .selectAll("path")
+            .style("display", "none")
+
+        canvas.select<SVGGElement>(".x-axis")
+            .selectAll("text")
+            .on("click", function(_, d){
+                setPlottedTimeframe(xLabels.indexOf(d as string))
+            })
+
+        const zeroLine = canvas.select("line.zero-line")
+            .attr("x1", 0).attr("y1", 0)
+            .attr("x2", graphWidth).attr("y2", 0)
+                .transition().duration(animDuration)
+            .attr("transform", `translate(0, ${y(0) || 0})`)
+
+        const xPosOpenClose = (d: openCloseData, type: "open" | "close") => {
+            return plottedTimeframe === -1?(x0(d.label) ?? 0) + (x1(type) ?? 0):
+                x0(type) ?? 0
+        }
+        const barWidthOpenClose = plottedTimeframe === -1? x1.bandwidth():x0.bandwidth()
+        
+        console.log(openData)
+        console.log(closeData)
+
+        canvas.selectAll<SVGRectElement, openCloseData>("rect.open")
+            .data(
+                openData,
+                d => d.label + " - open"
+            )
+            .join(
+                enter =>
+                    enter
+                        .append("rect")
+                        .attr("class", "open")
+                        .attr("fill", "steelblue")
+                        .attr("y", y(0))
+                        .attr("height", 0)
+                        .attr("x", d => xPosOpenClose(d, "open"))
+                        .attr("width", barWidthOpenClose),
+                undefined,
+                exit =>
+                    exit.remove()
+            )
+                .transition().duration(animDuration)
+            .attr("x", d => xPosOpenClose(d, "open"))
+            .attr("width", barWidthOpenClose)
+            .attr("y", d =>
+                plottedTimeframe === -1?
+                (d.data.value >= 0
+                    ? y(d.data.value)
+                    : y(0)):
+                    y( Math.max(d.data.start!, d.data.end!))
+            )
+            .attr("height", d =>
+                plottedTimeframe === -1?
+                Math.abs(y(d.data.value) - y(0)):
+                Math.abs( y(d.data.start!) - y(d.data.end!) )
             );
 
-            const yMin = Math.min(0, min(allValues) ?? 0)
-            const yMax = Math.max(0, max(allValues) ?? 0)
-            const y = scaleLinear()
-                .domain([ yMin, yMax ])
-                .nice()
-                .range([height - margin.bottom, margin.top]);
+        canvas.selectAll<SVGRectElement, openCloseData>("rect.close")
+            .data(closeData,
+                (d) => d.label + " - close"
+            )
+            .join(
+                enter =>
+                    enter
+                        .append("rect")
+                        .attr("class", "close")
+                        .attr("fill", "orange")
+                        .attr("y", y(0))
+                        .attr("height", 0)
+                        .attr("x", d => xPosOpenClose(d, "close"))
+                        .attr("width", barWidthOpenClose),
+                undefined,
+                exit => exit.remove()
+            )
+                .transition().duration(animDuration)
+            .attr("class", "close")
+            .attr("x", d => xPosOpenClose(d, "close"))
+            .attr("width", barWidthOpenClose)
+            .attr("y", d =>
+                plottedTimeframe === -1?
+                (d.data.value >= 0
+                    ? y(d.data.value)
+                    : y(0)):
+                    d.data.start! <= d.data.end!?
+                        y(d.data.value):y(0)
+            )
+            .attr("height", d =>{
+                if(plottedTimeframe === -1){
+                    return Math.abs(y(d.data.value) - y(0))
+                }else{
+                    const barHeight = Math.abs( y(d.data.start!) - y(d.data.end!) )
+                    if(d.data.start! <= d.data.end!){
+                        const baseBarHeight = y(0) - y(d.data.value)
+                        return baseBarHeight < 0?barHeight:baseBarHeight
+                    }else{
+                        return y(0) - y(-d.data.value)
+                    }
+                }
+            })
+            .attr("fill", "orange");
+        
+        const waterfallData = baseWaterfallData.filter(d => d.type !== "total")
+        console.log(waterfallData)
 
-            const yAxis = axisLeft(y).ticks(5, "s").tickSize(-graphWidth)
-
-            canvas.select<SVGGElement>(".y-axis")
-                .attr("transform", `translate(0, 0)`)
-                .transition().duration(animDuration).call(yAxis)
-
-            const axisClass = !isMediumScreen
-                ? `${styles.rotatedAxisText} ${waterfallStyles["axis-label-sm"]}`
-                : `${styles.axisText} ${waterfallStyles["axis-label"]}`;
-
-            const xAxisTextClass = `${axisClass} ${waterfallStyles["clickable-label"]}`;
-
-            const xLabels = groupedBarData.map(d => d.label)
-            const x0 = scaleBand()
-                .domain(xLabels)
-                .range([margin.left, width - margin.right])
-                .padding(0.2);
-
-            const xAxis = axisBottom(x0)            
-                .tickValues(x0.domain())
-                .scale(x0)
-                .tickSizeOuter(0)        
-
-            const x1 = scaleBand()
-                .domain(keys)
-                .range([0, x0.bandwidth()])
-                .padding(0.05);
-                        
-            canvas.select<SVGGElement>(".x-axis")            
-                .transition().duration(animDuration).call(xAxis)            
-                .attr("transform", `translate(0, ${y(yMin) || 0})`)
-                .selectAll("text")
-                .attr("class", `${xAxisTextClass}`)                
-
-            canvas.select<SVGGElement>(".x-axis") 
-                .selectAll("path")
-                .style("display", "none")
-
-            canvas.select<SVGGElement>(".x-axis")
-                .selectAll("text")
-                .on("click", function(_, d){
-                    setPlottedTimeframe(xLabels.indexOf(d as string))
-                })
-
-            const zeroLine = canvas.select("line.zero-line")
-                .attr("x1", 0).attr("y1", 0)
-                .attr("x2", graphWidth).attr("y2", 0)
-                    .transition().duration(animDuration)
-                .attr("transform", `translate(0, ${y(0) || 0})`)
-
-            canvas.selectAll<SVGRectElement, groupedBarData>("rect.open")
-                .data(groupedBarData,
-                    (d) => d.label + " - open"
-                )
-                .join("rect")
-                .attr("class", "open")
-                .attr("x", d => (x0(d.label) ?? 0) + (x1("open") ?? 0))
-                .attr("width", x1.bandwidth())
-                .attr("y", d =>
-                    d.open >= 0
-                        ? y(d.open)
-                        : y(0)
-                )
-                .attr("height", d =>
-                    Math.abs(y(d.open) - y(0))
-                )
-                .attr("fill", "steelblue");
-
-            canvas.selectAll<SVGRectElement, groupedBarData>("rect.close")
-                .data(groupedBarData,
-                    (d) => d.label + " - close"
-                )
-                .join("rect")
-                .attr("class", "close")
-                .attr("x", d => (x0(d.label) ?? 0) + (x1("close") ?? 0))
-                .attr("width", x1.bandwidth())
-                .attr("y", d =>
-                    d.close >= 0
-                        ? y(d.close)
-                        : y(0)
-                )
-                .attr("height", d =>
-                    Math.abs(y(d.close) - y(0))
-                )
-                .attr("fill", "orange");
+        function xPos(d: waterfallDatum){
+            const xPosition = x0(d.label as string) ?? 0        
+            return xPosition
         }
+
+        function yPos(d: waterfallDatum, i: number){
+            if(mode === "waterfall"){
+                if(d.type === "total" && i > 0){
+                    if(d.start! <= d.end!){
+                        return y(d.value)
+                    }else{
+                        return y(0)
+                    }                                
+                }
+                return y( Math.max(d.start!, d.end!));
+            }
+            return y(Math.abs(d.value))            
+                        
+        }
+
+        function rectHeight(d: waterfallDatum, i: number){            
+            if(mode === "waterfall"){
+                const barHeight = Math.abs( y(d.start!) - y(d.end!) )                
+                if(d.type === "total" && i > 0){
+                    if(d.start! <= d.end!){
+                        const baseBarHeight = y(0) - y(d.value)
+                        return baseBarHeight < 0?barHeight:baseBarHeight
+                    }else{
+                        return y(0) - y(-d.value)
+                    }
+                    
+                }            
+                return barHeight;
+            }
+
+            return y(0) - y(Math.abs(d.value))
+                        
+        }
+
+        function rectFill(d: waterfallDatum){
+            if(d.start! <= d.end!){
+                return colors.inflows
+            }else {
+                return colors.outflows
+            }
+        }
+
+        const barAnimDuration = 300
+        const bars =  canvas
+            .selectAll<SVGRectElement, waterfallDatum>(".bar")
+            .data(waterfallData, (d) => d.label)
+            .join(
+                enter=>enter.append("rect")
+                    .attr("class", "bar")
+                    .attr("x", xPos)
+                    .attr("width", x0.bandwidth())
+                    .attr("y", (d, i)=> changeBy.current === "data" ?
+                        (d.type === "total"?y(0):y(d.start)):
+                        y(0)
+                    )                    
+                    .attr("height", 0)
+                    .attr("rx", 5)
+                    .attr("ry", 5)
+                    .style("fill", rectFill)
+                        .transition().duration(barAnimDuration)
+                        .delay((_, i)=> {
+                            return 0//changeBy.current === "data"?((i + 1) * barAnimDuration):0
+                        })
+                    .attr("y", yPos)
+                    .attr("height", rectHeight)
+                    .on("end", function(_, i){                        
+                        if(changeBy.current === "data" && mode === "waterfall"){
+                            if(i === formattedData.length - 1){
+                                canLegendHover.current = true
+                            }                            
+                        }else{
+                            canLegendHover.current = true
+                        }
+                    }),
+                update=>{                                        
+                    if(mode === "waterfall" && changeBy.current === "data"){
+                        update.transition().duration(animDuration)
+                            .style("fill", rectFill)
+                            .attr("x", xPos)
+                            .attr("width", x0.bandwidth())
+                            .attr("y", (d)=> {                      
+                                return d.type === "total"?y(0):y(d.start)
+                            })
+                            .attr("height", 0)
+                            .attr("rx", 5)
+                            .attr("ry", 5)
+                        .transition().duration(barAnimDuration)
+                        .delay((d, i)=> 0
+                            //(i + 1) * barAnimDuration
+                        )            
+                            .attr("y", yPos)
+                            .attr("height", rectHeight)
+                        .on("end", function(_, i){
+                            if(changeBy.current === "data" && mode === "waterfall"){
+                            if(i === formattedData.length - 1){
+                                    canLegendHover.current = true
+                                }                            
+                            }else{
+                                canLegendHover.current = true
+                            }
+                        })
+                    }else{
+                        update.transition().duration(barAnimDuration)
+                            .style("fill", rectFill)
+                            .attr("x", xPos)
+                            .attr("width", x0.bandwidth())
+                            .attr("y", yPos)
+                            .attr("height", rectHeight)
+                            .on("end", function(_, i){
+                                canLegendHover.current = true                                
+                            })
+                    }
+
+                    return update
+                },
+                exit=>exit.transition().duration(animDuration).style("opacity", 0).remove()
+            )
         
 
     }, [data, width, height, mode, isSorted, plottedTimeframe, {prefix, suffix, formatType}]);

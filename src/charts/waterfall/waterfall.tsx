@@ -7,7 +7,7 @@ import styles from '../global.module.css';
 import waterfallStyles from './waterfall.module.css'
 import { tooltipFormat, waterfallDatum } from '../../types';
 import { useContainerSize } from '../../hooks/useContainerSize';
-import { formatWaterfallData } from './utils';
+import { formatWaterfallData, colors } from './utils';
 
 type WaterfallProps = {
     data: waterfallDatum[];    
@@ -79,9 +79,7 @@ export function WaterfallChart({
         const controls = container.select<HTMLDivElement>(".controls")
         const legendsContainer = controls.select<HTMLDivElement>(".legends-container")
 
-        const legendWidth = isMediumScreen?80:50
-
-        const colors = { inflows:"#22c55e", outflows: "#ef4444" }
+        const legendWidth = isMediumScreen?80:50        
 
         const legendClass = function(d:string){            
             const containerClass = styles[isMediumScreen?"legend-container":"legend-container-sm"]
@@ -420,21 +418,7 @@ export function WaterfallChart({
 
         canvas.select<SVGGElement>(".x-axis").raise()  
         labels.raise()          
-        /*const formattedData1 = data.reduce((acc: waterfallDatum[], item:waterfallDatum) => {
-            // Determine the current running total from the previous entries
-            const previousTotal = acc.length > 0 
-                ? acc[acc.length - 1].previousTotal ?? 0 + acc[acc.length - 1].value 
-                : 0;
-
-            acc.push({
-                ...item,
-                previousTotal: previousTotal
-            });
-
-            return acc;
-        }, []);
-
-        console.log(formattedData1)*/
+        
         
     }, [data, width, height, mode, isSorted, {prefix, suffix, formatType}]);
     

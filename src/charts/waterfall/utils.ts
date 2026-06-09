@@ -1,6 +1,6 @@
 import { waterfallDatum } from "../../types";
 
-export const colors = { inflows:"#22c55e", outflows: "#ef4444" }
+export const colors = { inflows:"#22c55e", outflows: "#ef4444", open:"steelblue", close:"orange" }
 
 export const formatWaterfallData = (data: waterfallDatum[]) => {
     let start = 0, end = 0, prevEnd = end

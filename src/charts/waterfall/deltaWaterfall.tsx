@@ -85,14 +85,81 @@ export function DeltaWaterfall({
         const closeData = effectiveTimeframe === -1?baseCloseData:[baseCloseData[effectiveTimeframe]]        
         
         type BarKey = "open" | "close";
-        const keys: BarKey[] = ["open", "close"];
-
-        
+        const keys: BarKey[] = ["open", "close"];        
 
         const canvasSvg = container.select<SVGSVGElement>("svg")
         const svgNode = canvasSvg.node()
         const canvas = canvasSvg.select<SVGGElement>('.plot-area')
             .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+
+        const controls = container.select<HTMLDivElement>(".controls")
+        const legendsContainer = controls.select<HTMLDivElement>(".legends-container")
+        
+        type LegendKey = "open" | "close" | "inflows" | "outflows";
+        const legendsData: LegendKey[] = effectiveTimeframe === -1?
+            ["open", "close"]:["open", "inflows", "outflows", "close"]
+
+        const legendWidth = 50//isMediumScreen?80:50
+
+        const legendClass = function(d: LegendKey){
+            const containerClass = styles[isMediumScreen?"legend-container":"legend-container-sm"]
+            const containerActiveClass = styles[isMediumScreen?"legend-container-active":"legend-container-active-sm"]
+            const containerInactiveClass = styles[isMediumScreen?"legend-container-inactive":"legend-container-inactive-sm"]
+            return  `
+                ${//plotted.includes(d)?
+                    //focusOnPlot?containerActiveClass:containerInactiveClass:
+                        containerClass}
+                legend-item
+            `            
+        }
+
+        const legends = legendsContainer.selectAll<HTMLDivElement, LegendKey>(".legend-item")
+            .data([...legendsData], d=>d)
+            .join(
+                enter => {
+                    const divs = enter
+                        .append("div")
+                        .attr("class", legendClass)
+                        .style("left", (_, i)=> `${i * legendWidth}px`)
+                        .style("top", "-53px")
+                        .style("opacity", 0);
+
+                    divs.append("div")
+                        .attr("class", styles["legend-rect"])
+                        .style("background", (d) => colors[d])
+                    divs.append("span")
+                        .attr("class", styles["legend-label"])
+                        .text(d=>d)
+
+                    divs.transition().duration(animDuration)                                                        
+                        .style("top", "0px")                              
+                        .style("opacity", 1)
+                        
+                    return divs;
+                },
+                update => {
+                    update
+                        .attr("class", legendClass)
+                        .transition().duration(animDuration)
+                            .style("top", "0px")
+                            .style("left", (_, i)=> `${i * legendWidth}px`) 
+                            .style("opacity", 1)
+                        .select(`.${styles["legend-rect"]}`)
+                        .style("background", (d) => colors[d]);
+
+                    // also update label text in case of rename or dynamic change
+                    update
+                        .select(`.${styles["legend-label"]}`)
+                        .text(d => d);
+
+                    return update;
+                },
+                exit => exit
+                    .transition().duration(animDuration)
+                    .style("opacity", 0)
+                    .style("top", "53px")
+                    .remove().remove()
+            )
 
         const graphWidth = width - margin.left - margin.right
         const graphHeight = height - margin.top - margin.bottom
@@ -204,7 +271,7 @@ export function DeltaWaterfall({
                     enter
                         .append("rect")
                         .attr("class", "open")
-                        .attr("fill", "steelblue")
+                        .attr("fill", colors.open)
                         .attr("y", y(0) ?? 0)
                         .attr("height", 0)
                         .attr("x", d => xPosOpenClose(d, "open"))
@@ -240,7 +307,7 @@ export function DeltaWaterfall({
                     enter
                         .append("rect")
                         .attr("class", "close")
-                        .attr("fill", "orange")
+                        .attr("fill", colors.close)
                         .attr("y", y(0))
                         .attr("height", 0)
                         .attr("x", d => xPosOpenClose(d, "close"))

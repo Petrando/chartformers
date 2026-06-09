@@ -14,12 +14,6 @@ type WaterfallProps = {
     tooltipFormat?: tooltipFormat;
 }
 
-type groupedBarData = {
-    label: string;
-    open: number;
-    close: number;
-}
-
 interface openCloseData {
     label: string;
     data: waterfallDatum;

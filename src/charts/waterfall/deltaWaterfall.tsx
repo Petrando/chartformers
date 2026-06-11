@@ -19,6 +19,8 @@ interface openCloseData {
     data: waterfallDatum;
 }
 
+type LegendKey = "open" | "close" | "inflows" | "outflows";
+
 export function DeltaWaterfall({
         data,         
         tooltipFormat: {
@@ -31,19 +33,21 @@ export function DeltaWaterfall({
     const { width, height } = chartSize
     const [ plottedTimeframe, setPlottedTimeframe ] = useState(-1)
 
-    type modeType = "waterfall" | "inflows" | "outflows";
-    const [ mode, setMode ] = useState<modeType>("waterfall")        
+    type modeType = "waterfall" | "inflows" | "outflows";            
     const [ isSorted, setIsSorted ] = useState(false)
-    const changeBy = useRef("data")
-    const isFirstRender = useRef(true);
+    const changeBy = useRef("data")    
     const canLegendHover = useRef(true)
+
+    const [ selected, setSelected ] = useState<LegendKey | "">("")
 
     const dataRef = useRef(data)
     
     useEffect(() => {
         dataRef.current = data;
         setPlottedTimeframe(-1)
-    }, [data])
+        setSelected("")
+        setIsSorted(false)
+    }, [data])    
 
     const effectiveTimeframe =
         dataRef.current !== data
@@ -69,20 +73,28 @@ export function DeltaWaterfall({
         }))        
        
         const baseOpenData:openCloseData[] = formattedData.map(d => {
-            const baseData = d.data.find(dt => dt.label === "Opening") as waterfallDatum
-            const data = baseData?baseData:d.data[0]
+                const baseData = d.data.find(dt => dt.label === "Opening") as waterfallDatum
+                const data = baseData?baseData:d.data[0]
 
-            return { label: d.label, data:{...data, label:"Opening "} }
-        })
-        const openData = effectiveTimeframe === -1?baseOpenData:[baseOpenData[effectiveTimeframe]]
+                return { label: d.label, data:{...data, label:"Opening "} }
+            })
+        const openData = selected !== "inflows" && selected !== "outflows" ? 
+            effectiveTimeframe === -1?
+                baseOpenData:[baseOpenData[effectiveTimeframe]]:
+                []
+        openData.sort((a, b) => (selected === "open" && isSorted)?b.data.value - a.data.value:0)
 
         const baseCloseData:openCloseData[] = formattedData.map(d => {
-            const baseData = d.data.find(dt => dt.label === "Closing") as waterfallDatum
-            const data = baseData?baseData:d.data[d.data.length - 1]
+                const baseData = d.data.find(dt => dt.label === "Closing") as waterfallDatum
+                const data = baseData?baseData:d.data[d.data.length - 1]
 
-            return { label: d.label, data:{...data, label: "Closing" } }
-        })
-        const closeData = effectiveTimeframe === -1?baseCloseData:[baseCloseData[effectiveTimeframe]]        
+                return { label: d.label, data:{...data, label: "Closing" } }
+            })
+        const closeData = selected !== "inflows" && selected !== "outflows"?
+            effectiveTimeframe === -1?
+                baseCloseData:[baseCloseData[effectiveTimeframe]]:
+                []
+        closeData.sort((a, b) => (selected === "close" && isSorted)?b.data.value - a.data.value:0)        
         
         type BarKey = "open" | "close";
         const keys: BarKey[] = ["open", "close"];        
@@ -94,20 +106,19 @@ export function DeltaWaterfall({
 
         const controls = container.select<HTMLDivElement>(".controls")
         const legendsContainer = controls.select<HTMLDivElement>(".legends-container")
-        
-        type LegendKey = "open" | "close" | "inflows" | "outflows";
+                
         const legendsData: LegendKey[] = effectiveTimeframe === -1?
             ["open", "close"]:["open", "inflows", "outflows", "close"]
 
-        const legendWidth = 50//isMediumScreen?80:50
+        const legendWidth = 60//isMediumScreen?80:50
 
         const legendClass = function(d: LegendKey){
             const containerClass = styles[isMediumScreen?"legend-container":"legend-container-sm"]
             const containerActiveClass = styles[isMediumScreen?"legend-container-active":"legend-container-active-sm"]
             const containerInactiveClass = styles[isMediumScreen?"legend-container-inactive":"legend-container-inactive-sm"]
             return  `
-                ${//plotted.includes(d)?
-                    //focusOnPlot?containerActiveClass:containerInactiveClass:
+                ${selected !== ""?
+                    selected === d?containerActiveClass:containerInactiveClass:
                         containerClass}
                 legend-item
             `            
@@ -161,6 +172,17 @@ export function DeltaWaterfall({
                     .remove().remove()
             )
 
+        legends
+            .on("click", (e, d)=>{
+                if(d === "open" || d === "close"){
+                    setPlottedTimeframe(-1)  
+                }              
+                
+                const newSelected = selected === d?"":d
+                if(newSelected === ""){ setIsSorted(false) }
+                setSelected(newSelected)                
+            })
+
         const graphWidth = width - margin.left - margin.right
         const graphHeight = height - margin.top - margin.bottom
         
@@ -181,9 +203,11 @@ export function DeltaWaterfall({
             return Math.max(d.start, !isLastData?d.end:d.value)
         })        
 
-        const valueMin = Math.min(...waterfallMins)//mode === "waterfall"?Math.min(...mins):0
-        const valueMax = Math.max(...waterfallMaxes)//mode === "waterfall"?Math.max(...maxes):
-            //Math.max(...renderData.map(d => Math.abs(d.value)))
+        const waterfallMode = selected === "inflows" || selected === "outflows"?selected:"waterfall"
+
+        const valueMin = waterfallMode === "waterfall"?Math.min(...waterfallMins):0
+        const valueMax = waterfallMode === "waterfall"?Math.max(...waterfallMaxes):
+            Math.max(...baseWaterfallData.map(d => Math.abs(d.value)))
 
         const yMin = Math.min(0, min(allValues) ?? 0)
         const yMax = Math.max(0, max(allValues) ?? 0)
@@ -208,13 +232,28 @@ export function DeltaWaterfall({
 
         const xAxisTextClass = `${axisClass} ${waterfallStyles["clickable-label"]}`;
 
-        const xLabels = formattedData.map(d => d.label)
+        const xLabels = 
+            selected === "open" && isSorted?openData.map(d => d.label):
+            selected === "close" && isSorted?closeData.map(d => d.label):
+            formattedData.map(d => d.label)
         
-        const waterfallXLabels = baseWaterfallData.map(d => d.label)
-            .map(d => d === "Opening" ? "open" :
-                    d === "Closing" ? "close" :
-                        d
-            )
+        const filteredWaterfallData = baseWaterfallData.filter(d => d.type !== "total")
+        const waterfallData = waterfallMode === "waterfall"?filteredWaterfallData:
+            filteredWaterfallData
+                .filter(d =>  (waterfallMode === "inflows"?d.start! <= d.end!:d.start > d.end))
+                .sort((a, b) => isSorted?(Math.abs(b.value) - Math.abs(a.value)):0)
+                
+        const waterfallXLabels = waterfallMode === "waterfall"?
+            baseWaterfallData
+                .map(d => {
+                    const xLabel = d.label === "Opening"? "open":
+                        d.label === "Closing" ? "close":
+                            d.label
+
+                    return xLabel
+                }):
+            waterfallData
+                .map(d => d.label)
         
         const x0 = scaleBand()
             .domain(
@@ -247,6 +286,7 @@ export function DeltaWaterfall({
             .selectAll("text")
             .on("click", function(_, d){
                 setPlottedTimeframe(xLabels.indexOf(d as string))
+                setSelected("")
             })
 
         const zeroLine = canvas.select("line.zero-line")
@@ -259,7 +299,8 @@ export function DeltaWaterfall({
             return effectiveTimeframe === -1?(x0(d.label) ?? 0) + (x1(type) ?? 0):
                 x0(type) ?? 0
         }
-        const barWidthOpenClose = effectiveTimeframe === -1? x1.bandwidth():x0.bandwidth()                
+        const barWidthOpenClose = effectiveTimeframe === -1 && selected !== "open" && selected !== "close"? 
+            x1.bandwidth():x0.bandwidth()
 
         canvas.selectAll<SVGRectElement, openCloseData>("rect.open")
             .data(
@@ -296,7 +337,9 @@ export function DeltaWaterfall({
                 return effectiveTimeframe === -1
                     ? Math.abs(y(d.data.value) - y(0))
                     : Math.abs(y(d.data.start!) - y(d.data.end!));
-            });
+            })
+            .style("opacity", selected !== "close"?1:0)
+            .style("pointer-events", selected !== "close"?"auto":"none");
 
         canvas.selectAll<SVGRectElement, openCloseData>("rect.close")
             .data(closeData,
@@ -310,14 +353,14 @@ export function DeltaWaterfall({
                         .attr("fill", colors.close)
                         .attr("y", y(0))
                         .attr("height", 0)
-                        .attr("x", d => xPosOpenClose(d, "close"))
+                        .attr("x", d => xPosOpenClose(d, selected === "close"?"open":"close"))
                         .attr("width", barWidthOpenClose),
                 undefined,
                 exit => exit.remove()
             )
                 .transition().duration(animDuration)
             .attr("class", "close")
-            .attr("x", d => xPosOpenClose(d, "close"))
+            .attr("x", d => xPosOpenClose(d, selected === "close"?"open":"close"))
             .attr("width", barWidthOpenClose)
             .attr("y", d =>
                 effectiveTimeframe === -1?
@@ -340,9 +383,11 @@ export function DeltaWaterfall({
                     }
                 }
             })
-            .attr("fill", "orange");
+            .attr("fill", "orange")
+            .style("opacity", selected !== "open"?1:0)
+            .style("pointer-events", selected !== "open"?"auto":"none");
         
-        const waterfallData = baseWaterfallData.filter(d => d.type !== "total")        
+                
 
         function xPos(d: waterfallDatum){
             const xPosition = x0(d.label as string) ?? 0        
@@ -350,7 +395,7 @@ export function DeltaWaterfall({
         }
 
         function yPos(d: waterfallDatum, i: number){
-            if(mode === "waterfall"){
+            if(waterfallMode === "waterfall"){
                 if(d.type === "total" && i > 0){
                     if(d.start! <= d.end!){
                         return y(d.value)
@@ -365,7 +410,7 @@ export function DeltaWaterfall({
         }
 
         function rectHeight(d: waterfallDatum, i: number){            
-            if(mode === "waterfall"){
+            if(waterfallMode === "waterfall"){
                 const barHeight = Math.abs( y(d.start!) - y(d.end!) )                
                 if(d.type === "total" && i > 0){
                     if(d.start! <= d.end!){
@@ -415,7 +460,7 @@ export function DeltaWaterfall({
                     .attr("y", yPos)
                     .attr("height", rectHeight)
                     .on("end", function(_, i){                        
-                        if(changeBy.current === "data" && mode === "waterfall"){
+                        if(changeBy.current === "data" && waterfallMode === "waterfall"){
                             if(i === formattedData.length - 1){
                                 canLegendHover.current = true
                             }                            
@@ -424,7 +469,7 @@ export function DeltaWaterfall({
                         }
                     }),
                 update=>{                                        
-                    if(mode === "waterfall" && changeBy.current === "data"){
+                    if(waterfallMode === "waterfall" && changeBy.current === "data"){
                         update.transition().duration(animDuration)
                             .style("fill", rectFill)
                             .attr("x", xPos)
@@ -442,7 +487,7 @@ export function DeltaWaterfall({
                             .attr("y", yPos)
                             .attr("height", rectHeight)
                         .on("end", function(_, i){
-                            if(changeBy.current === "data" && mode === "waterfall"){
+                            if(changeBy.current === "data" && waterfallMode === "waterfall"){
                             if(i === formattedData.length - 1){
                                     canLegendHover.current = true
                                 }                            
@@ -468,7 +513,7 @@ export function DeltaWaterfall({
             )
         
 
-    }, [effectiveTimeframe, data, width, height, mode, isSorted,  {prefix, suffix, formatType}]);
+    }, [effectiveTimeframe, data, width, height, selected, isSorted,  {prefix, suffix, formatType}]);
     
     const CHEVRON_SIZE = 20
     const chevronFill = "#4ade80"
@@ -489,7 +534,7 @@ export function DeltaWaterfall({
                         className={`
                             ${styles["controls-label"]} 
                             ${waterfallStyles.sort} 
-                            ${mode!=="waterfall"?waterfallStyles.visible:""}
+                            ${selected !== ""?waterfallStyles.visible:""}
                         `} 
                         style={{paddingRight: '12px'}}
                     >
@@ -527,6 +572,7 @@ export function DeltaWaterfall({
                                 if(plottedTimeframe > 0){
                                     setPlottedTimeframe(plottedTimeframe - 1)
                                 }
+                                setSelected("")
                             }}
                             className='chevron chevron-left'
                         >
@@ -557,6 +603,7 @@ export function DeltaWaterfall({
                                 if(plottedTimeframe < data.length - 1){
                                     setPlottedTimeframe(plottedTimeframe + 1)
                                 }
+                                setSelected("")
                             }}
                             className='chevron chevron-right'
                         >
@@ -584,6 +631,7 @@ export function DeltaWaterfall({
                             }}
                             onClick={() => {                                
                                 setPlottedTimeframe(-1)
+                                setSelected("")
                             }}
                             className='chevron chevron-top'
                         >

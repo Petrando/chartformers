@@ -35,3 +35,45 @@
 .sort.visible {
   opacity: 1;
 }
+
+.chevron-initial {
+  fill: none;
+  stroke: none;
+  opacity: 0;
+  transition: fill 0.3s ease-in 0.3s ease, stroke-width 0.3s ease opacity 300ms ease-in-out;
+  pointer-events: none;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.chevron {
+  fill: #4ade80;
+  stroke: black;
+  stroke-width: 1px;
+  opacity: 1;
+  pointer-events: all;
+  cursor: pointer;
+  transition: fill 0.3s ease-in 0.3s ease, stroke-width 0.3s ease opacity 0.3s ease-in;
+}
+
+.chevron:hover {
+  stroke: #4c1d95;
+  stroke-width: 2px;
+}
+
+.chevron-inactive {
+  fill: #5b4f4b;
+  pointer-events: none;
+  opacity: 0.7;
+  transition: fill 0.3s ease-in stroke 0.3s ease, stroke-width 0.3s opacity 0.3s ease-in;
+}
+
+.bar {
+  stroke: #3f3f46;
+  stroke-width: 1px;
+  transition: stroke-width 0.25x ease;
+}
+
+.bar:hover {
+  stroke-width: 2px;
+}

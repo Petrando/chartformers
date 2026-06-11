@@ -21,6 +21,8 @@ interface openCloseData {
 
 type LegendKey = "open" | "close" | "inflows" | "outflows";
 
+type BarKey = "open" | "close";
+
 export function DeltaWaterfall({
         data,         
         tooltipFormat: {
@@ -96,7 +98,7 @@ export function DeltaWaterfall({
                 []
         closeData.sort((a, b) => (selected === "close" && isSorted)?b.data.value - a.data.value:0)        
         
-        type BarKey = "open" | "close";
+        
         const keys: BarKey[] = ["open", "close"];        
 
         const canvasSvg = container.select<SVGSVGElement>("svg")
@@ -224,13 +226,7 @@ export function DeltaWaterfall({
 
         canvas.select<SVGGElement>(".y-axis")
             .attr("transform", `translate(0, 0)`)
-            .transition().duration(animDuration).call(yAxis)
-
-        const axisClass = !isMediumScreen
-            ? `${styles.rotatedAxisText} ${waterfallStyles["axis-label-sm"]}`
-            : `${styles.axisText} ${waterfallStyles["axis-label"]}`;
-
-        const xAxisTextClass = `${axisClass} ${waterfallStyles["clickable-label"]}`;
+            .transition().duration(animDuration).call(yAxis)        
 
         const xLabels = 
             selected === "open" && isSorted?openData.map(d => d.label):
@@ -255,10 +251,9 @@ export function DeltaWaterfall({
             waterfallData
                 .map(d => d.label)
         
+        const labels = effectiveTimeframe === -1?xLabels:waterfallXLabels
         const x0 = scaleBand()
-            .domain(
-                effectiveTimeframe === -1?xLabels:waterfallXLabels
-            )
+            .domain( labels )
             .rangeRound([0, graphWidth])
             .padding(0.2);
 
@@ -271,6 +266,16 @@ export function DeltaWaterfall({
             .domain(keys)
             .range([0, x0.bandwidth()])
             .padding(0.05);
+
+        const rotateLabels = (width < 640 && labels.length > 3) ||
+                (width < 768 && labels.length > 4) ||
+                (width < 1024 && labels.length > 7) ||
+                (width < 1280 && labels.length > 9)
+        const axisClass = rotateLabels
+            ? `${styles.rotatedAxisText} ${waterfallStyles["axis-label-sm"]}`
+            : `${styles.axisText} ${waterfallStyles["axis-label"]}`;
+
+        const xAxisTextClass = `${axisClass} ${waterfallStyles["clickable-label"]}`;
                     
         canvas.select<SVGGElement>(".x-axis")            
             .transition().duration(animDuration).call(xAxis)            
@@ -285,8 +290,11 @@ export function DeltaWaterfall({
         canvas.select<SVGGElement>(".x-axis")
             .selectAll("text")
             .on("click", function(_, d){
-                setPlottedTimeframe(xLabels.indexOf(d as string))
-                setSelected("")
+                if(plottedTimeframe === -1){
+                    setPlottedTimeframe(xLabels.indexOf(d as string))
+                    setSelected("")
+                    setIsSorted(false)
+                }                
             })
 
         const zeroLine = canvas.select("line.zero-line")
@@ -302,7 +310,7 @@ export function DeltaWaterfall({
         const barWidthOpenClose = effectiveTimeframe === -1 && selected !== "open" && selected !== "close"? 
             x1.bandwidth():x0.bandwidth()
 
-        canvas.selectAll<SVGRectElement, openCloseData>("rect.open")
+        canvas.selectAll<SVGRectElement, openCloseData>(`rect.open`)
             .data(
                 openData,
                 d => d?.label || "" + " - open"
@@ -311,7 +319,7 @@ export function DeltaWaterfall({
                 enter =>
                     enter
                         .append("rect")
-                        .attr("class", "open")
+                        .attr("class", `open ${waterfallStyles.bar}`)
                         .attr("fill", colors.open)
                         .attr("y", y(0) ?? 0)
                         .attr("height", 0)
@@ -320,8 +328,8 @@ export function DeltaWaterfall({
                 undefined,
                 exit =>
                     exit.remove()
-            )
-                .transition().duration(animDuration)
+            )            
+                .transition().duration(animDuration)            
             .attr("x", d => xPosOpenClose(d, "open"))
             .attr("width", barWidthOpenClose)
             .attr("y", d => {                
@@ -341,7 +349,7 @@ export function DeltaWaterfall({
             .style("opacity", selected !== "close"?1:0)
             .style("pointer-events", selected !== "close"?"auto":"none");
 
-        canvas.selectAll<SVGRectElement, openCloseData>("rect.close")
+        canvas.selectAll<SVGRectElement, openCloseData>(`rect.close`)
             .data(closeData,
                 (d) => d?.label || "" + " - close"
             )
@@ -349,7 +357,7 @@ export function DeltaWaterfall({
                 enter =>
                     enter
                         .append("rect")
-                        .attr("class", "close")
+                        .attr("class", `close ${waterfallStyles.bar}`)
                         .attr("fill", colors.close)
                         .attr("y", y(0))
                         .attr("height", 0)
@@ -357,9 +365,8 @@ export function DeltaWaterfall({
                         .attr("width", barWidthOpenClose),
                 undefined,
                 exit => exit.remove()
-            )
-                .transition().duration(animDuration)
-            .attr("class", "close")
+            )            
+                .transition().duration(animDuration)                        
             .attr("x", d => xPosOpenClose(d, selected === "close"?"open":"close"))
             .attr("width", barWidthOpenClose)
             .attr("y", d =>
@@ -386,9 +393,7 @@ export function DeltaWaterfall({
             .attr("fill", "orange")
             .style("opacity", selected !== "open"?1:0)
             .style("pointer-events", selected !== "open"?"auto":"none");
-        
-                
-
+                        
         function xPos(d: waterfallDatum){
             const xPosition = x0(d.label as string) ?? 0        
             return xPosition
@@ -438,11 +443,11 @@ export function DeltaWaterfall({
 
         const barAnimDuration = 300
         const bars =  canvas
-            .selectAll<SVGRectElement, waterfallDatum>(".bar")
+            .selectAll<SVGRectElement, waterfallDatum>(`.bar`)
             .data(waterfallData, (d) => d.label)
             .join(
                 enter=>enter.append("rect")
-                    .attr("class", "bar")
+                    .attr("class", `bar ${waterfallStyles.bar}`)
                     .attr("x", xPos)
                     .attr("width", x0.bandwidth())
                     .attr("y", (d, i)=> changeBy.current === "data" ?
@@ -512,11 +517,9 @@ export function DeltaWaterfall({
                 exit=>exit.transition().duration(animDuration).style("opacity", 0).remove()
             )
         
-
     }, [effectiveTimeframe, data, width, height, selected, isSorted,  {prefix, suffix, formatType}]);
     
-    const CHEVRON_SIZE = 20
-    const chevronFill = "#4ade80"
+    const CHEVRON_SIZE = 20    
     
     return (
         <div 
@@ -562,90 +565,87 @@ export function DeltaWaterfall({
                     >
                         {/* Left Chevron */}
                         <g
-                            transform={`translate(10, ${height / 2})`}
-                            style={{ 
-                                cursor: "pointer", 
-                                opacity: plottedTimeframe > 0?1:0,
-                                pointerEvents: plottedTimeframe > 0?"auto":"none"
-                            }}
+                            transform={`translate(10, ${height / 2})`}                                                       
                             onClick={() => {                                
                                 if(plottedTimeframe > 0){
                                     setPlottedTimeframe(plottedTimeframe - 1)
                                 }
                                 setSelected("")
+                                setIsSorted(false)
                             }}
+                            
                             className='chevron chevron-left'
                         >
                             <path
+                                className={`
+                                    ${waterfallStyles["chevron-initial"]} 
+                                    ${                                    
+                                        plottedTimeframe === 0?
+                                            waterfallStyles["chevron-inactive"]:
+                                        plottedTimeframe > 0?waterfallStyles["chevron"]:""
+                                }`}
                                 d={`
                                     M ${CHEVRON_SIZE / 2} ${-CHEVRON_SIZE / 2}
                                     L ${-CHEVRON_SIZE / 2} 0
                                     L ${CHEVRON_SIZE / 2} ${CHEVRON_SIZE / 2}
-                                `}
-                                fill={chevronFill}
-                                stroke="none"
-                                strokeWidth={2}
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
+                                    Z
+                                `}                                
                             />
                         </g>
 
                         {/* Right Chevron */}
                         <g
-                            transform={`translate(${width - 10}, ${height / 2})`}
-                            style={{ 
-                                cursor: "pointer", 
-                                opacity: (plottedTimeframe < data.length - 1 && plottedTimeframe > -1)?
-                                    1:0,
-                                pointerEvents: (plottedTimeframe < data.length - 1 && plottedTimeframe > -1)?"auto":"none"
-                            }}
+                            transform={`translate(${width - 10}, ${height / 2})`}                            
                             onClick={() => {                                
                                 if(plottedTimeframe < data.length - 1){
                                     setPlottedTimeframe(plottedTimeframe + 1)
                                 }
                                 setSelected("")
+                                setIsSorted(false)
                             }}
-                            className='chevron chevron-right'
+                            
+                            className='chevron chevron-right'                            
                         >
                             <path
+                                className={`
+                                    ${waterfallStyles["chevron-initial"]} 
+                                    ${  
+                                        plottedTimeframe > -1 ?                                 
+                                        plottedTimeframe < data.length - 1?
+                                            waterfallStyles["chevron"]:
+                                            waterfallStyles["chevron-inactive"]:
+                                        ""
+                                }`}
                                 d={`
                                     M ${-CHEVRON_SIZE / 2} ${-CHEVRON_SIZE / 2}
                                     L ${CHEVRON_SIZE / 2} 0
                                     L ${-CHEVRON_SIZE / 2} ${CHEVRON_SIZE / 2}
+                                    Z
                                 `}
-                                fill={ chevronFill }
-                                stroke="none"
-                                strokeWidth={2}
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
                             />
                         </g>
 
                         {/* Up Chevron */}
                         <g
-                            transform={`translate(${width / 2}, 10)`}
-                            style={{ 
-                                cursor: "pointer", 
-                                opacity: plottedTimeframe > -1?1:0,
-                                pointerEvents: plottedTimeframe > -1?"auto":"none"
-                            }}
+                            transform={`translate(${width / 2}, 10)`}                            
                             onClick={() => {                                
                                 setPlottedTimeframe(-1)
                                 setSelected("")
+                                setIsSorted(false)
                             }}
                             className='chevron chevron-top'
                         >
                             <path
+                                className={`
+                                    ${waterfallStyles["chevron-initial"]} 
+                                    ${plottedTimeframe > -1?waterfallStyles["chevron"]:""}
+                                `}
                                 d={`
                                     M ${-CHEVRON_SIZE / 2} ${CHEVRON_SIZE / 2}
                                     L 0 ${-CHEVRON_SIZE / 2}
                                     L ${CHEVRON_SIZE / 2} ${CHEVRON_SIZE / 2}
+                                    Z
                                 `}
-                                fill={ chevronFill }
-                                stroke="none"
-                                strokeWidth={2}
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
                             />
                         </g>
                         

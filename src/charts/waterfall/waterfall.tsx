@@ -3,11 +3,13 @@ import {scaleBand, scaleLinear, axisLeft, axisBottom, format} from 'd3';
 import { useD3 } from '../../hooks/useD3';
 import { useParentSize } from '../../hooks/useParentSize';
 import { Tooltip, getTooltip, moveTooltip } from '../../components/tooltip';
+import { useContainerSize } from '../../hooks/useContainerSize';
+import { formatWaterfallData, colors } from './utils';
+import { rotateLabels } from '../../utils';
 import styles from '../global.module.css';
 import waterfallStyles from './waterfall.module.css'
 import { tooltipFormat, waterfallDatum } from '../../types';
-import { useContainerSize } from '../../hooks/useContainerSize';
-import { formatWaterfallData, colors } from './utils';
+
 
 type WaterfallProps = {
     data: waterfallDatum[];    
@@ -229,13 +231,24 @@ export function WaterfallChart({
             .scale(xScale)
             .tickSizeOuter(0)
 
-        const xAxisTextClass = !isMediumScreen?`${styles.rotatedAxisText} ${waterfallStyles["axis-label-sm"]}`:
+        const rotateXLabels = rotateLabels(width, xDomain)
+        const xAxisTextClass = rotateXLabels?`${styles.rotatedAxisText} ${waterfallStyles["axis-label-sm"]}`:
                     `${styles.axisText} ${waterfallStyles["axis-label"]}`;
         canvas.select<SVGGElement>(".x-axis")            
             .transition().duration(animDuration).call(xAxis)            
-            .attr("transform", `translate(0, ${yScale(0) || 0})`)
+            .attr("transform", `translate(0, ${graphHeight})`)
             .selectAll("text")
-            .attr("class", `${xAxisTextClass}`)                        
+            .attr("class", `${xAxisTextClass}`)           
+            
+        canvas.select<SVGGElement>(".x-axis") 
+            .selectAll("path")
+            .style("display", "none")
+
+         const zeroLine = canvas.select("line.zero-line")
+            .attr("x1", 0).attr("y1", 0)
+            .attr("x2", graphWidth).attr("y2", 0)
+                .transition().duration(animDuration)
+            .attr("transform", `translate(0, ${yScale(0) || 0})`)
 
         function xPos(d: waterfallDatum){
             const xPosition = xScale(d.label as string) ?? 0        
@@ -291,7 +304,7 @@ export function WaterfallChart({
             .data(renderData, (d) => d.label)
             .join(
                 enter=>enter.append("rect")
-                    .attr("class", "bar")
+                    .attr("class", `bar ${waterfallStyles.bar}`)
                     .attr("x", xPos)
                     .attr("width", xScale.bandwidth())
                     .attr("y", (d, i)=> changeBy.current === "data" ?
@@ -390,6 +403,7 @@ export function WaterfallChart({
                     .attr("text-anchor", "middle")
                     .style("font-size", labelSize)                    
                     .style("font-weight", "bold")
+                    .style("pointer-events", "none")
                     .style("opacity", 0)                    
                     .attr("x", textXPos)
                     .attr("y", textYPos)
@@ -415,8 +429,7 @@ export function WaterfallChart({
                         .style("opacity", 0)
                     .remove()
             )                   
-
-        canvas.select<SVGGElement>(".x-axis").raise()  
+        
         labels.raise()          
         
         
@@ -466,7 +479,8 @@ export function WaterfallChart({
                     >
                         <g className="plot-area">
                             <g className={`${styles["value-axis"]} y-axis`} />
-                            <g className={`${waterfallStyles["x-axis"]} x-axis`} />    
+                            <g className={`${waterfallStyles["x-axis"]} x-axis`} />
+                            <line className='zero-line' stroke="currentColor" strokeWidth={1} />         
                         </g>                        
                     </svg>            
                 

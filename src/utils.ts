@@ -79,3 +79,12 @@ export function getMouseYInData(e: MouseEvent, svg: SVGSVGElement, yScale: d3.Sc
     };
 }
 
+export const rotateLabels = (width: number, labels: string[]) => {
+    const rotate = (width < 640 && labels.length > 3) ||
+        (width < 768 && labels.length > 4) ||
+        (width < 1024 && labels.length > 7) ||
+        (width < 1280 && labels.length > 9)
+
+    return rotate;
+}
+

@@ -2,12 +2,14 @@ import React, { useEffect, useState, useRef } from 'react';
 import {scaleBand, scaleLinear, axisLeft, axisBottom, format, min, max} from 'd3';
 import { useD3 } from '../../hooks/useD3';
 import { useParentSize } from '../../hooks/useParentSize';
+import { useContainerSize } from '../../hooks/useContainerSize';
+import { formatWaterfallData, colors } from './utils';
+import { rotateLabels } from '../../utils';
 import { Tooltip, getTooltip, moveTooltip } from '../../components/tooltip';
 import styles from '../global.module.css';
 import waterfallStyles from './waterfall.module.css'
 import { tooltipFormat, deltaWaterfallDatum, waterfallDatum } from '../../types';
-import { useContainerSize } from '../../hooks/useContainerSize';
-import { formatWaterfallData, colors } from './utils';
+
 
 type WaterfallProps = {
     data: deltaWaterfallDatum[];    
@@ -266,11 +268,8 @@ export function DeltaWaterfall({
             .range([0, x0.bandwidth()])
             .padding(0.05);
 
-        const rotateLabels = (width < 640 && labels.length > 3) ||
-                (width < 768 && labels.length > 4) ||
-                (width < 1024 && labels.length > 7) ||
-                (width < 1280 && labels.length > 9)
-        const axisClass = rotateLabels
+        const rotateXLabels = rotateLabels(width, labels)
+        const axisClass = rotateXLabels
             ? `${styles.rotatedAxisText} ${waterfallStyles["axis-label-sm"]}`
             : `${styles.axisText} ${waterfallStyles["axis-label"]}`;
 

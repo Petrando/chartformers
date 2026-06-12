@@ -56,8 +56,7 @@ export function DeltaWaterfall({
             ? -1
             : plottedTimeframe;
 
-    const isMediumScreen = width > 576;
-    // Define the controls element (checkbox)    
+    const isMediumScreen = width > 576;        
         
     const animDuration = 750;
     const chartRef = useD3<HTMLDivElement>((container) => {
@@ -207,9 +206,15 @@ export function DeltaWaterfall({
 
         const waterfallMode = selected === "inflows" || selected === "outflows"?selected:"waterfall"
 
+        const filteredWaterfallData = baseWaterfallData.filter(d => d.type !== "total")
+        const waterfallData = waterfallMode === "waterfall"?filteredWaterfallData:
+            filteredWaterfallData
+                .filter(d =>  (waterfallMode === "inflows"?d.start! <= d.end!:d.start > d.end))
+                .sort((a, b) => isSorted?(Math.abs(b.value) - Math.abs(a.value)):0)
+        
         const valueMin = waterfallMode === "waterfall"?Math.min(...waterfallMins):0
         const valueMax = waterfallMode === "waterfall"?Math.max(...waterfallMaxes):
-            Math.max(...baseWaterfallData.map(d => Math.abs(d.value)))
+            Math.max(...waterfallData.map(d => Math.abs(d.value)))
 
         const yMin = Math.min(0, min(allValues) ?? 0)
         const yMax = Math.max(0, max(allValues) ?? 0)
@@ -231,13 +236,7 @@ export function DeltaWaterfall({
         const xLabels = 
             selected === "open" && isSorted?openData.map(d => d.label):
             selected === "close" && isSorted?closeData.map(d => d.label):
-            formattedData.map(d => d.label)
-        
-        const filteredWaterfallData = baseWaterfallData.filter(d => d.type !== "total")
-        const waterfallData = waterfallMode === "waterfall"?filteredWaterfallData:
-            filteredWaterfallData
-                .filter(d =>  (waterfallMode === "inflows"?d.start! <= d.end!:d.start > d.end))
-                .sort((a, b) => isSorted?(Math.abs(b.value) - Math.abs(a.value)):0)
+            formattedData.map(d => d.label)                
                 
         const waterfallXLabels = waterfallMode === "waterfall"?
             baseWaterfallData
@@ -458,10 +457,10 @@ export function DeltaWaterfall({
                     .attr("rx", 5)
                     .attr("ry", 5)
                     .style("fill", rectFill)
-                        .transition().duration(barAnimDuration)
-                        .delay((_, i)=> {
+                        .transition().duration(animDuration)
+                        /*.delay((_, i)=> {
                             return 0//changeBy.current === "data"?((i + 1) * barAnimDuration):0
-                        })
+                        })*/
                     .attr("y", yPos)
                     .attr("height", rectHeight)
                     .on("end", function(_, i){                        
@@ -474,43 +473,14 @@ export function DeltaWaterfall({
                         }
                     }),
                 update=>{                                        
-                    if(waterfallMode === "waterfall" && changeBy.current === "data"){
-                        update.transition().duration(animDuration)
-                            .style("fill", rectFill)
-                            .attr("x", xPos)
-                            .attr("width", x0.bandwidth())
-                            .attr("y", (d)=> {                      
-                                return d.type === "total"?y(0):y(d.start)
-                            })
-                            .attr("height", 0)
-                            .attr("rx", 5)
-                            .attr("ry", 5)
-                        .transition().duration(barAnimDuration)
-                        .delay((d, i)=> 0
-                            //(i + 1) * barAnimDuration
-                        )            
-                            .attr("y", yPos)
-                            .attr("height", rectHeight)
-                        .on("end", function(_, i){
-                            if(changeBy.current === "data" && waterfallMode === "waterfall"){
-                            if(i === formattedData.length - 1){
-                                    canLegendHover.current = true
-                                }                            
-                            }else{
-                                canLegendHover.current = true
-                            }
-                        })
-                    }else{
-                        update.transition().duration(barAnimDuration)
-                            .style("fill", rectFill)
-                            .attr("x", xPos)
-                            .attr("width", x0.bandwidth())
-                            .attr("y", yPos)
-                            .attr("height", rectHeight)
-                            .on("end", function(_, i){
-                                canLegendHover.current = true                                
-                            })
-                    }
+                    update.transition().duration(animDuration)
+                        .style("fill", rectFill)
+                        .attr("x", xPos)
+                        .attr("width", x0.bandwidth())
+                        .attr("y", yPos)
+                        .attr("height", rectHeight)
+                        .attr("rx", 5)
+                        .attr("ry", 5)
 
                     return update
                 },

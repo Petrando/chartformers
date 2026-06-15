@@ -114,10 +114,7 @@ export function Histogram({
                 const validCurrData = validateData(curr as histogramChartData<histogramDatum>)                                
                 acc.push(validCurrData)
                 return acc
-            }, [])                                
-        
-        //isSingleData?(validatedData as histogramChartData<histogramDatum>).data.map(d => d):
-            //[(data as histogramChartData<histogramDatum>[])[0].data.map(d => d)]
+            }, [])                                                
 
         const validData:histogramChartData<histogramDatum> = isSingleData?(validatedData as histogramChartData<histogramDatum>):
             ({title: data.title, data: validatedData} as histogramChartData<histogramDatum>)

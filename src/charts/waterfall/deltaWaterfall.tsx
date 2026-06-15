@@ -525,8 +525,7 @@ export function DeltaWaterfall({
                 <div 
                     ref={chartContainerRef}
                     className={`${styles["fill-container"]}`}
-                    style={{ display:"flex", flexDirection:"column" }}>
-            
+                    style={{ display:"flex", flexDirection:"column" }}>            
                     <svg                
                         className={`${styles["chart-svg"]} ${styles["fill-container"]}`}
                         style={{ }}

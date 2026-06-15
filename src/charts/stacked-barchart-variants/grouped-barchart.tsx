@@ -1,12 +1,12 @@
 import React, {useState, useEffect} from 'react';
-import { createPortal } from 'react-dom';
-import { axisBottom, axisLeft, format, max, ScaleBand, scaleBand, scaleLinear, select, Series, stack } from 'd3';
+import { axisBottom, axisLeft, format, min, max, ScaleBand, scaleBand, scaleLinear, select, Series, 
+    stack, stackOffsetDiverging } from 'd3';
 import { useD3 } from '../../hooks/useD3';
 import { useParentSize } from '../../hooks/useParentSize';
 import { useContainerSize } from '../../hooks/useContainerSize';
 import { useLayerIndex } from '../../hooks/useLayerIndex';
 import { Tooltip, getTooltip, moveTooltip } from '../../components/tooltip';
-import { cloneObj, indexColor, basicFormat } from '../../utils';
+import { cloneObj, indexColor, basicFormat, rotateLabels } from '../../utils';
 import { inactiveColor } from '../../../dev/data/constants';
 import styles from '../global.module.css';
 import stackedBarStyles from './stacked-barchart.module.css';
@@ -254,10 +254,11 @@ export function GroupedBarChart({
 
         const noPlot = plotted[0] === "all"
 
-        const xAxisTextClass = (!isMediumScreen && orientation === 'vertical')?stackedBarStyles.rotatedAxisText:
-            stackedBarStyles.axisText;    
-            
-        const labels = sortedData.map(function(d: LayeredData) { return d.label; });                
+        const labels = sortedData.map(function(d: LayeredData) { return d.label; });
+        const rotateXLabels = rotateLabels(width, labels)
+        const xAxisTextClass = (rotateXLabels && orientation === 'vertical')?stackedBarStyles.rotatedAxisText:
+            stackedBarStyles.axisText;                
+                        
         const labelScale: ScaleBand<string> = scaleBand<string>()
             .domain(labels)
             .rangeRound(orientation === 'vertical'?[0, graphWidth]:[graphHeight, 0])
@@ -275,36 +276,52 @@ export function GroupedBarChart({
                     )
                 )
                 : max(chartData, d => d[plotted[0]] as number);
+
+        const baseValueMin =
+            plotted[0] === "all"
+                ? min(chartData, d =>
+                    min(
+                    Object.entries(d)
+                        .filter(([key]) => key !== "total" && key !== "label")
+                        .map(([, value]) => value as number)     // value is number | string | undefined
+                    )
+                )
+                : min(chartData, d => d[plotted[0]] as number);
+        const valueMin = Math.min(0, baseValueMin ?? 0)
         const valueScale = scaleLinear()
-            .domain([0, valueMax ?? 0])
+            .domain([valueMin, valueMax ?? 0])
             .range(orientation === 'vertical'?[graphHeight, 0]:[0, graphWidth]);
                                                    
         const xAxis = orientation === 'vertical' 
             ?axisBottom(labelScale)
                 .tickValues(labelScale.domain())
-                .tickSizeOuter(0):
-                axisBottom(valueScale)                
+                .tickSizeOuter(0)
+                .tickSize(0):
+            axisBottom(valueScale)                
                 .ticks(4, "s")
                 .tickSizeOuter(0)
-                .tickSize(-graphHeight);
+                .tickSize(-graphHeight);        
 
         canvas.select<SVGGElement>(".x-axis")
             .attr("transform", `translate(0,${graphHeight})`)
             .transition().duration(animDuration)
             .call(xAxis)
-            .selectAll("text")
-            .style("cursor", "pointer")
+            .selectAll("text")            
             .attr("dy", !isMediumScreen ? ".20em" : "1em")
             .attr("dx", !isMediumScreen ? "-.8em" : "0em")
             .attr("class", xAxisTextClass)
             .selectAll(".tick")
             .filter(d => d === 0)
             .select("line")
-            .remove();                      
-                                                                                                
+            .remove();
+
+        canvas.select<SVGGElement>(".x-axis") 
+            .selectAll("path")
+            .style("display", "none")
+                                                                                                                    
         const yAxis = orientation === 'vertical'
             ? axisLeft(valueScale).ticks(4, "s").tickSize(-graphWidth)
-            : axisLeft(labelScale).tickSizeOuter(0);            
+            : axisLeft(labelScale).tickSizeOuter(0).tickSize(0);            
                                 
         canvas.select<SVGGElement>(".y-axis")  
             .attr("transform", `translate(0,0)`)                     
@@ -312,11 +329,28 @@ export function GroupedBarChart({
             .call(yAxis)            
             .selectAll(".tick")
             .filter(d => d === 0)
-            .select("line")
+            .select("path")
             .remove()
+            
+        canvas.select<SVGGElement>(".y-axis") 
+            .selectAll("path")
+            .style("display", "none")
+
+        const zeroLine = canvas.select("line.zero-line")
+            .attr("x1", 0).attr("y1", 0)
+            .attr("x2", orientation === "vertical"?graphWidth:0)
+            .attr("y2", orientation === "vertical"?0:graphHeight)
+                //.transition().duration(animDuration)
+            .attr("transform", 
+                orientation === "vertical"?
+                `translate(0, ${valueScale(0) || 0})`:
+                `translate(${valueScale(0) || 0}, 0)`
+            )
 
         const dataLayers: Series<LayeredData, string | string[]>[] =
-            stack<LayeredData>().keys(selectedKeys)(sortedData);        
+            stack<LayeredData>()
+                .keys(selectedKeys)
+                .offset(stackOffsetDiverging)(sortedData);        
         
         const processedDataLayers:ExtendedSeriesWithSorted[] = dataLayers.map((series) => {
             const seriesKey = series.key
@@ -423,15 +457,16 @@ export function GroupedBarChart({
         }
 
         const valueScalePos = (d: ExtendedSeriesPointWithSorted) => {
+            const value = Number(d.data[d.barKey])
+            
             return orientation === 'vertical'?
-                graphHeight - (valueScale(d[0]) - valueScale(d[1])):
-                    valueScale(0)
+                value >= 0 ? valueScale(value) : valueScale(0):
+                    value >= 0 ? valueScale(0) : valueScale(value)
         }
 
         const valueScaleDimension = (d: ExtendedSeriesPointWithSorted) => {
-            const rectDimension = orientation === 'vertical'?
-                valueScale(d[0]) - valueScale(d[1]):
-                    valueScale(d[1]) - valueScale(d[0]);
+            const value = Number(d.data[d.barKey])
+            const rectDimension = Math.abs(valueScale(value) - valueScale(0));
             return isNaN(rectDimension)?0:rectDimension<0?0:rectDimension;
         }
 
@@ -606,8 +641,11 @@ export function GroupedBarChart({
                             width > 0 &&
                             <g className="plot-area">
                                 <g className="plot-rects" />
-                                <g className={`${orientation === 'vertical'?stackedBarStyles["value-axis"]:""} y-axis`} />
-                                <g className={`${orientation === 'horizontal'?stackedBarStyles["value-axis"]:""} x-axis`} />  
+                                <g className={`${orientation === 'vertical'?
+                                    stackedBarStyles["value-axis"]:stackedBarStyles["label-axis"]} y-axis`} />
+                                <g className={`${orientation === 'horizontal'?
+                                    stackedBarStyles["value-axis"]:stackedBarStyles["label-axis"]} x-axis`} />  
+                                <line className='zero-line' stroke="currentColor" strokeWidth={1} />     
                             </g>        
                         }                                        
                     </svg>

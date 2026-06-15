@@ -212,11 +212,19 @@ Special classes for normalized stacked
     fill: #0891b2;
 }
 
-.value-axis path {
+/*.x-axis .tick, .x-axis .domain .x-axis path {
+  display: none;
+}*/
+
+.label-axis .tick, .label-axis .domain .label-axis path {
+  display: none;
+}
+
+.value-axis path, .value-axis .domain {
     display: none;
 }
 
-.value-axis line {
+.value-axis line, .value-axis .tick {
   stroke: #d6d3d1;  
   stroke-width: 1.5px;
   shape-rendering: crispEdges;

@@ -12,7 +12,7 @@ import { cloneObj, indexColor, basicFormat } from '../../utils';
 import { inactiveColor } from '../../../dev/data/constants';
 import styles from '../global.module.css';
 import stackedBarStyles from './stacked-barchart.module.css';
-import { LayeredData, ExtendedSeriesWithSorted, ExtendedSeriesPointWithSorted, StackedBarChartProps } from './types';
+import { LayeredData, ExtendedSeries, ExtendedSeriesPoint, StackedBarChartProps } from './types';
 import { useUIControls } from '../../hooks/useUIControls';
 
 type StackedBarChartPropsExtended =
@@ -138,7 +138,7 @@ export function StackedBarChart({ data, focusOnPlot = false, colorIdx = 0, orien
             `            
         }
 
-        function layerFill(d:ExtendedSeriesWithSorted){
+        function layerFill(d:ExtendedSeries){
             const layerIndex = layersRef.current.findIndex(l => l === d.key) + colorIdx
             const color = indexColor(layerIndex)
             
@@ -218,7 +218,7 @@ export function StackedBarChart({ data, focusOnPlot = false, colorIdx = 0, orien
             )
             .on("mouseover", function(e, d){                
                 if(plotted[0] === "all"){
-                    const serie = canvas.selectAll<SVGGElement, ExtendedSeriesWithSorted>(".serie")
+                    const serie = canvas.selectAll<SVGGElement, ExtendedSeries>(".serie")
                     if(focusOnPlot){
                         serie
                             .attr("fill", layerFill)
@@ -226,7 +226,7 @@ export function StackedBarChart({ data, focusOnPlot = false, colorIdx = 0, orien
                             .style("opacity", 0.25)
 
                         const rects = serie
-                            .selectAll<SVGRectElement, ExtendedSeriesPointWithSorted>("rect")
+                            .selectAll<SVGRectElement, ExtendedSeriesPoint>("rect")
                             .filter(dRect => dRect.barKey === d)
                             .attr("stroke-dasharray", "none")
                     }else{
@@ -238,7 +238,7 @@ export function StackedBarChart({ data, focusOnPlot = false, colorIdx = 0, orien
                 }                       
             })
             .on("mouseout", function(e, d){
-                const serie = canvas.selectAll<SVGGElement, ExtendedSeriesWithSorted>(".serie")
+                const serie = canvas.selectAll<SVGGElement, ExtendedSeries>(".serie")
                 if(plotted[0] === "all"){
                     serie
                         .attr("fill", layerFill)                                                
@@ -248,7 +248,7 @@ export function StackedBarChart({ data, focusOnPlot = false, colorIdx = 0, orien
                 }
 
                 const rects = serie
-                    .selectAll<SVGRectElement, ExtendedSeriesPointWithSorted>("rect")
+                    .selectAll<SVGRectElement, ExtendedSeriesPoint>("rect")
                     .attr("stroke-dasharray", strokeDasharray)
                                                     
                 if(justPlotted){
@@ -377,33 +377,18 @@ export function StackedBarChart({ data, focusOnPlot = false, colorIdx = 0, orien
             .offset(stackOffsetDiverging)
             (cloneObj(sortedData));                     
         
-        const extendedDataLayers: ExtendedSeriesWithSorted[] = dataLayers.map((series) => {
+        const extendedDataLayers: ExtendedSeries[] = dataLayers.map((series) => {
             const seriesKey = series.key;            
 
-            const newSeries = series.map((point) => {
-
-                const sortedLayers = Object.keys(point.data)
-                    .filter((prop) => 
-                        prop !== "label" && prop !== "total" && 
-                        prop !== "totalMin" && prop !== "totalPos" &&
-                        (!focusOnPlot?!plotted.includes(prop):true))
-                    .map((prop) => ({
-                        label: prop,
-                        value: point.data[prop],
-                    }))
-                    .sort((a, b) => Number(a.value!) - Number(b.value!));
+            const newSeries = series.map((point) => {                
 
                 const datumLabel = point.data.label; 
                 return {
                     ...point,
                     key: `${seriesKey} - ${datumLabel}`,
-                    barKey: seriesKey,
-                    data: {
-                        ...point.data,
-                        sortedLayers: sortedLayers.map((d) => d.label),
-                    },
+                    barKey: seriesKey,                    
                 };
-            }) as ExtendedSeriesWithSorted;
+            }) as ExtendedSeries;
 
             newSeries.key = seriesKey;
             return newSeries;
@@ -441,8 +426,8 @@ export function StackedBarChart({ data, focusOnPlot = false, colorIdx = 0, orien
         });
                            
         const serie = canvas
-            .selectAll<SVGGElement, ExtendedSeriesWithSorted>(".serie")
-            .data(extendedDataLayers, (d: ExtendedSeriesWithSorted) => d.key)
+            .selectAll<SVGGElement, ExtendedSeries>(".serie")
+            .data(extendedDataLayers, (d: ExtendedSeries) => d.key)
             .join(
                 enter => {
                     const g = enter
@@ -508,7 +493,7 @@ export function StackedBarChart({ data, focusOnPlot = false, colorIdx = 0, orien
                     .remove()
             );
         
-        const labelScalePos = (d: ExtendedSeriesPointWithSorted) => {             
+        const labelScalePos = (d: ExtendedSeriesPoint) => {             
             return labelScale(d.data.label + "") ?? 0
         }
 
@@ -521,7 +506,7 @@ export function StackedBarChart({ data, focusOnPlot = false, colorIdx = 0, orien
         */
         const singleLayerActive = (focusOnPlot && plotted[0] !== "all") || selectedKeys.length === 1        
 
-        const valueScalePos = (d: ExtendedSeriesPointWithSorted) => {
+        const valueScalePos = (d: ExtendedSeriesPoint) => {
             if(!singleLayerActive){
                 const orientationDimension = orientation === 'vertical'?graphHeight:graphWidth
                 if(isFirstRender) return 0
@@ -541,7 +526,7 @@ export function StackedBarChart({ data, focusOnPlot = false, colorIdx = 0, orien
                     
         }
 
-        const valueScaleDimension = (d: ExtendedSeriesPointWithSorted) => {
+        const valueScaleDimension = (d: ExtendedSeriesPoint) => {
             if(!singleLayerActive){
                 const dimension = orientation === 'vertical'?
                 valueScale(d[0]) - valueScale(d[1]):
@@ -557,23 +542,23 @@ export function StackedBarChart({ data, focusOnPlot = false, colorIdx = 0, orien
             //return Math.abs(valueScale(d[0] - valueScale(d[1])))
         }
 
-        const rectXPos = (d: ExtendedSeriesPointWithSorted) => {            
+        const rectXPos = (d: ExtendedSeriesPoint) => {            
             return orientation === 'vertical' ? labelScalePos(d) : valueScalePos(d)
         }
 
-        const rectWidth = (d: ExtendedSeriesPointWithSorted) => {            
+        const rectWidth = (d: ExtendedSeriesPoint) => {            
             return orientation === 'vertical' ? labelScaleBandWidth : valueScaleDimension(d)
         }
 
-        const rectYPos = (d: ExtendedSeriesPointWithSorted) => {            
+        const rectYPos = (d: ExtendedSeriesPoint) => {            
             return orientation === 'vertical' ? valueScalePos(d) : labelScalePos(d)
         }
 
-        const rectHeight = (d: ExtendedSeriesPointWithSorted) => {            
+        const rectHeight = (d: ExtendedSeriesPoint) => {            
             return orientation === 'vertical' ? valueScaleDimension(d) : labelScaleBandWidth
         }
         
-        const strokeDasharray = (d: ExtendedSeriesPointWithSorted, i: number): string => {
+        const strokeDasharray = (d: ExtendedSeriesPoint, i: number): string => {
             /*if(d.barKey === hovered){
                 return "none"
             }*/
@@ -604,7 +589,7 @@ export function StackedBarChart({ data, focusOnPlot = false, colorIdx = 0, orien
                     `${rectStrokeWidth} ${rectStrokeHeight}`
         };
 
-        const strokeDashoffset = (d: ExtendedSeriesPointWithSorted): number => {
+        const strokeDashoffset = (d: ExtendedSeriesPoint): number => {
             const rectStrokeWidth = rectWidth(d);            
             const rectStackOrder = stackOrderByCategory.find(dStack => dStack.label === d.data.label)
             const rectValue = d.data[d.barKey]
@@ -622,7 +607,7 @@ export function StackedBarChart({ data, focusOnPlot = false, colorIdx = 0, orien
             
         };
 
-        const updateRectClass = (d: ExtendedSeriesPointWithSorted) => {            
+        const updateRectClass = (d: ExtendedSeriesPoint) => {            
             /*if(hovered !== "" && hovered === d.barKey && focusOnPlot){                
                 return `rect ${stackedBarStyles.rectLegendHovered}`
             }*/
@@ -630,7 +615,7 @@ export function StackedBarChart({ data, focusOnPlot = false, colorIdx = 0, orien
         }       
         
         serie
-            .selectAll<SVGRectElement, ExtendedSeriesPointWithSorted>("rect")
+            .selectAll<SVGRectElement, ExtendedSeriesPoint>("rect")
             .data(
                 (d) => d, // each group binds its stacked points
                 (d) => d.data.label // unique key per bar
@@ -714,7 +699,7 @@ export function StackedBarChart({ data, focusOnPlot = false, colorIdx = 0, orien
                 .attr("y", rectYPos);
 
         serie
-            .selectAll<SVGRectElement, ExtendedSeriesPointWithSorted>("rect")
+            .selectAll<SVGRectElement, ExtendedSeriesPoint>("rect")
                 .on("mouseover", function(e, d){                                        
                     
                     select(orientation === "vertical"?".x-axis":".y-axis").selectAll("text")

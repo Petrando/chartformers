@@ -3,6 +3,8 @@ import { tooltipFormat } from "../../types";
 export interface LayeredData {
   label: string;
   total?: number;
+  totalPos?: number;
+  totalMin?: number;
   [subject: string]: number | string | undefined;
 }
 

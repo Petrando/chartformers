@@ -457,6 +457,11 @@ export function GroupedBarChart({
         }
 
         const valueScalePos = (d: ExtendedSeriesPointWithSorted) => {
+            /*Before, no negative value support:
+                return orientation === 'vertical'?
+                    graphHeight - (valueScale(d[0]) - valueScale(d[1])):
+                        valueScale(0)
+            */
             const value = Number(d.data[d.barKey])
             
             return orientation === 'vertical'?
@@ -465,6 +470,11 @@ export function GroupedBarChart({
         }
 
         const valueScaleDimension = (d: ExtendedSeriesPointWithSorted) => {
+            /*Before, no negative value support:
+            const rectDimension = orientation === 'vertical'?
+                valueScale(d[0]) - valueScale(d[1]):
+                    valueScale(d[1]) - valueScale(d[0]);
+            */
             const value = Number(d.data[d.barKey])
             const rectDimension = Math.abs(valueScale(value) - valueScale(0));
             return isNaN(rectDimension)?0:rectDimension<0?0:rectDimension;

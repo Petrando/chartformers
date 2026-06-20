@@ -33,3 +33,9 @@ export interface StackedBarChartProps {
     orientation?: 'vertical' | 'horizontal';
     tooltipFormat?: tooltipFormat;
 }
+
+export type stackOrderByCategory = {
+    label: string;
+    top: string;
+    bottom: string;
+}

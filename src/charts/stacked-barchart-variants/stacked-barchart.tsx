@@ -12,7 +12,7 @@ import { cloneObj, indexColor, basicFormat } from '../../utils';
 import { inactiveColor } from '../../../dev/data/constants';
 import styles from '../global.module.css';
 import stackedBarStyles from './stacked-barchart.module.css';
-import { LayeredData, ExtendedSeries, ExtendedSeriesPoint, StackedBarChartProps } from './types';
+import { LayeredData, ExtendedSeries, ExtendedSeriesPoint, StackedBarChartProps, stackOrderByCategory } from './types';
 import { useUIControls } from '../../hooks/useUIControls';
 
 type StackedBarChartPropsExtended =
@@ -20,11 +20,6 @@ type StackedBarChartPropsExtended =
         focusOnPlot?: boolean;
 };
 
-type stackOrderByCategory = {
-    label: string;
-    top: string;
-    bottom: string;
-}
 export function StackedBarChart({ data, focusOnPlot = false, colorIdx = 0, orientation = 'vertical', tooltipFormat }: StackedBarChartPropsExtended) {
     const [ref, parentSize] = useParentSize<HTMLDivElement>();
     const { width: parentWidth, height: parentHeight } = parentSize;
@@ -522,8 +517,7 @@ export function StackedBarChart({ data, focusOnPlot = false, colorIdx = 0, orien
                 return orientation === 'vertical'?
                     value >= 0 ? valueScale(value) : valueScale(0):
                         value >= 0 ? valueScale(0) : valueScale(value)
-            }           
-                    
+            }                               
         }
 
         const valueScaleDimension = (d: ExtendedSeriesPoint) => {
@@ -780,9 +774,11 @@ export function StackedBarChart({ data, focusOnPlot = false, colorIdx = 0, orien
                             <g className="plot-area">
                                 <g className="plot-rects" />
                                 <g className={`${orientation === 'vertical'?
-                                    stackedBarStyles["value-axis"]:stackedBarStyles["label-axis"]} y-axis`} />
+                                    stackedBarStyles["value-axis"]:stackedBarStyles["label-axis"]} 
+                                    y-axis`} />
                                 <g className={`${orientation === 'horizontal'?
-                                    stackedBarStyles["value-axis"]:stackedBarStyles["label-axis"]} x-axis`} />  
+                                    stackedBarStyles["value-axis"]:stackedBarStyles["label-axis"]} 
+                                    x-axis`} />  
                                 <line className='zero-line' stroke="currentColor" strokeWidth={1} />
                             </g>
                         }                                                        

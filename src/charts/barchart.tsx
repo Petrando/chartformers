@@ -1,6 +1,6 @@
 import React, {useState} from 'react';
 import { createPortal } from "react-dom";
-import {select, scaleBand, scaleLinear, axisLeft, axisBottom, max, format} from 'd3';
+import {select, scaleBand, scaleLinear, axisLeft, axisBottom, min, max, format} from 'd3';
 import { useD3 } from '../hooks/useD3';
 import { useParentSize } from '../hooks/useParentSize';
 import { useUIControls } from '../hooks/useUIControls';
@@ -85,7 +85,7 @@ export function BarChart({
             .style("opacity", 0);
         
         const xAxisTextClass = !isMediumScreen?barchartStyles.rotatedAxisText:
-                    barchartStyles.axisText;
+            barchartStyles.axisText;
 
         const graphWidth = width - margin.left - margin.right
         const graphHeight = height - margin.top - margin.bottom
@@ -97,10 +97,17 @@ export function BarChart({
             .paddingOuter(0.1)            
             //.align(0.2)
 
+        const baseValueMin = min(barchartData, (d) => d.value) ?? 0
+        const valueMin = Math.min(0, baseValueMin)
+
+        const baseValueMax = max(barchartData, (d) => d.value) ?? 0
+        const valueMax = Math.max(0, baseValueMax)        
+
         const valueScale = scaleLinear()
-            .domain([0, max(barchartData, (d) => d.value) ?? 0])
+            .domain([valueMin, valueMax])
             .rangeRound(orientation === 'vertical'?
-                [graphHeight, 0]:[0, graphWidth])        
+                [graphHeight, 0]:[0, graphWidth])
+            .nice()        
 
         const xAxis = orientation === 'vertical'?axisBottom(labelScale)
                 .tickValues(labelScale.domain())
@@ -133,6 +140,18 @@ export function BarChart({
             } else {
                 return indexSelectedColor(idx + i);
             }                
+        }
+
+        const valueScalePos = (value: number) => {                        
+            
+            return orientation === 'vertical'?
+                value >= 0 ? valueScale(value) : valueScale(0):
+                    value >= 0 ? valueScale(0) : valueScale(value)
+        }
+
+        const valueScaleDimension = (value: number) => {                        
+            const rectDimension = Math.abs(valueScale(value) - valueScale(0));
+            return isNaN(rectDimension)?0:rectDimension<0?0:rectDimension;
         }
 
         const bars =  canvas
@@ -173,7 +192,7 @@ export function BarChart({
                     .transition().duration(animDuration)
                     .attr("y", function(d){
                         if(orientation === 'vertical'){
-                            return valueScale(d.value);
+                            return valueScalePos(d.value);
                         }else{
                             return labelScale(d.label) ?? 0;
                         }                                                                
@@ -183,12 +202,12 @@ export function BarChart({
                         if(orientation === 'vertical'){
                             return labelScale.bandwidth()
                         }else{
-                            return valueScale(d.value)
+                            return valueScaleDimension(d.value)
                         }
                     })
                     .attr("height", function(d){  
                         if(orientation === 'vertical'){
-                            return valueScale(0) - valueScale(d.value);
+                            return valueScaleDimension(d.value);
                         }else{
                             return labelScale.bandwidth()
                         }                                                                                                              
@@ -237,19 +256,19 @@ export function BarChart({
                     if(orientation === 'vertical'){
                             return labelScale(d.label) ?? 0; 
                         }else{
-                            return valueScale(0);
+                            return valueScalePos(d.value);
                         }
                  })
                 .attr("width", function(d){
                     if(orientation === 'vertical'){
                         return labelScale.bandwidth()
                     }else{
-                        return valueScale(d.value)
+                        return valueScaleDimension(d.value)
                     }
                 })
                 .attr("y", function(d){
                     if(orientation === 'vertical'){
-                        return valueScale(d.value);
+                        return valueScalePos(d.value);
                     }else{
                         return labelScale(d.label) ?? 0;
                     }                                                                
@@ -257,7 +276,7 @@ export function BarChart({
                 })
                 .attr("height", function(d){  
                     if(orientation === 'vertical'){
-                        return valueScale(0) - valueScale(d.value);
+                        return valueScaleDimension(d.value);
                     }else{
                         return labelScale.bandwidth()
                     }                                                                                                              

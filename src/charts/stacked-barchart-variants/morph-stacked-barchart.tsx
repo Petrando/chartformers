@@ -528,9 +528,13 @@ export function MorphStackedBarChart({
 
         });
 
+        const singleLayerActive = (focusOnPlot && plotted[0] !== "all") || selectedKeys.length === 1
         function strokeDasharray(d:ExtendedSeriesPointWithSorted){            
             if(mode === "grouped"){
                 return "none"                    
+            }
+            if(singleLayerActive){
+                return "none"
             }
 
             const rectStrokeWidth = rectWidth(d);            
@@ -591,7 +595,7 @@ export function MorphStackedBarChart({
                 x.bandwidth()/selectedKeys.length:x.bandwidth()
         }
 
-        const singleLayerActive = (focusOnPlot && plotted[0] !== "all") || selectedKeys.length === 1
+        
         const stackedMode = mode === "stacked" || mode === "percentage"            
         function yPos(d: ExtendedSeriesPointWithSorted){
             if(stackedMode){

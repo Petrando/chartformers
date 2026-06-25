@@ -114,3 +114,5 @@ export type histogramChartData<T extends histogramDatum> = {
     valueKey?: string;
     data: T[] | histogramChartData<T>[];
 };
+
+export type lineChartDatum = Record<string, string | number | Date>;

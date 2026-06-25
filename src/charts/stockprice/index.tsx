@@ -328,8 +328,8 @@ export function StockPriceChart({ data, timeframe = "daily", mode = "linechart",
             .range([ miniSectionHeight, 0 ]);
 
         const brushLine = line<{ date: Date; value: number }>()
-                .x(function(d) { return xBrush(d.date) })
-                .y(function(d) { return yBrush(d.value) })
+            .x(function(d) { return xBrush(d.date) })
+            .y(function(d) { return yBrush(d.value) })
 
         brushCanvas.selectAll("path.line").remove()
         brushCanvas.selectAll("g.brush").remove()

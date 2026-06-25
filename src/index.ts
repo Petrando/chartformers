@@ -1,4 +1,5 @@
 export { BarChart } from './charts/barchart';
+export { LineChart } from './charts/linechart'
 export { PieChart } from './charts/piechart'
 export { StackedBarChart } from './charts/stacked-barchart-variants/stacked-barchart';
 export { GroupedBarChart } from './charts/stacked-barchart-variants/grouped-barchart';

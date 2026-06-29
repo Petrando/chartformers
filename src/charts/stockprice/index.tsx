@@ -114,7 +114,7 @@ export function StockPriceChart({ data, timeframe = "daily", mode = "linechart",
             .attr("transform", "translate(0," + chartHeight + ")")
             .call(axisBottom(x))
             .selectAll("text")
-            .attr("class", xAxisTextClass);;
+            .attr("class", xAxisTextClass);
 
         const maxValue = max(sources, function(c) { return max(c.values, function(v) { return v.value; }); }) || 0
         const minValue = min(sources, function(c) { return min(c.values, function(v) { return v.value; }); }) || 0                        
@@ -131,7 +131,6 @@ export function StockPriceChart({ data, timeframe = "daily", mode = "linechart",
             .x(function(d) { return x(d.date) })
             .y(function(d) { return y(d.value) })       
                     
-
         if(mode === "linechart"){
             sources.forEach((d, i) => {
                 canvas.insert("path", "g.tooltip")
@@ -374,7 +373,7 @@ export function StockPriceChart({ data, timeframe = "daily", mode = "linechart",
             .attr("transform", "translate(0," + miniSectionHeight + ")")
             .call(axisBottom(xBrush))
             .selectAll("text")
-            .attr("class", xAxisTextClass);;
+            .attr("class", xAxisTextClass);
 
         const brush = brushX()                   // Add the brush feature using the brush function
             .extent( [ [0,0], [width,miniSectionHeight] ] )  // initialise the brush area: start at 0,0 and finishes at width,height: it means I select the whole graph area                            

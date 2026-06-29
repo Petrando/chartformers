@@ -1,9 +1,9 @@
 import React from 'react';
 import { 
     schemeCategory10, timeParse, select, extent, scaleTime, scaleLinear, axisBottom, axisLeft, 
-    max, min, line, bisector, pointer, Selection, BaseType, area, brushX, D3BrushEvent,
+    max, min, line, area, bisector, pointer, Selection, BaseType, brushX, D3BrushEvent,
     scaleBand,
-    //curveLinear, curveBasis, curveCardinal, curveCatmullRom, curveNatural
+    curveLinear, curveBasis, curveCardinal, curveCatmullRom, curveNatural
 } from 'd3';
 import { useD3 } from '../hooks/useD3';
 import { useParentSize } from '../hooks/useParentSize';
@@ -17,30 +17,37 @@ type lineChartProps = {
     data: lineChartDatum[];
     xKey: string;
     yValue: string;    
+    withBrush?: boolean;
     tooltipFormat?: tooltipFormat;
 }
 
-export function LineChart({ data, xKey, yValue, tooltipFormat = { prefix: "", suffix: ""} }: lineChartProps) {
+export function LineChart({ 
+    data, 
+    xKey, 
+    yValue, 
+    withBrush = false,
+    tooltipFormat = { prefix: "", suffix: ""} 
+}: lineChartProps) {
     const [ref, parentSize] = useParentSize<HTMLDivElement>();
     const { width, height } = parentSize;    
     
     const animDuration = 750;            
 
-    const renderDeps = [ data, xKey, yValue, width, height, tooltipFormat]                        
+    const renderDeps = [ data, xKey, yValue, withBrush, width, height, tooltipFormat]                        
 
-    const  margin = {top: 10, right: 30, bottom: 20, left: 60}
+    const  margin = {top: 10, right: 30, bottom: 25, left: 60}
 
     const isMediumScreen = width > 576;        
 
     const chartRef = useD3<HTMLDivElement>((container) => {        
         if (width === 0 || height === 0) return;                
                                      
-        const miniSectionHeight = 40//there are 2 mini-section: volume group and brush group
+        const miniSectionHeight = 40
         const miniSectionTotalHeight = miniSectionHeight + margin.bottom
 
         const chartWidth = width - margin.left - margin.right
         const visualHeight = height - margin.top - margin.bottom
-        const chartHeight = visualHeight - (2 * miniSectionTotalHeight)
+        const chartHeight = visualHeight - (withBrush?miniSectionTotalHeight:0)
 
         const svg = container.select<SVGSVGElement>("svg")
         const svgNode = svg.node()
@@ -52,13 +59,7 @@ export function LineChart({ data, xKey, yValue, tooltipFormat = { prefix: "", su
             .attr("id", "clip")
         .append("rect")
             .attr("width", chartWidth)
-            .attr("height", visualHeight);
-
-        const volumeCanvas = svg.select(".volume-area")
-            .attr("transform", "translate(" + margin.left + "," + (chartHeight + margin.top + margin.bottom) + ")");
-        
-        const brushCanvas = svg.select(".brush-area")
-            .attr("transform", "translate(" + margin.left + "," + (chartHeight + margin.top + margin.bottom + miniSectionTotalHeight) + ")");
+            .attr("height", visualHeight);                    
         
         const firstXValue = data[0][xKey];
         const xIsDate = firstXValue instanceof Date
@@ -109,6 +110,7 @@ export function LineChart({ data, xKey, yValue, tooltipFormat = { prefix: "", su
         const lineFn = line<lineChartDatum>()
             .x((d) => x(d[xKey as keyof lineChartDatum] as any) as number)
             .y((d) => y(Number(d[yValue as keyof lineChartDatum])))
+            //.curve(curveBasis)
 
         const theLine = canvas.append("path")              
             .datum(data)
@@ -131,7 +133,86 @@ export function LineChart({ data, xKey, yValue, tooltipFormat = { prefix: "", su
         }
 
         function pointerleft(){}
+
+        const brushCanvas = svg.select(".brush-area")
+                .attr("transform", "translate(" + margin.left + "," + (chartHeight + margin.top + margin.bottom) + ")");
+        brushCanvas.selectAll("path.line").remove()
+        brushCanvas.selectAll("g.brush").remove()
+        if(withBrush){            
+            const xBrush = xIsDate
+                ? scaleTime().domain(baseXDomain as [Date, Date])
+                : scaleLinear()
+                    .domain(baseXDomain)
+            xBrush.range([ 0, chartWidth ])
+                        
+            const yBrush = scaleLinear()
+                .domain([valueMin, valueMax])
+                .range([ miniSectionHeight, 0 ]);
+            
+            const brushLineFn = line<lineChartDatum>()
+                .x((d) => xBrush(d[xKey as keyof lineChartDatum] as any) as number)
+                .y((d) => yBrush(Number(d[yValue as keyof lineChartDatum])))
+                //.curve(curveBasis)            
+
+            brushCanvas.append("path")              
+                .datum(data)
+                    .attr("class", "line")
+                    .attr("fill", "none")
+                    .attr("stroke", "black" )
+                    .attr("stroke-width", 2)
+                    .attr("d", brushLineFn)
+                    .attr("clip-path", "url(#clip)");
+
+            brushCanvas.select<SVGGElement>(".x-axis")
+                .attr("transform", "translate(0," + miniSectionHeight + ")")
+                .call(axisBottom(xBrush))
+                .selectAll("text")
+                .attr("class", xAxisTextClass);
+
+            const brush = brushX()                   // Add the brush feature using the brush function
+                .extent( [ [0,0], [width,miniSectionHeight] ] )  // initialise the brush area: start at 0,0 and finishes at width,height: it means I select the whole graph area                            
+                .on("brush", updateChart)  
+            
+            brushCanvas.append("g")
+                .attr("class", "brush")
+                .call(brush);
+
+            function updateChart(e: D3BrushEvent<unknown>) {
+            
+                // What are the selected boundaries?
+                //const extent = event.selection                
+                const extent = e.selection
+            
+                if(extent){                    
+                    x.domain([ xBrush.invert(extent[0] as number), xBrush.invert(extent[1] as number) ])
+                    
+                }                
+                else if(!extent || extent === null){                    
+                    x.domain(baseXDomain)
+                }            
                 
+                // Update axis and line position
+                redraw()
+                
+            }
+
+            svg.on("dblclick",function(){
+                x.domain(baseXDomain as [Date, Date])
+
+                brushCanvas.select<SVGGElement>(".brush").call(brush.move, null) // This remove the grey brush area as soon as the selection has been done
+                redraw()
+            });
+
+            const redraw = () => {
+                canvas.select<SVGGElement>(".x-axis")                   
+                    .call(axisBottom(x))
+                    .selectAll("text")
+                    .attr("class", xAxisTextClass);;
+                canvas
+                    .selectAll<SVGPathElement, lineChartDatum[]>('path.chartline')
+                    .attr("d", lineFn)                                        
+            }
+        }                        
         
     }, [ ...renderDeps, tooltipFormat ]);
     
@@ -163,11 +244,7 @@ export function LineChart({ data, xKey, yValue, tooltipFormat = { prefix: "", su
                                 <g className={`y-axis ${stockStyles["value-axis"]}`} /> 
                                 <rect className="overlay" />        
                                 <g className="tooltip" />                     
-                            </g>
-                            <g className="volume-area">
-                                <g className={`x-axis ${stockStyles["time-axis"]}`} />
-                                <g className="tooltip" />
-                            </g>
+                            </g>                            
                             <g className="brush-area">
                                 <g className={`x-axis ${stockStyles["time-axis"]}`} />
                             </g>

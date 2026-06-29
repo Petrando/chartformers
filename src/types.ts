@@ -1,5 +1,5 @@
 export type pointData = {
-    label: string;
+    label: string | Date;
     value: number;
 }
 

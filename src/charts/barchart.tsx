@@ -37,7 +37,8 @@ export function BarChart({
     const { width, height } = parentSize;
 
     const [isSorted, setIsSorted] = useState<boolean>(false);
-    const layersRef = useLayerIndex(data.map(d => d.label));
+
+    const layersRef = useLayerIndex(data.map(d => String(d.label)));
     
     const uiControls = useUIControls();
 
@@ -90,7 +91,7 @@ export function BarChart({
         const graphWidth = width - margin.left - margin.right
         const graphHeight = height - margin.top - margin.bottom
         const labelScale = scaleBand()
-            .domain(barchartData.map(d => d.label))
+            .domain(barchartData.map(d => String(d.label)))
             .rangeRound(orientation === 'vertical'?
                 [0, graphWidth]:[graphHeight, 0])
             .paddingInner(isMediumScreen?0.4:0.25)
@@ -134,7 +135,7 @@ export function BarChart({
 
         const barColor = (d: pointData) => {
             const { idx, type } = color
-            const i = layersRef.current.findIndex(l => l === d.label);
+            const i = layersRef.current.findIndex(l => l === String(d.label));
             if (type === 'fixed') {
                 return indexSelectedColor(idx);
             } else {
@@ -156,13 +157,13 @@ export function BarChart({
 
         const bars =  canvas
             .selectAll<SVGRectElement, pointData>(".bar")
-            .data(barchartData, (d) => d.label)
+            .data(barchartData, (d) => String(d.label))
             .join(
                 enter=>enter.append("rect")
                 .attr("class", "bar")
                     .attr("x", function(d) { 
                         if(orientation === 'vertical'){
-                            return labelScale(d.label) ?? 0; 
+                            return labelScale(String(d.label)) ?? 0; 
                         }else{
                             return valueScale(0);
                         }                        
@@ -178,7 +179,7 @@ export function BarChart({
                         if(orientation === 'vertical'){
                             return valueScale(0)
                         }else{
-                            return labelScale(d.label) ?? 0;
+                            return labelScale(String(d.label)) ?? 0;
                         }
                     })
                     .attr("height", function(){
@@ -194,7 +195,7 @@ export function BarChart({
                         if(orientation === 'vertical'){
                             return valueScalePos(d.value);
                         }else{
-                            return labelScale(d.label) ?? 0;
+                            return labelScale(String(d.label)) ?? 0;
                         }                                                                
                         
                     })
@@ -221,18 +222,18 @@ export function BarChart({
             )
             .on("mouseover", (e, d)=>{
                 canvas.selectAll("rect.bar")
-                    .filter(dBar => (dBar as pointData).label === d.label)
+                    .filter(dBar => (dBar as pointData).label === String(d.label))
                     .style("stroke", "#71717a")
                     .style("stroke-width", 1)
                 
                 tooltip.style("opacity", 1)
-                    .select("p").text(d.label + ` : 
+                    .select("p").text(String(d.label) + ` : 
                         ${prefix}
                         ${format(formatType === "long"?",":"~s")(d.value)}
                         ${suffix}`);              
                 
                 select(".x-axis").selectAll("text")
-                    .filter(dText=>dText === d.label).style("font-weight", "bold")
+                    .filter(dText=>dText === String(d.label)).style("font-weight", "bold")
                 }
             )      
             .on("mousemove", (e, d)=>{
@@ -240,21 +241,21 @@ export function BarChart({
             })
             .on("mouseout", (e, d)=>{
                 canvas.selectAll("rect.bar")
-                    .filter(dBar => (dBar as pointData).label === d.label)
+                    .filter(dBar => (dBar as pointData).label === String(d.label))
                     .style("stroke", "none")
                     .style("stroke-width", 0)
 
                     tooltip.style("opacity", 0);
 
                     select(".x-axis").selectAll("text")
-                    .filter(dText=>dText === d.label).style("font-weight", "normal")
+                    .filter(dText=>dText === String(d.label)).style("font-weight", "normal")
                 }
             )
             .transition().duration(animDuration)
                 .attr("fill", barColor)
                 .attr("x", function(d) {
                     if(orientation === 'vertical'){
-                            return labelScale(d.label) ?? 0; 
+                            return labelScale(String(d.label)) ?? 0; 
                         }else{
                             return valueScalePos(d.value);
                         }
@@ -270,7 +271,7 @@ export function BarChart({
                     if(orientation === 'vertical'){
                         return valueScalePos(d.value);
                     }else{
-                        return labelScale(d.label) ?? 0;
+                        return labelScale(String(d.label)) ?? 0;
                     }                                                                
                     
                 })

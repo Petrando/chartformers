@@ -18,13 +18,13 @@ type tooltipDatum = pointData & {
     title: string;
 }
 
-type lineDatumProps = {
+type lineDatum = {
     datum: lineChartDatum[];
     title: string;
 }
 
 type lineChartProps = {
-    data: lineDatumProps[];
+    data: lineDatum[];
     xKey: string;
     yValue: string;    
     withBrush?: boolean;
@@ -67,7 +67,18 @@ export function LineChart({
         const svg = container.select<SVGSVGElement>("svg")
         const svgNode = svg.node()
         const canvas = svg.select<SVGGElement>('.plot-area')  
-            .attr("transform", "translate(" + margin.left + "," + margin.top + ")");  
+            .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+            
+        const tooltipLine = canvas.select("line.tooltipLine")
+            .attr("x1", 0)
+            .attr("y1", 0)
+            .attr("x2", 0)
+            .attr("y2", chartHeight)
+            .attr("stroke", "#5b4f4b")
+            .attr("stroke-width", 1)
+            .attr("fill", "none")
+            .style("stroke-dasharray", "3 3")
+            .style("opacity", 0)
                 
         svg.selectAll("defs").remove()
         svg.append("defs").append("clipPath")
@@ -175,7 +186,66 @@ export function LineChart({
             return indexColor(layerIndex, false, true)
         }
 
-        for(let i = 0; i < data.length; i++){
+        const groups = canvas.selectAll<SVGGElement, lineDatum>("g.lineGroup")
+            .data(data, d => d.title)
+            .join(
+                enter=>enter.append("g")
+                    .attr("class", "lineGroup")                                                            
+                ,
+                update=>update,
+                exit=>exit.remove()
+            )
+
+        const lines = groups.selectAll<SVGPathElement, lineChartDatum[]>("path.chartline")
+            .data(function(d){ return [d.datum] })
+            .join(
+                enter=>enter.append("path")
+                    .attr("class", "chartline")
+                    .attr("fill", "none")
+                    .attr("stroke", function(this: SVGPathElement) {
+                        const groupData = select(this.parentNode as SVGGElement).datum() as lineDatum;
+                        const layerIndex = layersRef.current.findIndex(layerD => layerD === groupData.title) + colorIdx;
+                        return indexColor(layerIndex, false, true);
+                    })
+                    .attr("stroke-width", 2)
+                    .attr("d", (d) => lineFn(d))
+                    .attr("clip-path", "url(#clip)"),
+                undefined,
+                exit=>exit.remove()
+            )
+            .attr("d", (d) => lineFn(d))
+
+        const circleR = 3
+
+        const tooltipCircles = groups.selectAll<SVGCircleElement, lineChartDatum[]>("circle.tooltipCircle")
+            .data(function(d){return [d.datum]})
+            .join(
+                enter=>enter.append("circle")
+                    .attr("class", "tooltipCircle")
+                    .attr("cx", 20)
+                    .attr("cy", 30)
+                    .attr("r", circleR)
+                    .attr("fill", function(this: SVGPathElement) {
+                        const groupData = select(this.parentNode as SVGGElement).datum() as lineDatum;
+                        const layerIndex = layersRef.current.findIndex(layerD => layerD === groupData.title) + colorIdx;
+                        return indexColor(layerIndex, false, true);
+                    })
+                    .style("opacity", 0),
+                undefined,
+                exit=>exit
+                    
+            )
+            .attr("cx", 20)
+            .attr("cy", 30)
+            .attr("r", circleR)
+            .attr("fill", function(this: SVGCircleElement) {
+                const groupData = select(this.parentNode as SVGGElement).datum() as lineDatum;
+                const layerIndex = layersRef.current.findIndex(layerD => layerD === groupData.title) + colorIdx;
+                return indexColor(layerIndex, false, true);
+            })        
+
+
+        /*for(let i = 0; i < data.length; i++){
             const theLine = canvas
                 .insert("path")              
                 .attr("class", "chartline")
@@ -185,7 +255,7 @@ export function LineChart({
                 .attr("stroke-width", 2)
                 .attr("d", lineFn)
                 .attr("clip-path", "url(#clip)");
-        }
+        }*/
         
         const tooltip = canvas.select("g.tooltip").style("pointer-events", "none")
         tooltip.raise()
@@ -207,37 +277,53 @@ export function LineChart({
                 return Number(d.datum[i][yValue])
             })
             const tooltipData:tooltipDatum[] = []
-            for(let j = 0; j < data.length; j++){                                
+            for(let j = 0; j < data.length; j++){                                                 
                 const { title } = data[j]
                 const tooltipDatum = data[j].datum[i]
                 const label = String(tooltipDatum[xKey])
                 const value = Number(tooltipDatum[yValue])
 
+                const tooltipCircle = tooltipCircles.filter(function(this: SVGCircleElement){
+                    const groupData = select(this.parentNode as SVGGElement).datum() as lineDatum
+                    return groupData.title === title
+                })
+                .attr("cx", x(tooltipDatum[xKey as keyof lineChartDatum] as any))
+                .attr("cy", y(value))
+                .style("opacity", 1)                
+
                 tooltipData.push({title, label, value})
-            }            
+            }
+            
+            const lineX = x(data[0].datum[i][xKey as keyof lineChartDatum] as any)
+            tooltipLine
+                .style("opacity", 1)
+                .attr("x1", lineX).attr("x2", lineX)
 
             setTooltip(tooltipData)
 
-            //setting tooltip position....            
+            //setting tooltip position....
+            const tooltipMargin = 5            
             const tooltipXPos = x(hoveredData[xKey as keyof lineChartDatum] as any)
-            const tooltipYPos = y(minY ?? 0)
+            const tooltipYPos = y(minY ?? 0) + circleR + tooltipMargin
             
             tooltip
-                .transition().duration(250)
+                .transition().duration(100)
                 .style("display", null)
                 .attr("transform", `translate(${tooltipXPos},${tooltipYPos})`);             
         }
         
         function pointerleft(e: PointerEvent){
-            tooltip.transition().duration(250).style("display", "none");            
+            tooltip.transition().duration(250).style("display", "none");
+            
+            tooltipCircles.style("opacity", 0)
+            tooltipLine.style("opacity", 0)
 
             if(withBrush){
                 brushCanvas.transition().duration(animDuration/4).style("opacity", 1)
             }            
         }
 
-        function setTooltip(tooltipData:tooltipDatum[]){
-            console.log(tooltipData)
+        function setTooltip(tooltipData:tooltipDatum[]){            
             const tooltipPath = tooltip.selectAll("path")
                 .data([null])
                 .join("path")
@@ -392,7 +478,8 @@ export function LineChart({
                         <>
                             <g className="plot-area">
                                 <g className={`x-axis ${stockStyles["time-axis"]}`} />
-                                <g className={`y-axis ${stockStyles["value-axis"]}`} /> 
+                                <g className={`y-axis ${stockStyles["value-axis"]}`} />
+                                <line className='tooltipLine' /> 
                                 <rect className="overlay" />        
                                 <g className="tooltip" />                     
                             </g>                            

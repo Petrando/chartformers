@@ -84,7 +84,7 @@ export function StockPriceChart({ data, timeframe = "daily", mode = "linechart",
             }
         }
 
-        const formattedData:stockDataFormatted[] = data.map(d => formatData(d))
+        const formattedData:stockDataFormatted[] = data.map(d => formatData(d))        
         
         const weeklyData = timeframe === "weekly"?createWeeklyData(formattedData):[]        
         const monthlyData = timeframe === "monthly"?createMonthlyData(formattedData):[]

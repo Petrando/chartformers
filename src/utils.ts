@@ -49,8 +49,9 @@ const COLOR_POOL = [
     ...schemeCategory10,
 ]
 
-export const indexColor = (i:number, assortedColorFirst:boolean=true) => {
-    const FINAL_COLOR_POOL = assortedColorFirst?
+export const indexColor = (i:number, assortedColorFirst:boolean=true, shuffleColor:boolean=false) => {
+    const FINAL_COLOR_POOL = shuffleColor?SHUFFLED_COLOR_POOL:
+        assortedColorFirst?
         [...selectedColors, ...COLOR_POOL]:[...COLOR_POOL, ...selectedColors]
 
     if (i < FINAL_COLOR_POOL.length) return FINAL_COLOR_POOL[i];

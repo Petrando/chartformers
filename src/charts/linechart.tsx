@@ -7,17 +7,28 @@ import {
 } from 'd3';
 import { useD3 } from '../hooks/useD3';
 import { useParentSize } from '../hooks/useParentSize';
+import { useLayerIndex } from '../hooks/useLayerIndex';
 import styles from './global.module.css';
 import stockStyles from './stockprice/stockprice.module.css'
 import { tooltipFormat } from '../types';
-import { rotateLabels, basicFormat } from '../utils';
-import { lineChartDatum } from '../types';
+import { rotateLabels, basicFormat, indexColor } from '../utils';
+import { lineChartDatum, pointData } from '../types';
+
+type tooltipDatum = pointData & {
+    title: string;
+}
+
+type lineDatumProps = {
+    datum: lineChartDatum[];
+    title: string;
+}
 
 type lineChartProps = {
-    data: lineChartDatum[];
+    data: lineDatumProps[];
     xKey: string;
     yValue: string;    
     withBrush?: boolean;
+    colorIdx?: number;
     tooltipFormat?: tooltipFormat;
 }
 
@@ -26,6 +37,7 @@ export function LineChart({
     xKey, 
     yValue, 
     withBrush = false,
+    colorIdx = 0,
     tooltipFormat = { prefix: "", suffix: ""} 
 }: lineChartProps) {
     const [ref, parentSize] = useParentSize<HTMLDivElement>();
@@ -33,11 +45,14 @@ export function LineChart({
     
     const animDuration = 750;            
 
-    const renderDeps = [ data, xKey, yValue, withBrush, width, height, tooltipFormat]                        
+    const renderDeps = [ data, xKey, yValue, withBrush, colorIdx, width, height, tooltipFormat]                        
 
     const  margin = {top: 10, right: 30, bottom: 25, left: 60}
 
-    const isMediumScreen = width > 576;        
+    const isMediumScreen = width > 576;
+    
+    const layers = data.map(d => d.title)
+    const layersRef = useLayerIndex(layers)
 
     const chartRef = useD3<HTMLDivElement>((container) => {        
         if (width === 0 || height === 0) return;                
@@ -61,23 +76,56 @@ export function LineChart({
             .attr("width", chartWidth)
             .attr("height", visualHeight);                    
         
-        const firstXValue = data[0][xKey];
+        const firstXValue = data[0].datum[0][xKey];
         const xIsDate = firstXValue instanceof Date
+        const xMin = min(data, function(d){ 
+            return min(
+                d.datum, 
+                function(d){ 
+                    if(xIsDate){
+                        return d[xKey] as Date
+                    }else{
+                        return typeof d[xKey] === 'number' ? d[xKey] as number : Number(d[xKey])
+                    }
+                    
+                }
+            )
+        })
+
+        const xMax = max(data, function(d){ 
+            return max(
+                d.datum, 
+                function(d){ 
+                    if(xIsDate){
+                        return d[xKey] as Date
+                    }else{
+                        return typeof d[xKey] === 'number' ? d[xKey] as number : Number(d[xKey])
+                    }
+                    
+                }
+            )
+        })
+
+        const baseXDomain = [xMin, xMax]
+        /*
         const baseXDomain = xIsDate
-            ? extent(data, (d): Date | undefined => d[xKey] as Date) as [Date, Date]
+            ? extent(data, (d): Date | undefined => d.datum[xKey] as Date) as [Date, Date]
             : extent(data, (d): number | undefined => typeof d[xKey] === 'number' ? d[xKey] as number : Number(d[xKey]) ) as [number, number];                
+        */
 
         const x = xIsDate
             ? scaleTime().domain(baseXDomain as [Date, Date])
             : scaleLinear()
-                .domain(baseXDomain);
+                .domain(baseXDomain as unknown as [Number, Number]);
 
         x.range([ 0, chartWidth ]);        
 
-        const xAxisNonDateClass = rotateLabels(chartWidth, xIsDate?(baseXDomain as unknown as string[]):[]);
+        const xAxisNonDateClass = rotateLabels(chartWidth, xIsDate?([xMin, xMax] as unknown as string[]):[]);
 
         const xAxisTextClass = xIsDate?!isMediumScreen?stockStyles.rotatedAxisText:
             stockStyles.axisText:xAxisNonDateClass;
+
+        const { prefix, suffix } = tooltipFormat
 
         canvas.select<SVGGElement>(".x-axis")
             .attr("transform", "translate(0," + chartHeight + ")")
@@ -88,13 +136,23 @@ export function LineChart({
             .attr("class", xAxisTextClass);
 
         const valueMin = min(data, (d) => {
-            const val = d[yValue];
-            return typeof val === 'number' ? val : undefined;
+            return min(
+                d.datum,
+                function(d){
+                    const val = d[yValue];
+                    return typeof val === 'number' ? val : undefined;
+                }
+            )            
         }) ?? 0
 
         const valueMax = max(data, (d) => {
-            const val = d[yValue];
-            return typeof val === 'number' ? val : undefined;
+            return max(
+                d.datum,
+                function(d){
+                    const val = d[yValue];
+                    return typeof val === 'number' ? val : undefined;
+                }
+            )            
         }) ?? 0
         
         const y = scaleLinear()
@@ -112,27 +170,114 @@ export function LineChart({
             .y((d) => y(Number(d[yValue as keyof lineChartDatum])))
             //.curve(curveBasis)
 
-        const theLine = canvas.append("path")              
-            .datum(data)
+        const lineStroke = (i: number) => {
+            const layerIndex = layersRef.current.findIndex(layerD => layerD === data[i].title) + colorIdx
+            return indexColor(layerIndex, false, true)
+        }
+
+        for(let i = 0; i < data.length; i++){
+            const theLine = canvas
+                .insert("path")              
                 .attr("class", "chartline")
+            .datum(data[i].datum)                
                 .attr("fill", "none")
-                .attr("stroke", "black" )
+                .attr("stroke", lineStroke(i))
                 .attr("stroke-width", 2)
                 .attr("d", lineFn)
                 .attr("clip-path", "url(#clip)");
-
+        }
+        
+        const tooltip = canvas.select("g.tooltip").style("pointer-events", "none")
+        tooltip.raise()
         canvas.select("rect.overlay")
             .attr("width", chartWidth).attr("height", chartHeight)
-            .style("fill", "none")                                
+            .style("fill", "red")
+            .style("opacity", 0)                                
             .on("pointerenter pointermove", pointermoved)
             .on("pointerleave", pointerleft)
             .on("touchstart", event => event.preventDefault())
 
-        function pointermoved(){
+        function pointermoved(e: PointerEvent){                        
+            
+            const bisect = bisector((d: lineChartDatum) => (d[xKey as keyof lineChartDatum] as any) as number).center;
+            const i = bisect(data[0].datum, x.invert(pointer(e)[0]));
+            
+            const hoveredData:lineChartDatum = data[0].datum[i]
+            const minY = min(data, function(d){
+                return Number(d.datum[i][yValue])
+            })
+            const tooltipData:tooltipDatum[] = []
+            for(let j = 0; j < data.length; j++){                                
+                const { title } = data[j]
+                const tooltipDatum = data[j].datum[i]
+                const label = String(tooltipDatum[xKey])
+                const value = Number(tooltipDatum[yValue])
 
+                tooltipData.push({title, label, value})
+            }            
+
+            setTooltip(tooltipData)
+
+            //setting tooltip position....            
+            const tooltipXPos = x(hoveredData[xKey as keyof lineChartDatum] as any)
+            const tooltipYPos = y(minY ?? 0)
+            
+            tooltip
+                .transition().duration(250)
+                .style("display", null)
+                .attr("transform", `translate(${tooltipXPos},${tooltipYPos})`);             
+        }
+        
+        function pointerleft(e: PointerEvent){
+            tooltip.transition().duration(250).style("display", "none");            
+
+            if(withBrush){
+                brushCanvas.transition().duration(animDuration/4).style("opacity", 1)
+            }            
         }
 
-        function pointerleft(){}
+        function setTooltip(tooltipData:tooltipDatum[]){
+            console.log(tooltipData)
+            const tooltipPath = tooltip.selectAll("path")
+                .data([null])
+                .join("path")
+                    .attr("fill", "white")
+                    .attr("stroke", "black");            
+
+            const tooltipDisplayData: string[] = tooltipData.reduce((acc: string[], curr: tooltipDatum) => {
+                const title = curr.title
+                const labelValue = curr.label + ": " + (prefix ?? "") + curr.value + (suffix ?? "")
+
+                acc.push(title)
+                acc.push(labelValue)
+                return acc
+            }, [])
+
+            const tooplipText = tooltip.selectAll<SVGTextElement, unknown>("text")
+                .data([null] as unknown[])
+                .join("text")
+                .call(text => text
+                    .selectAll("tspan")
+                    .data(tooltipDisplayData)
+                    .join("tspan")
+                    .attr("x", 0)
+                    .attr("y", (_, i) => `${i * 1.1}em`)
+                    //.attr("font-weight", (_, i) => i ? null : "bold")
+                    .style("align", "right")
+                    .text(d => d));
+
+            size(tooplipText, tooltipPath as Selection<SVGPathElement | null, unknown, null, undefined>)
+            if(withBrush){
+                brushCanvas.transition().duration(animDuration/4).style("opacity", 0)
+            }
+            
+        }
+
+        function size(text: Selection<SVGTextElement, unknown, BaseType, unknown>, path: Selection<SVGPathElement | null, unknown, null, undefined>) {
+            const {x, y, width: w, height: h} = text.node()!.getBBox();
+            text.attr("transform", `translate(${-w / 2},${15 - y})`);
+            path.attr("d", `M${-w / 2 - 10},5H-5l5,-5l5,5H${w / 2 + 10}v${h + 20}h-${w + 20}z`);
+        }
 
         const brushCanvas = svg.select(".brush-area")
                 .attr("transform", "translate(" + margin.left + "," + (chartHeight + margin.top + margin.bottom) + ")");
@@ -142,7 +287,7 @@ export function LineChart({
             const xBrush = xIsDate
                 ? scaleTime().domain(baseXDomain as [Date, Date])
                 : scaleLinear()
-                    .domain(baseXDomain)
+                    .domain(baseXDomain as unknown as [Number, Number])
             xBrush.range([ 0, chartWidth ])
                         
             const yBrush = scaleLinear()
@@ -154,14 +299,17 @@ export function LineChart({
                 .y((d) => yBrush(Number(d[yValue as keyof lineChartDatum])))
                 //.curve(curveBasis)            
 
-            brushCanvas.append("path")              
-                .datum(data)
-                    .attr("class", "line")
-                    .attr("fill", "none")
-                    .attr("stroke", "black" )
-                    .attr("stroke-width", 2)
-                    .attr("d", brushLineFn)
-                    .attr("clip-path", "url(#clip)");
+            for(let i = 0; i < data.length; i++){
+                brushCanvas.append("path")              
+                    .datum(data[i].datum)
+                        .attr("class", "line")
+                        .attr("fill", "none")
+                        .attr("stroke", lineStroke(i))
+                        .attr("stroke-width", 2)
+                        .attr("d", brushLineFn)
+                        .attr("clip-path", "url(#clip)");
+            }
+            
 
             brushCanvas.select<SVGGElement>(".x-axis")
                 .attr("transform", "translate(0," + miniSectionHeight + ")")
@@ -187,8 +335,11 @@ export function LineChart({
                     x.domain([ xBrush.invert(extent[0] as number), xBrush.invert(extent[1] as number) ])
                     
                 }                
-                else if(!extent || extent === null){                    
-                    x.domain(baseXDomain)
+                else if(!extent || extent === null){
+                    const updatedDomain = xIsDate?
+                        baseXDomain as [Date, Date]:
+                        baseXDomain as unknown as [Number, Number]                    
+                    x.domain(updatedDomain)
                 }            
                 
                 // Update axis and line position

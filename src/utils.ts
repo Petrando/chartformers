@@ -79,6 +79,13 @@ export function getMouseYInData(e: MouseEvent, svg: SVGSVGElement, yScale: d3.Sc
         dataY: yScale.invert(pixelY)
     };
 }
+export function isISODateString(str: string | Date) {
+    if(str instanceof Date){
+        return true
+    }
+    return /^\d{4}-\d{2}-\d{2}$/.test(str) &&
+         !Number.isNaN(new Date(str).getTime());
+}
 
 export const rotateLabels = (width: number, labels: string[]) => {
     const rotate = (width < 640 && labels.length > 3) ||

@@ -11,7 +11,7 @@ import { useLayerIndex } from '../hooks/useLayerIndex';
 import styles from './global.module.css';
 import stockStyles from './stockprice/stockprice.module.css'
 import { tooltipFormat } from '../types';
-import { rotateLabels, basicFormat, indexColor } from '../utils';
+import { rotateLabels, basicFormat, indexColor, isISODateString } from '../utils';
 import { lineChartDatum, pointData } from '../types';
 
 type tooltipDatum = pointData & {
@@ -87,14 +87,15 @@ export function LineChart({
             .attr("width", chartWidth)
             .attr("height", visualHeight);                    
         
-        const firstXValue = data[0].datum[0][xKey];
-        const xIsDate = firstXValue instanceof Date
+        const firstXValue = data[0].datum[0][xKey];        
+        const xIsDate = isISODateString(firstXValue as string | Date)
+        
         const xMin = min(data, function(d){ 
             return min(
                 d.datum, 
                 function(d){ 
                     if(xIsDate){
-                        return d[xKey] as Date
+                        return new Date(d[xKey])
                     }else{
                         return typeof d[xKey] === 'number' ? d[xKey] as number : Number(d[xKey])
                     }
@@ -108,7 +109,7 @@ export function LineChart({
                 d.datum, 
                 function(d){ 
                     if(xIsDate){
-                        return d[xKey] as Date
+                        return new Date(d[xKey])
                     }else{
                         return typeof d[xKey] === 'number' ? d[xKey] as number : Number(d[xKey])
                     }
@@ -116,7 +117,7 @@ export function LineChart({
                 }
             )
         })
-
+        
         const baseXDomain = [xMin, xMax]
         /*
         const baseXDomain = xIsDate
@@ -177,7 +178,11 @@ export function LineChart({
 
         canvas.selectAll("path.chartline").remove()
         const lineFn = line<lineChartDatum>()
-            .x((d) => x(d[xKey as keyof lineChartDatum] as any) as number)
+            .x((d) => 
+                xIsDate?
+                x(new Date(d[xKey as keyof lineChartDatum])):
+                x(d[xKey as keyof lineChartDatum] as any) as number
+            )
             .y((d) => y(Number(d[yValue as keyof lineChartDatum])))
             //.curve(curveBasis)
 
@@ -269,7 +274,12 @@ export function LineChart({
 
         function pointermoved(e: PointerEvent){                        
             
-            const bisect = bisector((d: lineChartDatum) => (d[xKey as keyof lineChartDatum] as any) as number).center;
+            const bisect = bisector((d: lineChartDatum) => 
+                    xIsDate?
+                    new Date(d[xKey as keyof lineChartDatum]):
+                    (d[xKey as keyof lineChartDatum] as any) as number
+                )
+                .center;
             const i = bisect(data[0].datum, x.invert(pointer(e)[0]));
             
             const hoveredData:lineChartDatum = data[0].datum[i]
@@ -287,7 +297,11 @@ export function LineChart({
                     const groupData = select(this.parentNode as SVGGElement).datum() as lineDatum
                     return groupData.title === title
                 })
-                .attr("cx", x(tooltipDatum[xKey as keyof lineChartDatum] as any))
+                .attr("cx", x(
+                    xIsDate?
+                    new Date(tooltipDatum[xKey as keyof lineChartDatum] as any):
+                    tooltipDatum[xKey as keyof lineChartDatum] as any)
+                )
                 .attr("cy", y(value))
                 .style("opacity", 1)                
 
@@ -303,7 +317,11 @@ export function LineChart({
 
             //setting tooltip position....
             const tooltipMargin = 5            
-            const tooltipXPos = x(hoveredData[xKey as keyof lineChartDatum] as any)
+            const tooltipXPos = x(
+                xIsDate?
+                new Date(hoveredData[xKey as keyof lineChartDatum]):
+                hoveredData[xKey as keyof lineChartDatum] as any
+            )
             const tooltipYPos = y(minY ?? 0) + circleR + tooltipMargin
             
             tooltip
@@ -381,7 +399,10 @@ export function LineChart({
                 .range([ miniSectionHeight, 0 ]);
             
             const brushLineFn = line<lineChartDatum>()
-                .x((d) => xBrush(d[xKey as keyof lineChartDatum] as any) as number)
+                .x((d) => xIsDate?
+                    x(new Date(d[xKey as keyof lineChartDatum])):
+                    x(d[xKey as keyof lineChartDatum] as any) as number
+                )
                 .y((d) => yBrush(Number(d[yValue as keyof lineChartDatum])))
                 //.curve(curveBasis)            
 

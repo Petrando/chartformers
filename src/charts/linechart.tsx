@@ -308,7 +308,11 @@ export function LineChart({
                 tooltipData.push({title, label, value})
             }
             
-            const lineX = x(data[0].datum[i][xKey as keyof lineChartDatum] as any)
+            const lineX = x(
+                xIsDate?
+                new Date(data[0].datum[i][xKey as keyof lineChartDatum]):
+                data[0].datum[i][xKey as keyof lineChartDatum] as any
+            )
             tooltipLine
                 .style("opacity", 1)
                 .attr("x1", lineX).attr("x2", lineX)

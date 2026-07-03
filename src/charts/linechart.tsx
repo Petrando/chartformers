@@ -11,7 +11,7 @@ import { useLayerIndex } from '../hooks/useLayerIndex';
 import styles from './global.module.css';
 import stockStyles from './stockprice/stockprice.module.css'
 import { tooltipFormat } from '../types';
-import { rotateLabels, basicFormat, indexColor, isISODateString } from '../utils';
+import { rotateLabels, basicFormat, indexColor, isISODateString, sanitizeString } from '../utils';
 import { lineChartDatum, pointData } from '../types';
 
 type tooltipDatum = pointData & {
@@ -24,6 +24,7 @@ type lineDatum = {
 }
 
 type lineChartProps = {
+    type?: "line" | "area";
     data: lineDatum[];
     xKey: string;
     yValue: string;    
@@ -33,7 +34,8 @@ type lineChartProps = {
 }
 
 export function LineChart({ 
-    data, 
+    data,
+    type = "line", 
     xKey, 
     yValue, 
     withBrush = false,
@@ -45,7 +47,7 @@ export function LineChart({
     
     const animDuration = 750;            
 
-    const renderDeps = [ data, xKey, yValue, withBrush, colorIdx, width, height, tooltipFormat]                        
+    const renderDeps = [ data, type, xKey, yValue, withBrush, colorIdx, width, height, tooltipFormat]                        
 
     const  margin = {top: 10, right: 30, bottom: 25, left: 60}
 
@@ -80,10 +82,10 @@ export function LineChart({
             .style("stroke-dasharray", "3 3")
             .style("opacity", 0)
                 
-        svg.selectAll("defs").remove()
-        svg.append("defs").append("clipPath")
-            .attr("id", "clip")
-        .append("rect")
+        const defs = svg.select("defs")
+        
+        const clipPathRect = defs.select("clipPath").select("rect")
+        clipPathRect
             .attr("width", chartWidth)
             .attr("height", visualHeight);                    
         
@@ -177,6 +179,7 @@ export function LineChart({
             .transition().duration(animDuration).call(yAxis);
 
         canvas.selectAll("path.chartline").remove()
+        canvas.selectAll("path.chartarea").remove()
         const lineFn = line<lineChartDatum>()
             .x((d) => 
                 xIsDate?
@@ -200,6 +203,61 @@ export function LineChart({
                 update=>update,
                 exit=>exit.remove()
             )
+        defs.selectAll("linearGradient").remove()
+        const areaFn = area<lineChartDatum>()
+            .x((d) => 
+                xIsDate?
+                x(new Date(d[xKey as keyof lineChartDatum])):
+                x(d[xKey as keyof lineChartDatum] as any) as number
+            )
+            .y0(chartHeight)
+            .y1((d) => y(Number(d[yValue as keyof lineChartDatum])))
+        if(type === "area"){                                        
+            const titles = data.map(d => d.title)
+            titles.forEach((title, i) => {
+                const sanitizedTitle = sanitizeString(title)            
+                const gradient = defs.append("linearGradient")
+                    .attr("id", sanitizedTitle)
+                    .attr("x1", "0%")
+                    .attr("y1", "0%")
+                    .attr("x2", "0%")
+                    .attr("y2", "100%");
+
+                const color = indexColor(i, false, true)            
+
+                gradient.append("stop")
+                    .attr("offset", "0%")
+                    .attr("stop-color", color)
+                    .attr("stop-opacity", 0.7);
+
+                gradient.append("stop")
+                    .attr("offset", "100%")
+                    .attr("stop-color", color)
+                    .attr("stop-opacity", 0);
+
+                //return gradient
+            })                                
+
+            const areas = groups.selectAll<SVGPathElement, lineChartDatum[]>("path.chartarea")
+                .data(function(d){ return [d.datum] })
+                .join(
+                    enter=>enter.append("path")
+                        .attr("class", "chartarea")
+                        .attr("stroke", "none")
+                        .attr("fill", function(this: SVGPathElement) {
+                            const groupData = select(this.parentNode as SVGGElement).datum() as lineDatum;
+                            const { title } = groupData                                                
+                            const sanitizedTitle = sanitizeString(title)
+                            return `url(#${sanitizedTitle})`
+                        })                    
+                        .attr("d", (d) => lineFn(d))
+                        .attr("clip-path", "url(#clip)")
+                        .style("pointer-events", "none"),
+                    undefined,
+                    exit=>exit.remove()
+                )
+                .attr("d", (d) => areaFn(d))
+        }        
 
         const lines = groups.selectAll<SVGPathElement, lineChartDatum[]>("path.chartline")
             .data(function(d){ return [d.datum] })
@@ -214,7 +272,8 @@ export function LineChart({
                     })
                     .attr("stroke-width", 2)
                     .attr("d", (d) => lineFn(d))
-                    .attr("clip-path", "url(#clip)"),
+                    .attr("clip-path", "url(#clip)")
+                    .style("pointer-events", "none"),
                 undefined,
                 exit=>exit.remove()
             )
@@ -248,7 +307,6 @@ export function LineChart({
                 const layerIndex = layersRef.current.findIndex(layerD => layerD === groupData.title) + colorIdx;
                 return indexColor(layerIndex, false, true);
             })        
-
 
         /*for(let i = 0; i < data.length; i++){
             const theLine = canvas
@@ -390,6 +448,7 @@ export function LineChart({
         const brushCanvas = svg.select(".brush-area")
                 .attr("transform", "translate(" + margin.left + "," + (chartHeight + margin.top + margin.bottom) + ")");
         brushCanvas.selectAll("path.line").remove()
+        brushCanvas.selectAll("path.area").remove()
         brushCanvas.selectAll("g.brush").remove()
         if(withBrush){            
             const xBrush = xIsDate
@@ -408,9 +467,31 @@ export function LineChart({
                     x(d[xKey as keyof lineChartDatum] as any) as number
                 )
                 .y((d) => yBrush(Number(d[yValue as keyof lineChartDatum])))
-                //.curve(curveBasis)            
-
+                //.curve(curveBasis) 
+                            
             for(let i = 0; i < data.length; i++){
+                if(type === "area"){
+                    const brushAreaFn = area<lineChartDatum>()
+                        .x((d) => 
+                            xIsDate?
+                            x(new Date(d[xKey as keyof lineChartDatum])):
+                            x(d[xKey as keyof lineChartDatum] as any) as number
+                        )
+                        .y0(miniSectionHeight)
+                        .y1((d) => yBrush(Number(d[yValue as keyof lineChartDatum])))
+                    brushCanvas.append("path")              
+                        .datum(data[i].datum)
+                            .attr("class", "area")
+                            .attr("fill", function() {                            
+                                const title = data[i].title
+                                const sanitizedTitle = sanitizeString(title)
+                                return `url(#${sanitizedTitle})`
+                            }) 
+                            .attr("stroke", "none")                        
+                            .attr("d", brushAreaFn)
+                            .attr("clip-path", "url(#clip)");
+                }
+                            
                 brushCanvas.append("path")              
                     .datum(data[i].datum)
                         .attr("class", "line")
@@ -421,7 +502,6 @@ export function LineChart({
                         .attr("clip-path", "url(#clip)");
             }
             
-
             brushCanvas.select<SVGGElement>(".x-axis")
                 .attr("transform", "translate(0," + miniSectionHeight + ")")
                 .call(axisBottom(xBrush))
@@ -469,7 +549,14 @@ export function LineChart({
                 canvas.select<SVGGElement>(".x-axis")                   
                     .call(axisBottom(x))
                     .selectAll("text")
-                    .attr("class", xAxisTextClass);;
+                    .attr("class", xAxisTextClass);
+
+                if(type === "area"){
+                    canvas
+                        .selectAll<SVGPathElement, lineChartDatum[]>('path.chartarea')
+                        .attr("d", areaFn)
+                }                
+                
                 canvas
                     .selectAll<SVGPathElement, lineChartDatum[]>('path.chartline')
                     .attr("d", lineFn)                                        
@@ -498,6 +585,11 @@ export function LineChart({
                     className={`${styles["chart-svg"]} ${styles["fill-container"]}`}        
                     viewBox={`0 0 ${width} ${height}`}
                 >
+                    <defs>
+                        <clipPath id="clip">
+                            <rect />
+                        </clipPath>
+                    </defs>
                     {
                         width > 0 &&
                         <>

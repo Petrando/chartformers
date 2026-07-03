@@ -96,3 +96,9 @@ export const rotateLabels = (width: number, labels: string[]) => {
     return rotate;
 }
 
+export const sanitizeString = (str: string) => {
+    return str
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-|-$/g, "")
+}

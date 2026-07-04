@@ -317,7 +317,7 @@ export function DeltaWaterfall({
                 enter =>
                     enter
                         .append("rect")
-                        .attr("class", `open ${waterfallStyles.bar}`)
+                        .attr("class", `open ${styles.bar}`)
                         .attr("fill", colors.open)
                         .attr("y", y(0) ?? 0)
                         .attr("height", 0)
@@ -355,7 +355,7 @@ export function DeltaWaterfall({
                 enter =>
                     enter
                         .append("rect")
-                        .attr("class", `close ${waterfallStyles.bar}`)
+                        .attr("class", `close ${styles.bar}`)
                         .attr("fill", colors.close)
                         .attr("y", y(0))
                         .attr("height", 0)
@@ -445,7 +445,7 @@ export function DeltaWaterfall({
             .data(waterfallData, (d) => d.label)
             .join(
                 enter=>enter.append("rect")
-                    .attr("class", `bar ${waterfallStyles.bar}`)
+                    .attr("class", `bar ${styles.bar}`)
                     .attr("x", xPos)
                     .attr("width", x0.bandwidth())
                     .attr("y", (d, i)=> changeBy.current === "data" ?

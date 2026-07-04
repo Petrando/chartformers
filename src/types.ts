@@ -1,5 +1,5 @@
 export type pointData = {
-    label: string | Date;
+    label: string;
     value: number;
 }
 
@@ -118,3 +118,9 @@ export type histogramChartData<T extends histogramDatum> = {
 export type lineChartDatum = Record<string, string | number | Date>;
 
 export type lineTooltipPosData = { xPos: number, low: number, volume: number }
+
+export type lineDecor = {
+    showLine?: boolean;
+    showDots?: boolean;
+    curve?: "linear" | "basis" | "cardinal" | "catmullrom" | "natural";
+}

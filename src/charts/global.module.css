@@ -238,3 +238,13 @@
     text-anchor: middle;
     transform: rotate(0deg);
 }
+
+.bar {
+  stroke: #3f3f46;
+  stroke-width: 1px;
+  transition: stroke-width 0.25x ease;
+}
+
+.bar:hover {
+  stroke-width: 2px;
+}

@@ -67,13 +67,3 @@
   opacity: 0.7;
   transition: fill 0.3s ease-in stroke 0.3s ease, stroke-width 0.3s opacity 0.3s ease-in;
 }
-
-.bar {
-  stroke: #3f3f46;
-  stroke-width: 1px;
-  transition: stroke-width 0.25x ease;
-}
-
-.bar:hover {
-  stroke-width: 2px;
-}

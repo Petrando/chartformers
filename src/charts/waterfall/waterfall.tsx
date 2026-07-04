@@ -304,7 +304,7 @@ export function WaterfallChart({
             .data(renderData, (d) => d.label)
             .join(
                 enter=>enter.append("rect")
-                    .attr("class", `bar ${waterfallStyles.bar}`)
+                    .attr("class", `bar ${styles.bar}`)
                     .attr("x", xPos)
                     .attr("width", xScale.bandwidth())
                     .attr("y", (d, i)=> changeBy.current === "data" ?

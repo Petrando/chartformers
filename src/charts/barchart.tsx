@@ -1,6 +1,8 @@
 import React, {useState} from 'react';
 import { createPortal } from "react-dom";
-import {select, scaleBand, scaleLinear, axisLeft, axisBottom, min, max, format} from 'd3';
+import { select, scaleBand, scaleLinear, axisLeft, axisBottom, min, max, format,
+    line, curveLinear, curveBasis, curveCardinal, curveCatmullRom, curveNatural
+ } from 'd3';
 import { useD3 } from '../hooks/useD3';
 import { useParentSize } from '../hooks/useParentSize';
 import { useUIControls } from '../hooks/useUIControls';
@@ -9,7 +11,7 @@ import { cloneObj, indexSelectedColor } from '../utils';
 import { inactiveColor } from '../../dev/data/constants';
 import styles from './global.module.css';
 import barchartStyles from './barchart.module.css';
-import { pointData, tooltipFormat } from '../types';
+import { pointData, tooltipFormat, lineDecor } from '../types';
 import { useLayerIndex } from '../hooks/useLayerIndex';
 
 type BarchartProps = {
@@ -20,6 +22,7 @@ type BarchartProps = {
     };
     orientation?: 'horizontal' | 'vertical';
     tooltipFormat?: tooltipFormat;
+    lineProps?: lineDecor;
 }
 
 export function BarChart({
@@ -31,7 +34,12 @@ export function BarChart({
         orientation = 'vertical',
         tooltipFormat: {
             prefix = "", suffix = "", formatType = "long"
-        } = { prefix: "", suffix: "", formatType: "long"}
+        } = { prefix: "", suffix: "", formatType: "long"},
+        lineProps: {
+            showLine = false, showDots = true, curve = "linear"
+        } = {
+            showLine: false, showDots: true, curve: "linear"
+        }
     }:BarchartProps) {
     const [ref, parentSize] = useParentSize<HTMLDivElement>();    
     const { width, height } = parentSize;
@@ -160,7 +168,7 @@ export function BarChart({
             .data(barchartData, (d) => String(d.label))
             .join(
                 enter=>enter.append("rect")
-                .attr("class", "bar")
+                .attr("class", `bar ${styles.bar}`)
                     .attr("x", function(d) { 
                         if(orientation === 'vertical'){
                             return labelScale(String(d.label)) ?? 0; 
@@ -220,11 +228,7 @@ export function BarChart({
                 .attr("height", 0).attr("y", height).style("opacity", 0)            
                     .remove()
             )
-            .on("mouseover", (e, d)=>{
-                canvas.selectAll("rect.bar")
-                    .filter(dBar => (dBar as pointData).label === String(d.label))
-                    .style("stroke", "#71717a")
-                    .style("stroke-width", 1)
+            .on("mouseover", (e, d)=>{                
                 
                 tooltip.style("opacity", 1)
                     .select("p").text(String(d.label) + ` : 
@@ -239,18 +243,12 @@ export function BarChart({
             .on("mousemove", (e, d)=>{
                 moveTooltip(tooltip, {e, svg:svgNode as SVGSVGElement, yScale: valueScale})
             })
-            .on("mouseout", (e, d)=>{
-                canvas.selectAll("rect.bar")
-                    .filter(dBar => (dBar as pointData).label === String(d.label))
-                    .style("stroke", "none")
-                    .style("stroke-width", 0)
+            .on("mouseout", (e, d)=>{                
+                tooltip.style("opacity", 0);
 
-                    tooltip.style("opacity", 0);
-
-                    select(".x-axis").selectAll("text")
+                select(".x-axis").selectAll("text")
                     .filter(dText=>dText === String(d.label)).style("font-weight", "normal")
-                }
-            )
+            })
             .transition().duration(animDuration)
                 .attr("fill", barColor)
                 .attr("x", function(d) {
@@ -281,9 +279,103 @@ export function BarChart({
                     }else{
                         return labelScale.bandwidth()
                     }                                                                                                              
-                });    
+                });
 
-    }, [data, color, width, height, isSorted, orientation, {prefix, suffix, formatType}]);
+        const lineFn = line<pointData>()
+            .x((d) => 
+                orientation === "vertical"?
+                    (labelScale(d.label) ?? 0) + labelScale.bandwidth()/2:
+                    valueScale(d.value)
+            )
+            .y((d) => 
+                orientation === "horizontal"?
+                    (labelScale(d.label) ?? 0) + labelScale.bandwidth()/2:
+                    valueScale(d.value)
+            )
+        
+        //"linear" | "basis" | "cardinal" | "catmullrom" | "natural"
+        if(curve === "linear"){
+            lineFn.curve(curveLinear)
+        }else if(curve === "basis"){
+            lineFn.curve(curveBasis)
+        }else if(curve === "cardinal"){
+            lineFn.curve(curveCardinal)
+        }else if(curve === "catmullrom"){
+            lineFn.curve(curveCatmullRom)
+        }else if(curve === "natural"){
+            lineFn.curve(curveNatural)
+        }
+
+        const radius = isMediumScreen?3:2
+        const lineColor = "#2b2b22"
+
+        const lineData = showLine?[barchartData]:[]
+        const lines = canvas.selectAll<SVGPathElement, pointData[]>("path.chartline")
+            .data(lineData)
+            .join(
+                enter=>enter.append("path")
+                    .attr("class", "chartline")
+                    .attr("fill", "none")
+                    .attr("stroke", lineColor)
+                    .attr("stroke-width", 2)
+                    .style("stroke-opacity", 0.75)                    
+                    .style("pointer-events", "none"),
+                undefined,
+                exit=>exit.remove()
+            )
+
+        lines
+            .transition().duration(animDuration)
+            .attr("d", (d) => lineFn(d))
+        
+        lines.raise()
+        
+        const cx = (d: pointData) => {
+            return orientation === "vertical"?
+                (labelScale(d.label) ?? 0) + labelScale.bandwidth()/2:
+                valueScale(d.value)
+        }
+
+        const cy = (d: pointData) => {
+            return orientation === "vertical"?
+                valueScale(d.value):
+                (labelScale(d.label) ?? 0) + labelScale.bandwidth()/2
+        }
+
+        const dotsData = (showLine && showDots)?barchartData:[]
+        const dots =  canvas
+            .selectAll<SVGCircleElement, pointData>(".dot")
+            .data(dotsData, (d) => String(d.label))
+            .join(
+                enter=>enter.append("circle")
+                    .attr("class", "dot")
+                    .attr("cx", function(d){
+                        return orientation === "horizontal"?
+                            valueScale(0):(labelScale(d.label) ?? 0) + labelScale.bandwidth()/2
+                    })
+                    .attr("cy", function(d){
+                        return orientation === "vertical"?
+                            valueScale(0):(labelScale(d.label) ?? 0) + labelScale.bandwidth()/2
+                    })
+                    .attr("fill", lineColor)
+                    .attr("r", 0)
+                    .style("pointer-events", "none")
+                        .transition().duration(animDuration)
+                    .attr("cx", cx)
+                    .attr("cy", cy)
+                    .attr("r", radius),
+                undefined,
+                exit=>exit.transition().duration(animDuration)
+                    .style("opacity", 0)
+                    .remove()
+            )
+                    .transition().duration(animDuration)
+                .attr("cx", cx)
+                .attr("cy", cy)
+                .attr("r", radius)    
+
+    }, [data, color, width, height, isSorted, orientation, {prefix, suffix, formatType}, 
+        { showLine, showDots, curve}]);
     
     return (
         <div 

@@ -1,5 +1,13 @@
-import { schemeSet1, schemeSet2, schemeSet3, schemeCategory10, schemeTableau10, shuffle, format  } from "d3"
-import { tooltipFormat } from "./types";
+import { schemeSet1, schemeSet2, schemeSet3, schemeCategory10, schemeTableau10, shuffle, format,
+    Selection, ScaleBand, ScaleLinear,  
+    line,
+    curveLinear,
+    curveBasis,
+    curveCardinal,
+    curveCatmullRom,
+    curveNatural
+  } from "d3"
+import { tooltipFormat, pointData, curveTypes, orientationType } from "./types";
 
 export const cloneObj = (arr:any) => {    
     try{
@@ -79,6 +87,7 @@ export function getMouseYInData(e: MouseEvent, svg: SVGSVGElement, yScale: d3.Sc
         dataY: yScale.invert(pixelY)
     };
 }
+
 export function isISODateString(str: string | Date) {
     if(str instanceof Date){
         return true
@@ -101,4 +110,114 @@ export const sanitizeString = (str: string) => {
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-|-$/g, "")
+}
+
+export function renderLineChart(
+    canvas: Selection<SVGGElement, unknown, null, undefined>, 
+    labelScale: ScaleBand<string>,
+    valueScale: ScaleLinear<number, number>,
+    data: pointData[],
+    width: number,
+    orientation: orientationType = "vertical",
+    lineProps: {
+        showLine: boolean, showDots: boolean, curve?: curveTypes,
+        lineStroke?: string, dotFill?: string 
+    } = { showLine: false, showDots: true, curve: "linear" },             
+    
+){
+    const lineFn = line<pointData>()
+        .x((d) => 
+            orientation === "vertical"?
+                (labelScale(d.label) ?? 0) + labelScale.bandwidth()/2:
+                valueScale(d.value)
+        )
+        .y((d) => 
+            orientation === "horizontal"?
+                (labelScale(d.label) ?? 0) + labelScale.bandwidth()/2:
+                valueScale(d.value)
+        )
+
+    const { curve, showLine, showDots, lineStroke, dotFill } = lineProps
+    //"linear" | "basis" | "cardinal" | "catmullrom" | "natural"
+    if(curve === "linear"){
+        lineFn.curve(curveLinear)
+    }else if(curve === "basis"){
+        lineFn.curve(curveBasis)
+    }else if(curve === "cardinal"){
+        lineFn.curve(curveCardinal)
+    }else if(curve === "catmullrom"){
+        lineFn.curve(curveCatmullRom)
+    }else if(curve === "natural"){
+        lineFn.curve(curveNatural)
+    }
+
+    const isMediumScreen = width > 576;
+    const radius = isMediumScreen?3:2
+    const lineColor = lineStroke ?? "#2b2b22"
+
+    const lineData = showLine?[data]:[]
+    const lines = canvas.selectAll<SVGPathElement, pointData[]>("path.chartline")
+        .data(lineData)
+        .join(
+            enter=>enter.append("path")
+                .attr("class", "chartline")
+                .attr("fill", "none")
+                .attr("stroke", lineColor)
+                .attr("stroke-width", 2)
+                .style("stroke-opacity", 0.75)                    
+                .style("pointer-events", "none"),
+            undefined,
+            exit=>exit.remove()
+        )
+
+    const animDuration = 500
+    lines
+        .transition().duration(animDuration)
+        .attr("d", (d) => lineFn(d))
+    
+    lines.raise()
+
+    const cx = (d: pointData) => {
+        return orientation === "vertical"?
+            (labelScale(d.label) ?? 0) + labelScale.bandwidth()/2:
+            valueScale(d.value)
+    }
+
+    const cy = (d: pointData) => {
+        return orientation === "vertical"?
+            valueScale(d.value):
+            (labelScale(d.label) ?? 0) + labelScale.bandwidth()/2
+    }
+
+    const dotsData = (showLine && showDots)?data:[]
+    const dots =  canvas
+        .selectAll<SVGCircleElement, pointData>(".dot")
+        .data(dotsData, (d) => String(d.label))
+        .join(
+            enter=>enter.append("circle")
+                .attr("class", "dot")
+                .attr("cx", function(d){
+                    return orientation === "horizontal"?
+                        valueScale(0):(labelScale(d.label) ?? 0) + labelScale.bandwidth()/2
+                })
+                .attr("cy", function(d){
+                    return orientation === "vertical"?
+                        valueScale(0):(labelScale(d.label) ?? 0) + labelScale.bandwidth()/2
+                })
+                .attr("fill", lineColor)
+                .attr("r", 0)
+                .style("pointer-events", "none")
+                    .transition().duration(animDuration)
+                .attr("cx", cx)
+                .attr("cy", cy)
+                .attr("r", radius),
+            undefined,
+            exit=>exit.transition().duration(animDuration)
+                .style("opacity", 0)
+                .remove()
+        )
+                .transition().duration(animDuration)
+            .attr("cx", cx)
+            .attr("cy", cy)
+            .attr("r", radius)
 }

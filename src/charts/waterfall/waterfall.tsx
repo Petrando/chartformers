@@ -1,15 +1,17 @@
 import React, { useEffect, useState, useRef } from 'react';
 import {scaleBand, scaleLinear, axisLeft, axisBottom, format, 
-    line, curveBasis, curveLinear, curveCardinal, curveCatmullRom, curveNatural} from 'd3';
+    line, curveBasis, curveLinear, curveCardinal, curveCatmullRom, curveNatural,
+    ScaleBand, ScaleLinear, Selection
+} from 'd3';
 import { useD3 } from '../../hooks/useD3';
 import { useParentSize } from '../../hooks/useParentSize';
 import { Tooltip, getTooltip, moveTooltip } from '../../components/tooltip';
 import { useContainerSize } from '../../hooks/useContainerSize';
 import { formatWaterfallData, colors } from './utils';
-import { rotateLabels } from '../../utils';
+import { renderLineChart, rotateLabels } from '../../utils';
 import styles from '../global.module.css';
 import waterfallStyles from './waterfall.module.css'
-import { tooltipFormat, waterfallDatum, pointData, lineDecor } from '../../types';
+import { tooltipFormat, waterfallDatum, pointData, lineDecor, curveTypes, orientationType } from '../../types';
 
 type WaterfallProps = {
     data: waterfallDatum[];    
@@ -439,8 +441,7 @@ export function WaterfallChart({
                         .style("opacity", 0)
                     .remove()
             )
-            
-        console.log(renderData)
+                    
         const baseLineData:pointData[] = renderData
             .map((d, i) => ({
                 label: d.label, 
@@ -448,101 +449,12 @@ export function WaterfallChart({
                     mode !== "waterfall"?Math.abs(d.value):
                     i !== renderData.length - 1?d.end:d.value
             }))
-        const lineFn = line<pointData>()
-            .x((d) => 
-                orientation === "vertical"?
-                    (xScale(d.label) ?? 0) + xScale.bandwidth()/2:
-                    yScale(d.value)
-            )
-            .y((d) => 
-                orientation === "horizontal"?
-                    (xScale(d.label) ?? 0) + xScale.bandwidth()/2:
-                    yScale(d.value)
-            )
+                                
+        renderLineChart(
+            canvas, xScale, yScale, baseLineData, width, orientation, 
+            { showLine, showDots, curve})        
         
-        //"linear" | "basis" | "cardinal" | "catmullrom" | "natural"
-        if(curve === "linear"){
-            lineFn.curve(curveLinear)
-        }else if(curve === "basis"){
-            lineFn.curve(curveBasis)
-        }else if(curve === "cardinal"){
-            lineFn.curve(curveCardinal)
-        }else if(curve === "catmullrom"){
-            lineFn.curve(curveCatmullRom)
-        }else if(curve === "natural"){
-            lineFn.curve(curveNatural)
-        }
-
-        const radius = isMediumScreen?3:2
-        const lineColor = "#2b2b22"
-        
-        const lineData = showLine?[baseLineData]:[]
-        const lines = canvas.selectAll<SVGPathElement, pointData[]>("path.chartline")
-            .data(lineData)
-            .join(
-                enter=>enter.append("path")
-                    .attr("class", "chartline")
-                    .attr("fill", "none")
-                    .attr("stroke", lineColor)
-                    .attr("stroke-width", 2)
-                    .style("stroke-opacity", 0.75)                    
-                    .style("pointer-events", "none"),
-                undefined,
-                exit=>exit.remove()
-            )
-
-        lines
-            .transition().duration(animDuration)
-            .attr("d", (d) => lineFn(d))
-        
-        lines.raise()
-
-        const cx = (d: pointData) => {
-            return orientation === "vertical"?
-                (xScale(d.label) ?? 0) + xScale.bandwidth()/2:
-                yScale(d.value)
-        }
-
-        const cy = (d: pointData) => {
-            return orientation === "vertical"?
-                yScale(d.value):
-                (xScale(d.label) ?? 0) + xScale.bandwidth()/2
-        }
-
-        const dotsData = (showLine && showDots)?baseLineData:[]
-        const dots =  canvas
-            .selectAll<SVGCircleElement, pointData>(".dot")
-            .data(dotsData, (d) => String(d.label))
-            .join(
-                enter=>enter.append("circle")
-                    .attr("class", "dot")
-                    .attr("cx", function(d){
-                        return orientation === "horizontal"?
-                            yScale(0):(xScale(d.label) ?? 0) + xScale.bandwidth()/2
-                    })
-                    .attr("cy", function(d){
-                        return orientation === "vertical"?
-                            yScale(0):(xScale(d.label) ?? 0) + xScale.bandwidth()/2
-                    })
-                    .attr("fill", lineColor)
-                    .attr("r", 0)
-                    .style("pointer-events", "none")
-                        .transition().duration(animDuration)
-                    .attr("cx", cx)
-                    .attr("cy", cy)
-                    .attr("r", radius),
-                undefined,
-                exit=>exit.transition().duration(animDuration)
-                    .style("opacity", 0)
-                    .remove()
-            )
-                    .transition().duration(animDuration)
-                .attr("cx", cx)
-                .attr("cy", cy)
-                .attr("r", radius) 
-        
-        labels.raise()          
-        
+        labels.raise()                  
         
     }, [data, width, height, orientation, mode, { showLine, showDots, curve}, isSorted, {prefix, suffix, formatType}]);
     

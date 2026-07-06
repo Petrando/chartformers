@@ -119,8 +119,11 @@ export type lineChartDatum = Record<string, string | number | Date>;
 
 export type lineTooltipPosData = { xPos: number, low: number, volume: number }
 
+export type curveTypes = "linear" | "basis" | "cardinal" | "catmullrom" | "natural"
 export type lineDecor = {
     showLine?: boolean;
     showDots?: boolean;
-    curve?: "linear" | "basis" | "cardinal" | "catmullrom" | "natural";
+    curve?: curveTypes;
 }
+
+export type orientationType = "vertical" | "horizontal"

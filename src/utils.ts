@@ -114,26 +114,27 @@ export const sanitizeString = (str: string) => {
 
 export function renderLineChart(
     canvas: Selection<SVGGElement, unknown, null, undefined>, 
-    labelScale: ScaleBand<string>,
+    labelScale: {scale: ScaleBand<string>, offset: number},
     valueScale: ScaleLinear<number, number>,
-    data: pointData[],
+    renderData: {data: pointData[], idExtension?: string},
     width: number,
     orientation: orientationType = "vertical",
     lineProps: {
-        showLine: boolean, showDots: boolean, curve?: curveTypes,
+        showLine?: boolean, showDots?: boolean, curve?: curveTypes,
         lineStroke?: string, dotFill?: string 
     } = { showLine: false, showDots: true, curve: "linear" },             
     
 ){
+    const {data, idExtension} = renderData
     const lineFn = line<pointData>()
         .x((d) => 
             orientation === "vertical"?
-                (labelScale(d.label) ?? 0) + labelScale.bandwidth()/2:
+                (labelScale.scale(d.label) ?? 0) + labelScale.offset:
                 valueScale(d.value)
         )
         .y((d) => 
             orientation === "horizontal"?
-                (labelScale(d.label) ?? 0) + labelScale.bandwidth()/2:
+                (labelScale.scale(d.label) ?? 0) + labelScale.offset:
                 valueScale(d.value)
         )
 
@@ -155,12 +156,14 @@ export function renderLineChart(
     const radius = isMediumScreen?3:2
     const lineColor = lineStroke ?? "#2b2b22"
 
+    const animDuration = 500
     const lineData = showLine?[data]:[]
-    const lines = canvas.selectAll<SVGPathElement, pointData[]>("path.chartline")
+    const lines = canvas
+        .selectAll<SVGPathElement, pointData[]>(!idExtension?"path.chartline":`path.chartline${idExtension}`)
         .data(lineData)
         .join(
             enter=>enter.append("path")
-                .attr("class", "chartline")
+                .attr("class", !idExtension?"chartline":`chartline${idExtension}`)
                 .attr("fill", "none")
                 .attr("stroke", lineColor)
                 .attr("stroke-width", 2)
@@ -170,39 +173,41 @@ export function renderLineChart(
             exit=>exit.remove()
         )
 
-    const animDuration = 500
+    
     lines
         .transition().duration(animDuration)
         .attr("d", (d) => lineFn(d))
+        .attr("stroke", lineColor)
     
     lines.raise()
 
     const cx = (d: pointData) => {
         return orientation === "vertical"?
-            (labelScale(d.label) ?? 0) + labelScale.bandwidth()/2:
+            (labelScale.scale(d.label) ?? 0) + labelScale.offset:
             valueScale(d.value)
     }
 
     const cy = (d: pointData) => {
         return orientation === "vertical"?
             valueScale(d.value):
-            (labelScale(d.label) ?? 0) + labelScale.bandwidth()/2
+            (labelScale.scale(d.label) ?? 0) + labelScale.offset
     }
 
     const dotsData = (showLine && showDots)?data:[]
     const dots =  canvas
-        .selectAll<SVGCircleElement, pointData>(".dot")
-        .data(dotsData, (d) => String(d.label))
+        .selectAll<SVGCircleElement, pointData>(!idExtension?".dot":`.dot${idExtension}`)
+        .data(dotsData, 
+            (d) => !idExtension?String(d.label):String(d.label) + idExtension)
         .join(
             enter=>enter.append("circle")
-                .attr("class", "dot")
+                .attr("class", !idExtension?"dot":`dot${idExtension}`)
                 .attr("cx", function(d){
                     return orientation === "horizontal"?
-                        valueScale(0):(labelScale(d.label) ?? 0) + labelScale.bandwidth()/2
+                        valueScale(0):(labelScale.scale(d.label) ?? 0) + labelScale.offset
                 })
                 .attr("cy", function(d){
                     return orientation === "vertical"?
-                        valueScale(0):(labelScale(d.label) ?? 0) + labelScale.bandwidth()/2
+                        valueScale(0):(labelScale.scale(d.label) ?? 0) + labelScale.offset
                 })
                 .attr("fill", lineColor)
                 .attr("r", 0)
@@ -220,4 +225,5 @@ export function renderLineChart(
             .attr("cx", cx)
             .attr("cy", cy)
             .attr("r", radius)
+            .attr("fill", lineColor)
 }

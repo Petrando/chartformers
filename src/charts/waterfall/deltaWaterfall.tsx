@@ -1,15 +1,14 @@
 import React, { useEffect, useState, useRef } from 'react';
-import {scaleBand, scaleLinear, axisLeft, axisBottom, format, min, max} from 'd3';
+import {scaleBand, scaleLinear, axisLeft, axisBottom, format, min, max, color} from 'd3';
 import { useD3 } from '../../hooks/useD3';
 import { useParentSize } from '../../hooks/useParentSize';
 import { useContainerSize } from '../../hooks/useContainerSize';
 import { formatWaterfallData, colors } from './utils';
-import { rotateLabels } from '../../utils';
+import { renderLineChart, rotateLabels } from '../../utils';
 import { Tooltip, getTooltip, moveTooltip } from '../../components/tooltip';
 import styles from '../global.module.css';
 import waterfallStyles from './waterfall.module.css'
 import { tooltipFormat, deltaWaterfallDatum, waterfallDatum } from '../../types';
-
 
 type WaterfallProps = {
     data: deltaWaterfallDatum[];    
@@ -36,8 +35,7 @@ export function DeltaWaterfall({
     const [chartContainerRef, chartSize] = useContainerSize<HTMLDivElement>()
     const { width, height } = chartSize
     const [ plottedTimeframe, setPlottedTimeframe ] = useState(-1)
-
-    type modeType = "waterfall" | "inflows" | "outflows";            
+                
     const [ isSorted, setIsSorted ] = useState(false)
     const changeBy = useRef("data")    
     const canLegendHover = useRef(true)
@@ -98,8 +96,7 @@ export function DeltaWaterfall({
                 baseCloseData:[baseCloseData[effectiveTimeframe]]:
                 []
         closeData.sort((a, b) => (selected === "close" && isSorted)?b.data.value - a.data.value:0)        
-        
-        
+                
         const keys: BarKey[] = ["open", "close"];        
 
         const canvasSvg = container.select<SVGSVGElement>("svg")
@@ -485,6 +482,80 @@ export function DeltaWaterfall({
                 },
                 exit=>exit.transition().duration(animDuration).style("opacity", 0).remove()
             )
+
+        const openLineData = ((selected === "" || selected === "open") && effectiveTimeframe === -1)?
+            baseOpenData.map(d => ({label: d.label, value:d.data.value})):[]
+        renderLineChart(
+            canvas, 
+            {
+                scale:x0, 
+                offset:(effectiveTimeframe === -1 && selected === "")?
+                    x1.bandwidth()/2:
+                    x0.bandwidth()/2
+            }, 
+            y, 
+            {
+                data: openLineData, idExtension: "open"
+            }, 
+            width, "vertical", 
+            { showLine: true, showDots: true, 
+                lineStroke: String(color(colors.open)?.darker()), 
+                dotFill: colors.open
+            })
+
+        const closeLineData = ((selected === "" || selected === "close") && effectiveTimeframe === -1)?
+            baseCloseData.map(d => ({label: d.label, value:d.data.value})):[]
+        renderLineChart(
+            canvas, 
+            {
+                scale:x0, 
+                offset:(effectiveTimeframe === -1 && selected === "")?
+                    ((x0.bandwidth()/2) + (x1.bandwidth()/2)):
+                    x0.bandwidth()/2
+            }, 
+            y, 
+            {
+                data: closeLineData, idExtension: "close"
+            }, 
+            width, "vertical", 
+            { showLine: true, showDots: true, 
+                lineStroke: String(color(colors.close)?.darker()), 
+                dotFill: colors.close
+            })
+        
+        const baseWaterfallLineData = waterfallMode === "waterfall"?baseWaterfallData:waterfallData
+        const waterfallLineData = baseWaterfallLineData
+            .map((d, i) => ({
+                label: d.label === "Opening"?"open":
+                        d.label === "Closing"?"close":
+                        d.label, 
+                value: 
+                    waterfallMode !== "waterfall"?Math.abs(d.value):
+                    i !== baseWaterfallData.length - 1?d.end:d.value
+            }))
+        
+        const waterfallLineColor = waterfallMode === "waterfall"?"#2b2b22":
+            colors[waterfallMode]
+        console.log(waterfallLineColor)
+            
+        renderLineChart(
+            canvas, 
+            {
+                scale:x0, 
+                offset:x0.bandwidth()/2
+            }, 
+            y, 
+            {
+                data: waterfallLineData, idExtension: "waterfall"
+            }, 
+            width, "vertical", 
+            { 
+                showLine: true, showDots: true,
+                lineStroke: String(color(waterfallLineColor)?.darker()), 
+                dotFill: waterfallLineColor
+             }
+        )
+        
         
     }, [effectiveTimeframe, data, width, height, selected, isSorted,  {prefix, suffix, formatType}]);
     

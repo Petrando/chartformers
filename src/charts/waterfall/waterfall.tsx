@@ -1,7 +1,8 @@
 import React, { useEffect, useState, useRef } from 'react';
 import {scaleBand, scaleLinear, axisLeft, axisBottom, format, 
     line, curveBasis, curveLinear, curveCardinal, curveCatmullRom, curveNatural,
-    ScaleBand, ScaleLinear, Selection
+    ScaleBand, ScaleLinear, Selection,
+    color
 } from 'd3';
 import { useD3 } from '../../hooks/useD3';
 import { useParentSize } from '../../hooks/useParentSize';
@@ -449,10 +450,16 @@ export function WaterfallChart({
                     mode !== "waterfall"?Math.abs(d.value):
                     i !== renderData.length - 1?d.end:d.value
             }))
-                                
+                    
+        const waterfallLineColor = mode === "waterfall"?"#2b2b22":
+            colors[mode]
         renderLineChart(
-            canvas, xScale, yScale, baseLineData, width, orientation, 
-            { showLine, showDots, curve})        
+            canvas, {scale:xScale, offset:xScale.bandwidth()/2}, yScale, {data:baseLineData}, width, orientation, 
+            { 
+                showLine, showDots, curve,
+                lineStroke: String(color(waterfallLineColor)?.darker()), 
+                dotFill: waterfallLineColor
+            })        
         
         labels.raise()                  
         

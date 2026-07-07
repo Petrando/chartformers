@@ -281,8 +281,8 @@ export function BarChart({
                 });
 
         renderLineChart(
-                    canvas, labelScale, valueScale, barchartData, width, orientation, 
-                    { showLine, showDots, curve})    
+                    canvas, {scale:labelScale, offset:labelScale.bandwidth()/2}, valueScale, 
+                    { data: barchartData }, width, orientation, { showLine, showDots, curve})    
 
     }, [data, color, width, height, isSorted, orientation, {prefix, suffix, formatType}, 
         { showLine, showDots, curve}]);

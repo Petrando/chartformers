@@ -536,7 +536,6 @@ export function DeltaWaterfall({
         
         const waterfallLineColor = waterfallMode === "waterfall"?"#2b2b22":
             colors[waterfallMode]
-        console.log(waterfallLineColor)
             
         renderLineChart(
             canvas, 

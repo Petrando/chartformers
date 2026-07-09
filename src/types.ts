@@ -1,3 +1,5 @@
+import { Bin } from "d3";
+
 export type pointData = {
     label: string;
     value: number;
@@ -114,6 +116,8 @@ export type histogramChartData<T extends histogramDatum> = {
     valueKey?: string;
     data: T[] | histogramChartData<T>[];
 };
+
+export type binnedData = Bin<histogramDatum, number>;
 
 export type lineChartDatum = Record<string, string | number | Date>;
 

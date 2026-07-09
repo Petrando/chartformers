@@ -2,16 +2,17 @@ import React, {useEffect, useState} from 'react';
 import {select, scaleBand, scaleLinear, axisLeft, axisBottom, axisTop, axisRight,
     max, format, Bin, bin, Selection, 
     thresholdFreedmanDiaconis, thresholdScott, thresholdSturges,
-    median, mean, range
+    median, mean, range,
+    color
 } from 'd3';
 import { useD3 } from '../hooks/useD3';
 import { useParentSize } from '../hooks/useParentSize';
 import { Tooltip, getTooltip, moveTooltip } from '../components/tooltip';
-import { cloneObj, indexSelectedColor } from '../utils';
+import { cloneObj, indexSelectedColor, renderHistogramLine, renderLineChart } from '../utils';
 import { inactiveColor } from '../../dev/data/constants';
 import styles from './global.module.css';
 import histogramStyles from './histogram.module.css'
-import { tooltipFormat, histogramDatum, histogramChartData } from '../types';
+import { tooltipFormat, histogramDatum, histogramChartData, binnedData } from '../types';
 import { useContainerSize } from '../hooks/useContainerSize';
 
 type sortOption = {
@@ -138,9 +139,7 @@ export function Histogram({
         const rangeScaleBin = scaleLinear()
             .domain([rangeMin, rangeMax])
             .range([0, graphWidth])
-            //.nice()
-
-        type binnedData = Bin<histogramDatum, number>;
+            //.nice()        
         
         const binnedDataFactory = (dataForBin: histogramChartData<histogramDatum>) => {
             if(!dataForBin || !dataForBin.data || dataForBin.data.length === 0){
@@ -444,15 +443,15 @@ export function Histogram({
                 .domain([rangeMin, rangeMax])     // can use this instead of 1000 to have the max of data: d3.max(data, function(d) { return +d.price })
                 .range(orientation === 'vertical'?
                     [0, graphWidth]:[0, graphHeight])
-                .nice()
+                //.nice()
 
-            const sortedRanges = layerBin.map(d => d.x0 + "-" + d.x1)                    
-            const ranges = layerIdx === 2 && sortedRanges.length === 0?
-                sortedFirstDataRanges:sortedRanges
+            const baseRanges = layerBin.map(d => d.x0 + "-" + d.x1)                    
+            const ranges = layerIdx === 2 && baseRanges.length === 0?
+                sortedFirstDataRanges:baseRanges
             const binSorted = scaleBand()
                 .domain(ranges)
                 .rangeRound(orientation === 'vertical'?
-                    [0, graphWidth]:[0, graphHeight]);  
+                    [0, graphWidth]:[0, graphHeight]);              
 
             const valueScale = scaleLinear()
                 .domain([0, valueMax])
@@ -697,6 +696,23 @@ export function Histogram({
                     }
                                         
                 })
+                       
+            const lineColor = layerIdx === 1?
+                isSingleData?"#2b2b22":(!withNegativeData?colors.base:colors.layer1.positive):
+                colors.layer2.positive
+
+            renderHistogramLine(
+                layerCanvas,
+                { binRanges, binSorted,isSorted }, 
+                valueScale,
+                layerBin,
+                width,
+                orientation,
+                {
+                    showLine: true, showDots: true,
+                    lineStroke: String(color(lineColor)?.darker()), dotFill: lineColor
+                }
+            )
             
         }
 

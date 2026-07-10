@@ -89,8 +89,8 @@ export function BarChart({
         const canvas = canvasSvg.select<SVGGElement>('.plot-area')
             .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
 
-        const tooltip = getTooltip(container as any)
-            .style("opacity", 0);
+        //const tooltip = getTooltip(container as any);
+        const tooltip = container.select(`#tooltip`).style("opacity", 0)
         
         const xAxisTextClass = !isMediumScreen?barchartStyles.rotatedAxisText:
             barchartStyles.axisText;

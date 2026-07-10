@@ -1,17 +1,21 @@
 import React, {useState, useEffect, useRef} from 'react';
-import {select, easeCubicOut, interpolateNumber, hierarchy, pack, scaleLinear, interpolateHcl, 
+import {select, hierarchy, pack, scaleLinear, interpolateHcl, 
+    quantize, interpolateRainbow, scaleOrdinal, color as d3Color,
     HierarchyCircularNode, HierarchyNode} from 'd3';
 import { useD3 } from '../../hooks/useD3';
 import { useParentSize } from '../../hooks/useParentSize';
+import { Tooltip, moveTooltip } from '../../components/tooltip';
 import { basicFormat, cloneObj } from '../../utils';
 import { oldPack } from './utils';
 import { hierarchyData, tooltipFormat } from '../../types';
 import styles from '../global.module.css';
 import packStyles from './circle-pack.module.css'
+import { useLayerIndex } from '../../hooks/useLayerIndex';
 
 type PackProps = {
-    data: hierarchyData[];
+    data: hierarchyData;
     tooltipFormat?: tooltipFormat;
+    colorScheme?: 'monochrome' | 'rainbow';
 }
 
 type PackedNodeWithSorted<T> = HierarchyCircularNode<T> & {
@@ -55,61 +59,12 @@ function assignSortedGeometry<T extends { name: string }>(
     }
 }
 
-type hoveredData = {name: string, value: number}
-
-export function CirclePacks({data, tooltipFormat}: PackProps) {
-    const [hierarchyData, setPackData] = useState<hierarchyData[] | null>(null);
-    const [ isSorted, setIsSorted ] = useState(false)
-    const [ hoveredData, setHoveredData ] = useState<hoveredData>({name: "", value: 0})    
-    const [ prevHoveredData, setPrevHoveredData] = useState<hoveredData>({name: "", value: 0})
+export function CirclePacks({data, tooltipFormat, colorScheme = 'monochrome'}: PackProps) {
+    const [hierarchyData, setPackData] = useState<hierarchyData | null>(null);
+    const [ isSorted, setIsSorted ] = useState(false)    
     const isFirstRender = useRef(true)
     const [ref, parentSize] = useParentSize<HTMLDivElement>();
     const { width:parentWidth, height: parentHeight} = parentSize;    
-
-    const pNameRef = useRef<HTMLParagraphElement | null>(null);
-    const pValueRef = useRef<HTMLParagraphElement | null>(null);
-
-    useEffect(() => {
-        if (!pValueRef.current) return;
-        if(!pNameRef.current) return
-
-        const elName = pNameRef.current        
-
-        function interpolateText(a: string, b: string) {            
-            const max = Math.max(a.length, b.length);
-            
-            return function (t: number) {
-                let result = "";
-                for (let i = 0; i < max; i++) {
-                    result += t < 0.5 ? a[i] ?? "" : b[i] ?? "";
-                }
-                return result;                
-            };            
-        }
-        select(elName)
-            .transition()
-            .duration(250)
-            .tween("text", function () {
-                const i = interpolateText(prevHoveredData.name, hoveredData.name);
-                return function (t) {
-                    elName.textContent = i(t);
-                };
-            });
-
-        const elValue = pValueRef.current;
-
-        select(elValue)
-            .transition()
-            .duration(250)
-            .ease(easeCubicOut)
-            .tween("text", function () {                
-                const i = interpolateNumber(prevHoveredData.value, hoveredData.value);
-
-                return function (t) {
-                    elValue.textContent = basicFormat(Math.round(i(t)), tooltipFormat).toLocaleString();
-                };
-            });
-    }, [ hoveredData, prevHoveredData ]);
 
     useEffect(()=>{
         setPackData((prev) => {            
@@ -119,7 +74,15 @@ export function CirclePacks({data, tooltipFormat}: PackProps) {
             }
             return data
         })
-    }, [data])        
+    }, [data])
+    
+    const layersRef = useLayerIndex(data.children?.map(d => d.name) as string[])
+    const BASE_COLORS = quantize(interpolateRainbow, 10);    
+    const colorRef = useRef(
+        scaleOrdinal<string, string>()
+            .domain(layersRef.current)
+            .range(BASE_COLORS)
+    );
 
     const isMidSmallScreen = parentWidth <= 768;
     const animDuration = 1000
@@ -147,7 +110,7 @@ export function CirclePacks({data, tooltipFormat}: PackProps) {
             const graphHeight = baseHeight            
             const graphWidth = baseWidth
 
-            const rootData:hierarchyData = {'name':'branches', 'children':hierarchyData}                    
+            const rootData:hierarchyData = {'name':'branches', 'children':hierarchyData.children}                    
 
             const diameter = Math.min(graphWidth, graphHeight)
                         
@@ -183,10 +146,45 @@ export function CirclePacks({data, tooltipFormat}: PackProps) {
             //canvas.transition().duration(animDuration)
                 //.attr("transform", "translate(" + width / 2 + "," + height / 2 + ")");
 
-            const color = scaleLinear<string>()
+            const monochromeFill = scaleLinear<string>()
                 .domain([-1, 2])
                 .range(["#34d399", "#6b21a8"])
                 .interpolate(interpolateHcl);
+
+            const rainbowFill = (d: PackedNodeWithSorted<hierarchyData>) => {
+                let node = d           
+                while (node.depth > 1) node = node.parent as PackedNodeWithSorted<hierarchyData>; 
+
+                const colorName = node.data.name                        
+                
+                const baseColor = colorRef.current(colorName)
+                    
+                const c = d3Color(baseColor);
+                
+                if (!c) return baseColor;
+    
+                // Depth-based adjustment
+                const depth = d.depth;
+    
+                // You can tweak this factor
+                const factor = 0.5;
+    
+                if (depth === 1) {
+                    return c.formatHex(); // base color
+                }
+    
+                // deeper = darker
+                //can use darker or brighter
+                return c.darker(depth * factor).formatHex();
+            }
+
+            const nodeFill = (d: PackedNodeWithSorted<hierarchyData>)  => {
+                if(colorScheme === 'monochrome'){
+                    const cirleColor = d.children ? monochromeFill(d.depth) : "#f0fdfa";                              
+                    return cirleColor; 
+                }                                 
+                return rainbowFill(d)
+            }
             
             function circleRadius(d:PackedNodeWithSorted<hierarchyData>) { 
                 const k = diameter / view[2];	                                
@@ -220,10 +218,7 @@ export function CirclePacks({data, tooltipFormat}: PackProps) {
                                     `${packStyles.node} ${packStyles["node--leaf"]}` : 
                                     `${packStyles.node} ${packStyles["node--root"]}`; 
                             })
-                            .style("fill", function(d) { 
-                                const cirleColor = d.children ? color(d.depth) : "#f0fdfa";                              
-                                return cirleColor; 
-                            })
+                            .style("fill", nodeFill)
                             .style("cursor", "pointer")
                                 .transition().duration(animDuration)
                             .attr("r", circleRadius)
@@ -231,10 +226,7 @@ export function CirclePacks({data, tooltipFormat}: PackProps) {
                             .attr("cy", yPos)
                             .style("stroke", "#737373")
                             .style("stroke-width", CIRCLESTROKE * thicknessK)
-                            .style("fill", function(d) { 
-                                const cirleColor = d.children ? color(d.depth) : "#f0fdfa";                              
-                                return cirleColor; 
-                            }),
+                            .style("fill", nodeFill),
                     update=>update.transition().duration(animDuration)
                         .attr("cx", xPos)
                         .attr("cy", yPos)
@@ -243,10 +235,7 @@ export function CirclePacks({data, tooltipFormat}: PackProps) {
                             return "#737373";
                         })
                         .style("stroke-width", CIRCLESTROKE * thicknessK)
-                        .style("fill", function(d) { 
-                            const cirleColor = d.children ? color(d.depth) : "#f0fdfa";                        
-                            return cirleColor; 
-                        }),
+                        .style("fill", nodeFill),
                     exit=>exit.transition().duration(animDuration).style("opacity", 0).remove()
                 )
                 .on('mouseover', function(e, d){                        
@@ -292,15 +281,16 @@ export function CirclePacks({data, tooltipFormat}: PackProps) {
                     if(d!=root){select(this)
                         .style("stroke-width", CIRCLESTROKE * thicknessK * 2.5)
                         .style("stroke", "#e4e4e7");}
-
-                    tooltip.transition().duration(250).style("opacity", 1)
-                    setHoveredData(prev=>{
-                        setPrevHoveredData(prev)
-                        const branchName = d.data.name
-                        const name = branchName === "branches"?"Total":branchName
-                        return {name, value: d.value?d.value:0}
-                    })
+                    
+                    const name = d.data.name === "branches"?"Total":d.data.name
+                    tooltip.select("p.name").text(name)
+                    const value = d.value ?? 0
+                    tooltip.select("p.value").text(basicFormat(value, tooltipFormat).toLocaleString())
+                    tooltip.transition().duration(250).style("opacity", 1)                    
                 })
+                .on("mousemove", (e, d)=>{
+                    moveTooltip(tooltip, {e, svg:svgNode as SVGSVGElement })
+                })                
                 .on('mouseout', function(e, d){
                     texts.filter(function(d) { return (d as HierarchyCircularNode<hierarchyData>).parent === focus || (this as SVGTextElement).style.display === "inline"; })	    	  
                         //.style("font-size", LABELFONTSIZE * thicknessK)
@@ -412,7 +402,7 @@ export function CirclePacks({data, tooltipFormat}: PackProps) {
 
             reset()
         }, 
-        [hierarchyData, parentWidth, parentHeight, isSorted]
+        [hierarchyData, colorScheme, parentWidth, parentHeight, isSorted]
     );
 
     return (
@@ -429,20 +419,7 @@ export function CirclePacks({data, tooltipFormat}: PackProps) {
                     viewBox={`0 0 ${parentWidth} ${parentHeight}`}
                 >
                     <g className="plot-area" />
-                </svg>
-                <div id="tooltip"
-                    className={`${packStyles["glass_card"]}`} 
-                    style={{
-                        position: "absolute", left: 2, top: 2, fontSize: 12, fontWeight: 600,
-                        display: "flex", alignItems: "center", gap: 2
-                    }}>                    
-                    <p ref={pNameRef} id="name" style={{ padding: 0, margin: 0}}>
-                        Test tooltip
-                    </p>
-                    <p ref={pValueRef} id="value" style={{ padding: 0, margin: 0}}>
-                        Test tooltip
-                    </p>
-                </div>
+                </svg>                
                 <label 
                     className={styles["controls-label"]}
                     style={{position: "absolute", right: "12px", top: "6px"}}
@@ -455,6 +432,16 @@ export function CirclePacks({data, tooltipFormat}: PackProps) {
                     />
                         Sort
                 </label>
+                <Tooltip>
+                    <p className='name' 
+                        style={{fontWeight: "300px", margin: "3px",  fontSize: "12px", color: "wheat"}}>
+                        Tooltip
+                    </p>
+                    <p className='value' 
+                        style={{fontWeight: "400px", margin: "3px", fontSize: "13px", color: "wheat", textAlign:"right"}}>
+                        Tooltip
+                    </p>
+                </Tooltip>
             </div>            
         </div>  
     )

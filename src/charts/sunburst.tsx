@@ -5,7 +5,7 @@ import { useParentSize } from '../hooks/useParentSize';
 import { Tooltip, getTooltip, moveTooltip } from '../components/tooltip';
 import { cloneObj, indexSelectedColor, indexColor } from '../utils';
 import { inactiveColor } from '../../dev/data/constants';
-import { flareData } from '../../dev/data/loan-data'
+import { flareData } from '../../dev/data/hierarchy-data'
 import styles from './global.module.css';
 import { pointData, tooltipFormat, hierarchyData } from '../types';
 import { useLayerIndex } from '../hooks/useLayerIndex';
@@ -227,8 +227,9 @@ export function Sunburst({data}: sunburstProps) {
             const colorName = node.data.name                        
 
             const baseColor = colorRef.current(colorName)
-
+            
             const c = d3.color(baseColor);
+            console.log('in sunburst: ', baseColor, ", ", c)
             if (!c) return baseColor;
 
             // Depth-based adjustment

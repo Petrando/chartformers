@@ -1,10 +1,10 @@
 /* Tooltip container */
 .tooltip {
-    max-width: 18rem;
+    /*max-width: 18rem;*/
     background-color: rgba(20, 20, 20, 0.92); /* Deep dark with slight transparency */
     backdrop-filter: blur(4px);
 
-    padding: 0.75rem 0.85rem;
+    padding: 0.25rem 0.3rem;
     border-radius: 0.5rem;
 
     box-shadow: 0 4px 12px rgba(0,0,0,0.4);

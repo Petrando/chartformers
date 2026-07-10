@@ -1,17 +1,19 @@
-import React, {FunctionComponent} from 'react'
+import React, {FunctionComponent, ReactNode} from 'react'
 import * as d3 from 'd3';
 import { getMouseYInData } from '../utils';
 import styles from "./tooltip.module.css"
 
 type ITooltip = {
     pCount?:number;
+    children?: ReactNode;
 }
 
-export const Tooltip:FunctionComponent<ITooltip> = ({pCount}) => {
+export const Tooltip:FunctionComponent<ITooltip> = ({pCount, children}) => {
     return (
         <div id="tooltip" className={`${styles.tooltip}`} style={{opacity: 0}}>
+            { children }
             {
-                !pCount &&
+                !pCount && !children &&
                     <p className={`top-label ${styles["text-small"]}`} />
             }
             {
@@ -22,7 +24,7 @@ export const Tooltip:FunctionComponent<ITooltip> = ({pCount}) => {
                     </>
             }
             {
-                (pCount === 3 || 4) &&
+                (pCount === 3 || pCount === 4) &&
                 <>
                     <p className={`title ${styles.title}`} />
                     <p className={`top-label ${styles["right-label"]}`} />
@@ -53,13 +55,16 @@ export const SankeyTooltip:FunctionComponent = () => {
 }
 
 //Below are NOT react function components!
-export const getTooltip = (svg:d3.Selection<(SVGAElement | HTMLDivElement), any, any, any>, id="tooltip") => {
+export const getTooltip = (
+    svg:d3.Selection<(SVGAElement | HTMLDivElement), any, any, any>, 
+    id="tooltip"
+) => {
     const tooltip = svg.select(`#${id}`)
-        .style("pointer-events", "none")
-        .style("position", "fixed")
-        .style("left", "auto").style("top", "auto").style("bottom", "auto").style("right", "auto")
-        .style("padding", "8px 5px")
-        .style("max-width", "200px")
+        //.style("pointer-events", "none")
+        //.style("position", "fixed")
+        //.style("left", "auto").style("top", "auto").style("bottom", "auto").style("right", "auto")
+        //.style("padding", "8px 5px")
+        //.style("max-width", "200px")
         .style("opacity", 0);
 
     return tooltip
@@ -68,7 +73,7 @@ export const getTooltip = (svg:d3.Selection<(SVGAElement | HTMLDivElement), any,
 type PositioningProps = {
     e: MouseEvent;
     svg: SVGSVGElement; 
-    yScale: d3.ScaleLinear<number, number>;
+    yScale?: d3.ScaleLinear<number, number>;
 }
 
 export function moveTooltip(tooltip:any, positionProps:PositioningProps){
@@ -86,7 +91,7 @@ export function moveTooltip(tooltip:any, positionProps:PositioningProps){
     }
     else if(baseXPos + offsetWidth > clientWidth){//too much to the right....
         const difference =  (baseXPos + offsetWidth) - clientWidth;
-      xPos = baseXPos - difference;
+        xPos = baseXPos - difference;
     }
     else{
         xPos = baseXPos;

@@ -2,8 +2,8 @@ import React, {useEffect, useState, useRef} from 'react';
 import * as d3 from 'd3';
 import { useD3 } from '../hooks/useD3';
 import { useParentSize } from '../hooks/useParentSize';
-import { Tooltip, getTooltip, moveTooltip } from '../components/tooltip';
-import { cloneObj, indexSelectedColor, indexColor } from '../utils';
+import { Tooltip, moveTooltip } from '../components/tooltip';
+import { cloneObj, indexSelectedColor, indexColor, basicFormat } from '../utils';
 import { inactiveColor } from '../../dev/data/constants';
 import { flareData } from '../../dev/data/hierarchy-data'
 import styles from './global.module.css';
@@ -37,9 +37,10 @@ type sunburstData = baseHierarchy & {
 
 type sunburstProps = {
     data: hierarchyData;
+    tooltipFormat?: tooltipFormat;
 }
 
-export function Sunburst({data}: sunburstProps) {
+export function Sunburst({data, tooltipFormat}: sunburstProps) {
     const [ref, parentSize] = useParentSize<HTMLDivElement>();    
     const { width: baseWidth, height: baseHeight } = parentSize;
 
@@ -95,8 +96,7 @@ export function Sunburst({data}: sunburstProps) {
             left: 20
         };                                
 
-        const tooltip = getTooltip(container as any)
-            .style("opacity", 0);        
+        const tooltip = container.select("#tooltip").style("opacity", 0);        
         
         /*const hierarchy = d3.hierarchy<hierarchyData>(data)
             .sum(d => d.value!)
@@ -228,8 +228,7 @@ export function Sunburst({data}: sunburstProps) {
 
             const baseColor = colorRef.current(colorName)
             
-            const c = d3.color(baseColor);
-            console.log('in sunburst: ', baseColor, ", ", c)
+            const c = d3.color(baseColor);            
             if (!c) return baseColor;
 
             // Depth-based adjustment
@@ -308,22 +307,33 @@ export function Sunburst({data}: sunburstProps) {
                 exit=>exit.transition().duration(animDuration).style("opacity", 0).remove()
             )
             .on("pointerenter", function(e, d){
-                if(focus !== root){
+                /*if(focus !== root){
                     return
-                }                
+                }*/                
                 labelCanvas.selectAll<SVGTextElement, sunburstData>("text.suntext")
                     .filter(dText => dText.data.name === d.data.name)
                     .style("fill-opacity", 1)
-                    .style("text-shadow", labelShadow)
+                    .style("text-shadow", labelShadow)                
+
+                const name = d.data.name === "branches"?"Total":d.data.name                
+                tooltip.select("p.name").text(name)
+                const value = d.value ?? 0
+                tooltip.select("p.value").text(basicFormat(value, tooltipFormat).toLocaleString())
+                tooltip.transition().duration(250).style("opacity", 1)
+            })
+            .on("pointermove", function(e, d){
+                moveTooltip(tooltip, {e, svg:svgNode as SVGSVGElement })
             })
             .on("pointerleave", function(e, d){
-                if(focus !== root){
+                /*if(focus !== root){
                     return
-                }
+                }*/
                 labelCanvas.selectAll<SVGTextElement, sunburstData>("text.suntext")
                     .filter(dText => dText.data.name === d.data.name)
                     .style("fill-opacity", d => labelVisible(d) ? 1 : 0)
                     .style("text-shadow", d => labelVisible(d)?labelShadow:"none")
+
+                tooltip.transition().duration(250).style("opacity", 0)
             })
             .on("click", function(e, d){
                 if(d.children){
@@ -366,10 +376,14 @@ export function Sunburst({data}: sunburstProps) {
             .attr("transform", labelTransform)
             .attr("dy", "0.35em")                
                     
-        function clicked(event: PointerEvent | undefined, data: sunburstData | undefined, initialCall: boolean = false) {                
+        function clicked(
+            event: PointerEvent | undefined, 
+            data: sunburstData | undefined, 
+            initialCall: boolean = false
+        ) {                
             const p = data as sunburstData
             focus = p;            
-
+            
             parentCircle
                 .style("cursor", focus === root?"default":"pointer")
             parentCircle.datum(initialCall?root:p.parent || root);
@@ -382,7 +396,7 @@ export function Sunburst({data}: sunburstProps) {
             });
 
             canvas                    
-                .selectAll<SVGPathElement, sunburstData>("path.slice")
+                .selectAll<SVGPathElement, sunburstData>("path.slice")                
                     .transition().duration(animDuration)
                 .tween("data", d => {
                     const i = d3.interpolate(d.current, d.target!);
@@ -443,7 +457,7 @@ export function Sunburst({data}: sunburstProps) {
             `;
         }
 
-    }, [data, baseWidth, baseHeight, isSorted]);
+    }, [data, baseWidth, baseHeight, tooltipFormat, isSorted]);
     
     return (
         <div 
@@ -467,7 +481,16 @@ export function Sunburst({data}: sunburstProps) {
                         <g className="label-group" />
                     </svg>          
                 }        
-                                                  
+                <Tooltip>
+                    <p className='name' 
+                        style={{fontWeight: "300px", margin: "3px",  fontSize: "12px", color: "wheat"}}>
+                        Tooltip
+                    </p>
+                    <p className='value' 
+                        style={{fontWeight: "400px", margin: "3px", fontSize: "13px", color: "wheat", textAlign:"right"}}>
+                        Tooltip
+                    </p>
+                </Tooltip>                                  
             </div> 
         </div>
     );

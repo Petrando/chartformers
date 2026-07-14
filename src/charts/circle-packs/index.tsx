@@ -77,7 +77,7 @@ export function CirclePacks({data, tooltipFormat, colorScheme = 'monochrome'}: P
     }, [data])
     
     const layersRef = useLayerIndex(data.children?.map(d => d.name) as string[])
-    const BASE_COLORS = quantize(interpolateRainbow, 10);    
+    const BASE_COLORS = quantize(interpolateRainbow, 12);    
     const colorRef = useRef(
         scaleOrdinal<string, string>()
             .domain(layersRef.current)

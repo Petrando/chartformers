@@ -248,3 +248,10 @@
 .bar:hover {
   stroke-width: 2px;
 }
+
+.shadowed_text {
+    font: 10px "Helvetica Neue", Helvetica, Arial, sans-serif;
+    text-anchor: middle;
+    text-shadow: 0 1px 0 #d1fae5, 1px 0 0 #d1fae5, -1px 0 0 #d1fae5, 0 -1px 0 #d1fae5;
+    pointer-events: none;
+}

@@ -1,43 +1,29 @@
 import React, {useState} from 'react';
-import { select, axisBottom, min, max, format,
-    scaleLinear, ScaleLinear,
+import { select, axisBottom, min, max, format, color as d3Color,
+    scaleLinear, ScaleLinear, group, hierarchy,
     drag, D3DragEvent,
     forceSimulation, forceLink, forceManyBody, forceCenter, forceCollide, 
-    forceX, forceY
+    forceX, forceY,
+    HierarchyNode, HierarchyLink,
+    scaleOrdinal,
+    schemeCategory10
  } from 'd3';
- import {
+import {
   SimulationNodeDatum,
   SimulationLinkDatum
-} from "d3-force";
+} from "d3-force"; 
 import { useD3 } from '../hooks/useD3';
 import { useUIControls } from '../hooks/useUIControls';
 import { Tooltip, getTooltip, moveTooltip } from '../components/tooltip';
 import { cloneObj, indexSelectedColor, renderLineChart } from '../utils';
-
 import styles from './global.module.css';
-import { pointData, tooltipFormat, lineDecor, orientationType } from '../types';
+import { pointData, tooltipFormat, lineDecor, orientationType,
+    hierarchyData,
+    networkNode, networkLink, networkEdge, networkResolvedLink, networkDataType,
+    networkHierarchyNode, networkHierarchyLink
+ } from '../types';
 import { useLayerIndex } from '../hooks/useLayerIndex';
 import { useParentSize } from '../hooks/useParentSize';
-
-type networkNode = SimulationNodeDatum & {
-    id: string;
-};
-
-type networkLink = SimulationLinkDatum<networkNode> & {
-    source: string;
-    target: string;
-};
-
-type networkResolvedLink = Omit<networkLink, "source" | "target"> & {
-    source: networkNode;
-    target: networkNode;
-};
-
-type networkDataType = {
-    nodes: networkNode[], links: networkLink[]
-}
-
-type networkEdge = [string, string]
 
 const peopleNetwork: networkEdge[] = [
     ["Alice", "Bob"],
@@ -174,7 +160,8 @@ const languageNetwork: networkEdge[] = [
 ]
 
 type NetworkProps = {
-    data: pointData[];
+    data: hierarchyData | networkDataType;
+    mode?: "network" | "hierarchy";
     color?: {
         idx?: number;
         type?: 'fixed' | 'colorful';
@@ -182,8 +169,24 @@ type NetworkProps = {
     tooltipFormat?: tooltipFormat;
 }
 
+const n = 200
+const m = 10
+const testData = ({
+    children: Array.from(
+    group(
+      Array.from({length: n}, (_, i) => ({
+        group: Math.random() * m | 0,
+        value: -Math.log(Math.random())
+      })),
+      d => d.group
+    ),
+    ([, children]) => ({children})
+  )
+})
+
 export function NetworkGraph({
         data, 
+        mode = "network",
         color: {
             idx = 0,               // default idx
             type = 'fixed',        // default type
@@ -196,7 +199,7 @@ export function NetworkGraph({
     const { width, height } = parentSize;
 
     const isMediumScreen = width > 576;
-    // Define the controls element (checkbox)    
+    // Define the controls element (checkbox)        
 
     const color = {idx, type}
     const animDuration = 750;
@@ -210,7 +213,7 @@ export function NetworkGraph({
             left: 0
         };
 
-        type NetworkEdge = [string, string];
+        /*type NetworkEdge = [string, string];
 
         function buildNetworkData(edges: NetworkEdge[]): networkDataType {
             const nodeIds = new Set<string>();
@@ -238,75 +241,164 @@ export function NetworkGraph({
         const graphWidth = width - (margin.left + margin.right)
         const graphHeight = height - (margin.top + margin.bottom)        
 
-        const data: networkDataType = buildNetworkData(languageNetwork)
-        const simulation = forceSimulation<networkNode>(data.nodes)
+        const data: networkDataType = buildNetworkData(languageNetwork)*/        
+                
+        /*const simulation = forceSimulation<networkNode>(data.nodes)
             .force("link",
                 forceLink<networkNode, networkLink>(data.links)
                     .id(d => d.id)
                     //.distance(100)
             )
-            .force("charge", forceManyBody()/*.strength(-80)*/)
+            .force(
+                "charge", 
+                forceManyBody()
+                .strength(-80))
             //.force("center", forceCenter(graphWidth / 2, graphHeight / 2))            
             //.force("collision", forceCollide(18))
             .force("x", forceX())
-            .force("y", forceY())
+            .force("y", forceY())*/
+
         const canvasSvg = container.select<SVGSVGElement>("svg")
         const svgNode = canvasSvg.node()
         const canvas = canvasSvg.select<SVGGElement>('.plot-area')
             .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
-                       
-        const resolvedLinks = data.links as networkResolvedLink[];
-        const links = canvas  
-            .selectAll<SVGLineElement, networkLink>("line")
-            .data(resolvedLinks, d => d.source + "-" + d.target)
+
+        //const tooltip = getTooltip(container as any);
+        const tooltip = container.select(`#tooltip`).style("opacity", 0)
+        
+        const root = mode === "hierarchy"?hierarchy(data):null
+                
+        type chartNode = networkNode | networkHierarchyNode;
+        type chartLink = networkLink | networkResolvedLink | networkHierarchyLink;
+
+        const linksData:chartLink[] = 
+            mode === "hierarchy"?
+                root?.links() as networkHierarchyLink[]:
+                (data as networkDataType).links as networkLink[];
+        const nodeData:chartNode[] = 
+            mode === "hierarchy"?
+                root?.descendants() as networkHierarchyNode[]:
+                (data as networkDataType).nodes as networkNode[];
+
+        const simulation = forceSimulation<chartNode>(nodeData)
+            .force("x", forceX())
+            .force("y", forceY())
+
+        if(mode === "hierarchy"){
+            simulation
+                .force(
+                    "link", 
+                    forceLink<chartNode, chartLink>(linksData)
+                        .id(d => (d as networkHierarchyNode).data.name)
+                        .distance(d=>{                        
+                            return 25
+                        })
+                        .strength(1)
+                )
+                .force("charge", forceManyBody().strength(-50))
+        }else if(mode === "network"){
+            simulation
+                .force(
+                    "link",
+                    forceLink<chartNode, chartLink>(linksData)
+                        .id(d => (d as networkNode).id)
+                        //.distance(100)
+                )
+                .force(
+                    "charge", 
+                    forceManyBody()//.strength(-80)
+                )
+                .force("center", forceCenter(width / 2, height / 2))
+                //.force("collision", forceCollide(18))
+                .force("center", forceCenter())
+        }   
+        
+        const links = canvas
+            .selectAll<SVGLineElement, chartLink>("line")
+            .data(linksData)
             .join("line")
             .attr("stroke", "#999")
             .attr("stroke-opacity", 0.6)
-            .attr("stroke-width", 2);
+            .style("stroke-width", function(d){
+                return d.value?Math.sqrt(d.value):1
+            });
 
-        const nodes = canvas            
-            .selectAll<SVGCircleElement, networkNode>("circle")
-            .data(data.nodes, d => d.id)
-            .join("circle")
-            .attr("r", 8)
-            .attr("fill", "steelblue");
+        const color = scaleOrdinal(schemeCategory10);
 
-        const labels = canvas            
-            .selectAll<SVGTextElement, networkNode>("text")
-            .data(data.nodes, d => d.id)
-            .join("text")
-            .attr("class", styles["shadowed_text"])
-            .text(d => d.id)
-            .attr("font-size", 12)
-            .attr("text-anchor", "middle")
-            .attr("dy", 4);
-        
+        const nodes = canvas
+            .selectAll<SVGCircleElement, chartNode>("circle")
+                .data(nodeData)
+                .join("circle")
+                //.attr("fill", d => d.children ? null : "#000")
+                .attr("stroke", 
+                    d => mode === "hierarchy"? 
+                        (d as networkHierarchyNode).children ? null : "#fff":
+                        "none"
+                )
+                .attr(
+                    "r", 
+                    (d) => 
+                        mode === "hierarchy"?
+                            (d as networkHierarchyNode).depth === 0 ?
+                                20:
+                                (d as networkHierarchyNode).depth === 1?10:5:
+                            (d as networkNode).radius ?? 5            
+                )
+                .attr(
+                    "fill", 
+                    (d) => {
+                        if(mode === "hierarchy"){
+                            return (d as networkHierarchyNode).data.color ?? "steelblue";
+                        }
+                        const group = (d as networkNode).group;
+                        return group !== undefined ? color(String(group)) ?? "steelblue" : "steelblue";
+                    }
+                );
+
         simulation.on("tick", () => {
             links
-                .attr("x1", d => d.source.x!)
-                .attr("y1", d => d.source.y!)
-                .attr("x2", d => d.target.x!)
-                .attr("y2", d => d.target.y!);
+                .attr(
+                    "x1", 
+                    d => mode === "hierarchy"?
+                        (d.source as networkHierarchyNode).x!:
+                        (d.source as networkNode).x!
+                )
+                .attr(
+                    "y1", 
+                    d => mode === "hierarchy"?
+                        (d.source as networkHierarchyNode).y!:
+                        (d.source as networkNode).y!
+                )
+                .attr(
+                    "x2", 
+                    d => mode === "hierarchy"? 
+                        (d.target as networkHierarchyNode).x!:
+                        (d.target as networkNode).x!
+                )
+                .attr(
+                    "y2", 
+                    d => mode === "hierarchy"?
+                        (d.target as networkHierarchyNode).y!:
+                        (d.target as networkNode).y!
+                );                    
 
             nodes
                 .attr("cx", d => d.x ?? 0)
-                .attr("cy", d => d.y ?? 0);
+                .attr("cy", d => d.y ?? 0);                
+            
+            
+        })
 
-            labels
-                .attr("x", d => d.x ?? 0)
-                .attr("y", d => d.y ?? 0);
-        });
-
-        const dragFn = drag<SVGCircleElement, networkNode>()
+        const dragFn = drag<SVGCircleElement, chartNode>()
             .on("start", dragStarted)
             .on("drag", dragged)
-            .on("end", dragEnded);
+            .on("end", dragEnded);            
 
         nodes.call(dragFn)
-        
+
         function dragStarted(
-            event: D3DragEvent<SVGCircleElement, networkNode, networkNode>, 
-            d: networkNode
+            event: D3DragEvent<SVGCircleElement, chartNode, chartNode>, 
+            d: chartNode
         ) {
             if (!event.active) simulation.alphaTarget(0.3).restart();
             d.fx = d.x;
@@ -314,16 +406,16 @@ export function NetworkGraph({
         }
 
         function dragged(
-            event: D3DragEvent<SVGCircleElement, networkNode, networkNode>,
-            d: networkNode
+            event: D3DragEvent<SVGCircleElement, chartNode, chartNode>,
+            d: chartNode
         ): void {
             d.fx = event.x;
             d.fy = event.y;
         }
 
         function dragEnded(
-            event: D3DragEvent<SVGCircleElement, networkNode, networkNode>,
-            d: networkNode
+            event: D3DragEvent<SVGCircleElement, chartNode, chartNode>,
+            d: chartNode
         ): void {
             if (!event.active) {
                 simulation.alphaTarget(0);
@@ -332,14 +424,9 @@ export function NetworkGraph({
             d.fx = null;
             d.fy = null;
         }
+                                               
 
-        
-
-        //const tooltip = getTooltip(container as any);
-        const tooltip = container.select(`#tooltip`).style("opacity", 0)
-            
-
-    }, [data, color, width, height, {prefix, suffix, formatType} ]);
+    }, [data, mode, color, width, height, {prefix, suffix, formatType} ]);
     
     return (
         <div 

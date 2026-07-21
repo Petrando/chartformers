@@ -96,16 +96,7 @@ export function Sunburst({data, tooltipFormat}: sunburstProps) {
             left: 20
         };                                
 
-        const tooltip = container.select("#tooltip").style("opacity", 0);        
-        
-        /*const hierarchy = d3.hierarchy<hierarchyData>(data)
-            .sum(d => d.value!)
-            //.sort((a, b) => b.value! - a.value!);
-
-        const root = d3.partition<hierarchyData>()
-            .size([2 * Math.PI, Math.min(hierarchy.height) + 1])
-            (hierarchy) as sunburstData;
-        root.each(d => d.current = d);*/
+        const tooltip = container.select("#tooltip").style("opacity", 0);                    
                         
         function buildPreviousRectMap(
             node: sunburstData,

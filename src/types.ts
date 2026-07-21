@@ -1,4 +1,8 @@
-import { Bin } from "d3";
+import { Bin, HierarchyNode as d3HierarchyNode, HierarchyLink } from "d3";
+import {
+  SimulationNodeDatum,
+  SimulationLinkDatum
+} from "d3-force";
 
 export type pointData = {
     label: string;
@@ -33,6 +37,7 @@ export type hierarchyData = {
     name: string;
     value?: number;
     children?: hierarchyData[];
+    color?: string;
 }
 
 export type ageRangeGroup = {
@@ -131,3 +136,35 @@ export type lineDecor = {
 }
 
 export type orientationType = "vertical" | "horizontal"
+
+export type networkNode = SimulationNodeDatum & {
+    id: string;
+    group?: number; 
+    radius?: number;
+    color?: string;
+};
+
+export type networkLink = SimulationLinkDatum<networkNode> & {
+    source: string;
+    target: string;
+    value?: number;
+};
+
+export type networkResolvedLink = Omit<networkLink, "source" | "target"> & {
+    source: networkNode;
+    target: networkNode;
+    value?: number;
+};
+
+export type networkDataType = {
+    nodes: networkNode[], links: networkLink[]
+}
+
+export type networkEdge = [string, string]
+
+export type networkHierarchyNode = SimulationNodeDatum & d3HierarchyNode<hierarchyData>;
+export type networkHierarchyLink = SimulationLinkDatum<networkHierarchyNode> & 
+    HierarchyLink<hierarchyData> & 
+    {
+        value?: number;
+    };

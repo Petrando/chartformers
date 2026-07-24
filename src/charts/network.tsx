@@ -4,13 +4,18 @@ import { select, axisBottom, min, max, format, color as d3Color,
     drag, D3DragEvent,
     forceSimulation, forceLink, forceManyBody, forceCenter, forceCollide, 
     forceX, forceY,
-    HierarchyNode, HierarchyLink,
+    HierarchyNode, HierarchyLink, pack, quadtree, rollup,
     scaleOrdinal,
-    schemeCategory10
+    schemeCategory10,
+    range,
+    interpolate,
+    QuadtreeLeaf,
+    QuadtreeInternalNode
  } from 'd3';
 import {
   SimulationNodeDatum,
-  SimulationLinkDatum
+  SimulationLinkDatum,
+  Force
 } from "d3-force"; 
 import { useD3 } from '../hooks/useD3';
 import { useUIControls } from '../hooks/useUIControls';
@@ -173,15 +178,15 @@ const n = 200
 const m = 10
 const testData = ({
     children: Array.from(
-    group(
-      Array.from({length: n}, (_, i) => ({
-        group: Math.random() * m | 0,
-        value: -Math.log(Math.random())
-      })),
-      d => d.group
-    ),
-    ([, children]) => ({children})
-  )
+        group(
+            Array.from({length: n}, (_, i) => ({
+                group: Math.random() * m | 0,
+                value: -Math.log(Math.random())
+            })),
+            d => d.group
+        ),
+        ([, children]) => ({children})
+    )
 })
 
 export function NetworkGraph({
@@ -263,171 +268,194 @@ export function NetworkGraph({
         const canvas = canvasSvg.select<SVGGElement>('.plot-area')
             .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
 
-        //const tooltip = getTooltip(container as any);
-        const tooltip = container.select(`#tooltip`).style("opacity", 0)
         
-        const root = mode === "hierarchy"?hierarchy(data):null
-                
-        type chartNode = networkNode | networkHierarchyNode;
-        type chartLink = networkLink | networkResolvedLink | networkHierarchyLink;
 
-        const linksData:chartLink[] = 
-            mode === "hierarchy"?
-                root?.links() as networkHierarchyLink[]:
-                (data as networkDataType).links as networkLink[];
-        const nodeData:chartNode[] = 
-            mode === "hierarchy"?
-                root?.descendants() as networkHierarchyNode[]:
-                (data as networkDataType).nodes as networkNode[];
+        function assignGroups(root: hierarchyData): hierarchyData {
+            function visit(
+                node: hierarchyData,
+                depth: number,
+                currentGroup: string
+            ) {
+                if (depth === 0) {
+                    node.group = node.name;
+                } else if (depth === 1) {
+                    currentGroup = node.name;
+                    node.group = currentGroup;
+                } else {
+                    node.group = currentGroup;
+                }
 
-        const simulation = forceSimulation<chartNode>(nodeData)
-            .force("x", forceX())
-            .force("y", forceY())
-
-        if(mode === "hierarchy"){
-            simulation
-                .force(
-                    "link", 
-                    forceLink<chartNode, chartLink>(linksData)
-                        .id(d => (d as networkHierarchyNode).data.name)
-                        .distance(d=>{                        
-                            return 25
-                        })
-                        .strength(1)
-                )
-                .force("charge", forceManyBody().strength(-50))
-        }else if(mode === "network"){
-            simulation
-                .force(
-                    "link",
-                    forceLink<chartNode, chartLink>(linksData)
-                        .id(d => (d as networkNode).id)
-                        //.distance(100)
-                )
-                .force(
-                    "charge", 
-                    forceManyBody()//.strength(-80)
-                )
-                .force("center", forceCenter(width / 2, height / 2))
-                //.force("collision", forceCollide(18))
-                .force("center", forceCenter())
-        }   
-        
-        const links = canvas
-            .selectAll<SVGLineElement, chartLink>("line")
-            .data(linksData)
-            .join("line")
-            .attr("stroke", "#999")
-            .attr("stroke-opacity", 0.6)
-            .style("stroke-width", function(d){
-                return d.value?Math.sqrt(d.value):1
-            });
-
-        const color = scaleOrdinal(schemeCategory10);
-
-        const nodes = canvas
-            .selectAll<SVGCircleElement, chartNode>("circle")
-                .data(nodeData)
-                .join("circle")
-                //.attr("fill", d => d.children ? null : "#000")
-                .attr("stroke", 
-                    d => mode === "hierarchy"? 
-                        (d as networkHierarchyNode).children ? null : "#fff":
-                        "none"
-                )
-                .attr(
-                    "r", 
-                    (d) => 
-                        mode === "hierarchy"?
-                            (d as networkHierarchyNode).depth === 0 ?
-                                20:
-                                (d as networkHierarchyNode).depth === 1?10:5:
-                            (d as networkNode).radius ?? 5            
-                )
-                .attr(
-                    "fill", 
-                    (d) => {
-                        if(mode === "hierarchy"){
-                            return (d as networkHierarchyNode).data.color ?? "steelblue";
-                        }
-                        const group = (d as networkNode).group;
-                        return group !== undefined ? color(String(group)) ?? "steelblue" : "steelblue";
-                    }
+                node.children?.forEach(child =>
+                    visit(child, depth + 1, currentGroup)
                 );
-
-        simulation.on("tick", () => {
-            links
-                .attr(
-                    "x1", 
-                    d => mode === "hierarchy"?
-                        (d.source as networkHierarchyNode).x!:
-                        (d.source as networkNode).x!
-                )
-                .attr(
-                    "y1", 
-                    d => mode === "hierarchy"?
-                        (d.source as networkHierarchyNode).y!:
-                        (d.source as networkNode).y!
-                )
-                .attr(
-                    "x2", 
-                    d => mode === "hierarchy"? 
-                        (d.target as networkHierarchyNode).x!:
-                        (d.target as networkNode).x!
-                )
-                .attr(
-                    "y2", 
-                    d => mode === "hierarchy"?
-                        (d.target as networkHierarchyNode).y!:
-                        (d.target as networkNode).y!
-                );                    
-
-            nodes
-                .attr("cx", d => d.x ?? 0)
-                .attr("cy", d => d.y ?? 0);                
-            
-            
-        })
-
-        const dragFn = drag<SVGCircleElement, chartNode>()
-            .on("start", dragStarted)
-            .on("drag", dragged)
-            .on("end", dragEnded);            
-
-        nodes.call(dragFn)
-
-        function dragStarted(
-            event: D3DragEvent<SVGCircleElement, chartNode, chartNode>, 
-            d: chartNode
-        ) {
-            if (!event.active) simulation.alphaTarget(0.3).restart();
-            d.fx = d.x;
-            d.fy = d.y;
-        }
-
-        function dragged(
-            event: D3DragEvent<SVGCircleElement, chartNode, chartNode>,
-            d: chartNode
-        ): void {
-            d.fx = event.x;
-            d.fy = event.y;
-        }
-
-        function dragEnded(
-            event: D3DragEvent<SVGCircleElement, chartNode, chartNode>,
-            d: chartNode
-        ): void {
-            if (!event.active) {
-                simulation.alphaTarget(0);
             }
 
-            d.fx = null;
-            d.fy = null;
+            visit(root, 0, root.name);
+
+            return root;
         }
-                                               
+
+        const hierarchyData = cloneObj(data)
+        assignGroups(hierarchyData)
+        //console.log(hierarchyData)
+
+        /*const networkGrouped = group(
+            data.nodes,
+            d => d.group
+        );
+        const networkHierarchyData = {
+            children: Array.from(
+                networkGrouped,
+                ([group, children]) => ({
+                    name: `Group ${group}`,
+                    children
+                })
+            )
+        };
+        const networkRoot = hierarchy(networkHierarchyData)
+            .sum(() => 1);
+        const networkPackedFn = () => pack()
+            .size([width, height])
+            .padding(1)(networkRoot)
+
+        const networkNodesData = networkPackedFn().leaves()
+        console.log(networkNodesData)*/
+        //console.log(testData)
+        const root = hierarchy(cloneObj(testData))
+            .sum(function(d) { return d.value!; })
+        //console.log(root)
+        
+        const packFn = () => pack<hierarchyData>()
+            .size([width, height])
+            .padding(1)(hierarchy(cloneObj(hierarchyData))
+            .sum(function(d) { return d.value!; }))        
+
+        const nodesData = packFn().leaves();
+        //console.log(nodesData)
+
+        const simulation = forceSimulation<networkHierarchyNode>(nodesData)
+            .force("x", forceX(-width / 2).strength(0.01))
+            .force("y", forceY(-height / 2).strength(0.01))
+            .force("cluster", forceCluster())
+            .force("collide", forceCollide())
+
+        const color = scaleOrdinal<string, string>(range(m).map(String), schemeCategory10)
+        const radius = 10
+        const nodes = canvas
+            .selectAll<SVGCircleElement, networkHierarchyNode>("circle")
+            .data(nodesData)
+            .join("circle")
+            .attr("cx", d => d.x)
+            .attr("cy", d => d.y)
+            .attr("fill", d => color(d.data.group ?? ""))
+            .attr("r", radius)
+
+        nodes.transition()
+            .delay((d, i) => Math.random() * 500)
+            .duration(750)
+            .attrTween("r", d => {
+                const i = interpolate(0, d.r);
+                return t => `${i(t)}`;
+            });
+
+        nodes.on("mouseover", function(e, d){
+            console.log(d)
+        })
+        simulation.on("tick", () => {
+            nodes
+                .attr("cx", d => d.x)
+                .attr("cy", d => d.y);
+        });
+
+        function forceCluster() {
+            const strength = 0.2;
+            let nodesRolled: networkHierarchyNode[];
+
+            function force(alpha: number) {
+                const centroids = rollup(nodesRolled, centroid, d => d.data.group);
+                const l = alpha * strength;
+                for (const d of nodesRolled) {
+                    const {x: cx, y: cy} = centroids.get(d.data.group) ?? {x: 0, y: 0};
+                    if (d.vx == null) {
+                        d.vx = 0;
+                    }
+                    if (d.vy == null) {
+                        d.vy = 0;
+                    }
+                    d.vx -= ((d.x ?? 0) - cx) * l;
+                    d.vy -= ((d.y ?? 0) - cy) * l;
+                }
+            }
+
+            force.initialize = (_: networkHierarchyNode[]) => nodesRolled = _;
+
+            return force;
+        }
+
+        function forceCollide() {
+            const alpha = 0.4; // fixed for greater rigidity!
+            const padding1 = 2; // separation between same-color nodes
+            const padding2 = 6; // separation between different-color nodes
+            let nodes: networkHierarchyNode[];
+            let maxRadius: number;
+
+            const force: Force<networkHierarchyNode, undefined> = () => {
+                const quadtreeFn = quadtree<networkHierarchyNode>(nodes, d => d.x!, d => d.y!);
+                
+                for (const d of nodes) {
+                    const r = d.r + maxRadius;
+                    const nx1 = d.x - r, ny1 = d.y - r;
+                    const nx2 = d.x + r, ny2 = d.y + r;
+                    quadtreeFn.visit((q, x1, y1, x2, y2) => {
+                        if (!q.length) {
+                            for (let qLeaf: QuadtreeLeaf<networkHierarchyNode> | undefined = q; qLeaf; qLeaf = qLeaf.next) {
+                                if (qLeaf.data !== d) {
+                                    const r = d.r + qLeaf.data.r + (d.data.group === qLeaf.data.data.group ? padding1 : padding2);
+                                    let x = d.x - qLeaf.data.x, y = d.y - qLeaf.data.y, l = Math.hypot(x, y);
+                                    if (l < r) {
+                                        l = (l - r) / l * alpha;
+                                        d.x -= x *= l, d.y -= y *= l;
+                                        qLeaf.data.x += x, qLeaf.data.y += y;
+                                    }
+                                }
+                            }
+                        }
+                        return x1 > nx2 || x2 < nx1 || y1 > ny2 || y2 < ny1;
+                    });
+                }
+            }
+
+            force.initialize = (
+                initNodes: networkHierarchyNode[]
+            ) => {
+                nodes = initNodes;
+
+                maxRadius =
+                    max(nodes, d => d.r)! +
+                    Math.max(padding1, padding2);
+            };
+
+            return force;
+        }
+
+        function centroid(nodes:networkHierarchyNode[]) {
+            let x = 0;
+            let y = 0;
+            let z = 0;
+            for (const d of nodes) {
+                let k = d.r ** 2;
+                x += d.x * k;
+                y += d.y * k;
+                z += k;
+            }
+            return {x: x / z, y: y / z};
+        }
+                                                               
 
     }, [data, mode, color, width, height, {prefix, suffix, formatType} ]);
     
+    //-width/2
+    //-height/2
     return (
         <div 
             ref={ref} 

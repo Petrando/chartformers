@@ -1,4 +1,4 @@
-import { Bin, HierarchyNode as d3HierarchyNode, HierarchyLink } from "d3";
+import { Bin, HierarchyNode as d3HierarchyNode, HierarchyCircularNode, HierarchyLink } from "d3";
 import {
   SimulationNodeDatum,
   SimulationLinkDatum
@@ -38,6 +38,7 @@ export type hierarchyData = {
     value?: number;
     children?: hierarchyData[];
     color?: string;
+    group?: string;
 }
 
 export type ageRangeGroup = {
@@ -162,7 +163,7 @@ export type networkDataType = {
 
 export type networkEdge = [string, string]
 
-export type networkHierarchyNode = SimulationNodeDatum & d3HierarchyNode<hierarchyData>;
+export type networkHierarchyNode = SimulationNodeDatum & HierarchyCircularNode<hierarchyData>;
 export type networkHierarchyLink = SimulationLinkDatum<networkHierarchyNode> & 
     HierarchyLink<hierarchyData> & 
     {

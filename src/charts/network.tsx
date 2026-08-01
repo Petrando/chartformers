@@ -128,7 +128,7 @@ export function NetworkGraph({
         
         const tooltip = container.select(`#tooltip`).style("opacity", 0)
         
-        const root = mode === "hierarchy"?hierarchy(data):data 
+        const root = mode === "hierarchy"?hierarchy(hierarchyData):data 
         
         type chartNode = networkNode | networkHierarchyNode;
         type chartLink = networkLink | networkResolvedLink | networkHierarchyLink;
@@ -158,6 +158,8 @@ export function NetworkGraph({
             linksData = (root as networkDataType).links as networkLink[]
             nodesData = (root as networkDataType).nodes as networkNode[]
         }
+
+        console.log(nodesData)
         
         const simulation = forceSimulation<chartNode>(nodesData)
 
@@ -235,7 +237,12 @@ export function NetworkGraph({
                 "fill", 
                 (d) => {
                     if(mode === "hierarchy"){
-                        return (d as networkHierarchyNode).data.color ?? "steelblue";
+                        const nodeData = d as networkHierarchyNode
+                        if(nodeData.data.color){
+                            return nodeData.data.color
+                        }
+                        const { group } = nodeData.data
+                        return group !== undefined ? color(String(group)) ?? "steelblue" : "steelblue";
                     }
                     const group = (d as networkNode).group;
                     return group !== undefined ? color(String(group)) ?? "steelblue" : "steelblue";

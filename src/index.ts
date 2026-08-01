@@ -16,7 +16,7 @@ export { DumbbellChart } from  './charts/dumbbell'
 export { ChordDiagram } from './charts/chord'
 export { Histogram } from './charts/histogram'
 export { NetworkGraph } from  './charts/network'
-
+export { TreeDiagram } from './charts/tree'
 //consider adding exports for types as well
 //currently waterfallDatum 'type' property cannot be strengthened
 //check the waterfallDatum type definition in types.ts!

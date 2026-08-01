@@ -5,6 +5,7 @@ import { select, axisBottom, min, max, format, color as d3Color,
     forceSimulation, forceLink, forceManyBody, forceCenter, forceCollide, 
     forceX, forceY,
     HierarchyNode, HierarchyLink, pack, quadtree, rollup,
+    tree, TreeLayout, linkRadial, HierarchyPointLink, HierarchyPointNode,
     scaleOrdinal,
     schemeCategory10,
     range,
@@ -25,148 +26,23 @@ import styles from './global.module.css';
 import { pointData, tooltipFormat, lineDecor, orientationType,
     hierarchyData,
     networkNode, networkLink, networkEdge, networkResolvedLink, networkDataType,
-    networkHierarchyNode, networkHierarchyLink
+    
  } from '../types';
 import { useLayerIndex } from '../hooks/useLayerIndex';
 import { useParentSize } from '../hooks/useParentSize';
 
-const peopleNetwork: networkEdge[] = [
-    ["Alice", "Bob"],
-    ["Alice", "Charlie"],
-    ["Bob", "David"]
-];
+type treeNode = HierarchyNode<hierarchyData> &
+             { baseX?: number; baseY?: number; finalX?: number; finalY?: number}
 
-const languageNetwork: networkEdge[] = [
-      ['Proto Indo-European', 'Balto-Slavic'],
-      ['Proto Indo-European', 'Germanic'],
-      ['Proto Indo-European', 'Celtic'],
-      ['Proto Indo-European', 'Italic'],
-      ['Proto Indo-European', 'Hellenic'],
-      ['Proto Indo-European', 'Anatolian'],
-      ['Proto Indo-European', 'Indo-Iranian'],
-      ['Proto Indo-European', 'Tocharian'],
-      ['Indo-Iranian', 'Dardic'],
-      ['Indo-Iranian', 'Indic'],
-      ['Indo-Iranian', 'Iranian'],
-      ['Iranian', 'Old Persian'],
-      ['Old Persian', 'Middle Persian'],
-      ['Indic', 'Sanskrit'],
-      ['Italic', 'Osco-Umbrian'],
-      ['Italic', 'Latino-Faliscan'],
-      ['Latino-Faliscan', 'Latin'],
-      ['Celtic', 'Brythonic'],
-      ['Celtic', 'Goidelic'],
-      ['Germanic', 'North Germanic'],
-      ['Germanic', 'West Germanic'],
-      ['Germanic', 'East Germanic'],
-      ['North Germanic', 'Old Norse'],
-      ['North Germanic', 'Old Swedish'],
-      ['North Germanic', 'Old Danish'],
-      ['West Germanic', 'Old English'],
-      ['West Germanic', 'Old Frisian'],
-      ['West Germanic', 'Old Dutch'],
-      ['West Germanic', 'Old Low German'],
-      ['West Germanic', 'Old High German'],
-      ['Old Norse', 'Old Icelandic'],
-      ['Old Norse', 'Old Norwegian'],
-      ['Old Norwegian', 'Middle Norwegian'],
-      ['Old Swedish', 'Middle Swedish'],
-      ['Old Danish', 'Middle Danish'],
-      ['Old English', 'Middle English'],
-      ['Old Dutch', 'Middle Dutch'],
-      ['Old Low German', 'Middle Low German'],
-      ['Old High German', 'Middle High German'],
-      ['Balto-Slavic', 'Baltic'],
-      ['Balto-Slavic', 'Slavic'],
-      ['Slavic', 'East Slavic'],
-      ['Slavic', 'West Slavic'],
-      ['Slavic', 'South Slavic'],
-      // Leaves:
-      ['Proto Indo-European', 'Phrygian'],
-      ['Proto Indo-European', 'Armenian'],
-      ['Proto Indo-European', 'Albanian'],
-      ['Proto Indo-European', 'Thracian'],
-      ['Tocharian', 'Tocharian A'],
-      ['Tocharian', 'Tocharian B'],
-      ['Anatolian', 'Hittite'],
-      ['Anatolian', 'Palaic'],
-      ['Anatolian', 'Luwic'],
-      ['Anatolian', 'Lydian'],
-      ['Iranian', 'Balochi'],
-      ['Iranian', 'Kurdish'],
-      ['Iranian', 'Pashto'],
-      ['Iranian', 'Sogdian'],
-      ['Old Persian', 'Pahlavi'],
-      ['Middle Persian', 'Persian'],
-      ['Hellenic', 'Greek'],
-      ['Dardic', 'Dard'],
-      ['Sanskrit', 'Sindhi'],
-      ['Sanskrit', 'Romani'],
-      ['Sanskrit', 'Urdu'],
-      ['Sanskrit', 'Hindi'],
-      ['Sanskrit', 'Bihari'],
-      ['Sanskrit', 'Assamese'],
-      ['Sanskrit', 'Bengali'],
-      ['Sanskrit', 'Marathi'],
-      ['Sanskrit', 'Gujarati'],
-      ['Sanskrit', 'Punjabi'],
-      ['Sanskrit', 'Sinhalese'],
-      ['Osco-Umbrian', 'Umbrian'],
-      ['Osco-Umbrian', 'Oscan'],
-      ['Latino-Faliscan', 'Faliscan'],
-      ['Latin', 'Portugese'],
-      ['Latin', 'Spanish'],
-      ['Latin', 'French'],
-      ['Latin', 'Romanian'],
-      ['Latin', 'Italian'],
-      ['Latin', 'Catalan'],
-      ['Latin', 'Franco-Provençal'],
-      ['Latin', 'Rhaeto-Romance'],
-      ['Brythonic', 'Welsh'],
-      ['Brythonic', 'Breton'],
-      ['Brythonic', 'Cornish'],
-      ['Brythonic', 'Cuymbric'],
-      ['Goidelic', 'Modern Irish'],
-      ['Goidelic', 'Scottish Gaelic'],
-      ['Goidelic', 'Manx'],
-      ['East Germanic', 'Gothic'],
-      ['Middle Low German', 'Low German'],
-      ['Middle High German', '(High) German'],
-      ['Middle High German', 'Yiddish'],
-      ['Middle English', 'English'],
-      ['Middle Dutch', 'Hollandic'],
-      ['Middle Dutch', 'Flemish'],
-      ['Middle Dutch', 'Dutch'],
-      ['Middle Dutch', 'Limburgish'],
-      ['Middle Dutch', 'Brabantian'],
-      ['Middle Dutch', 'Rhinelandic'],
-      ['Old Frisian', 'Frisian'],
-      ['Middle Danish', 'Danish'],
-      ['Middle Swedish', 'Swedish'],
-      ['Middle Norwegian', 'Norwegian'],
-      ['Old Norse', 'Faroese'],
-      ['Old Icelandic', 'Icelandic'],
-      ['Baltic', 'Old Prussian'],
-      ['Baltic', 'Lithuanian'],
-      ['Baltic', 'Latvian'],
-      ['West Slavic', 'Polish'],
-      ['West Slavic', 'Slovak'],
-      ['West Slavic', 'Czech'],
-      ['West Slavic', 'Wendish'],
-      ['East Slavic', 'Bulgarian'],
-      ['East Slavic', 'Old Church Slavonic'],
-      ['East Slavic', 'Macedonian'],
-      ['East Slavic', 'Serbo-Croatian'],
-      ['East Slavic', 'Slovene'],
-      ['South Slavic', 'Russian'],
-      ['South Slavic', 'Ukrainian'],
-      ['South Slavic', 'Belarusian'],
-      ['South Slavic', 'Rusyn']
-]
+export type networkHierarchyNode = SimulationNodeDatum & treeNode;
+export type networkHierarchyLink = SimulationLinkDatum<networkHierarchyNode> & 
+    HierarchyLink<hierarchyData> & 
+    {
+        value?: number;
+    };
 
 type NetworkProps = {
-    data: hierarchyData | networkDataType;
-    mode?: "network" | "hierarchy";
+    data: hierarchyData | networkDataType;   
     color?: {
         idx?: number;
         type?: 'fixed' | 'colorful';
@@ -191,7 +67,6 @@ const testData = ({
 
 export function NetworkGraph({
         data, 
-        mode = "network",
         color: {
             idx = 0,               // default idx
             type = 'fixed',        // default type
@@ -208,67 +83,20 @@ export function NetworkGraph({
 
     const color = {idx, type}
     const animDuration = 750;
+
+    const mode = "name" in data?"hierarchy":
+        ("nodes" in data && "links" in data)?"network":
+        "invalid"
     const chartRef = useD3<HTMLDivElement>((container) => {
         if (width === 0 || height === 0) return;
+        if(mode === "invalid") return               
         
-        const margin = { 
-            top: 0, 
-            right: 0, 
-            bottom: 0, 
-            left: 0
-        };
-
-        /*type NetworkEdge = [string, string];
-
-        function buildNetworkData(edges: NetworkEdge[]): networkDataType {
-            const nodeIds = new Set<string>();
-
-            const links: networkLink[] = edges.map(([source, target]) => {
-                nodeIds.add(source);
-                nodeIds.add(target);
-
-                return {
-                    source,
-                    target,
-                };
-            });
-
-            const nodes: networkNode[] = [...nodeIds].map(id => ({
-                id,
-            }));
-
-            return {
-                nodes,
-                links,
-            };
-        }
-                
-        const graphWidth = width - (margin.left + margin.right)
-        const graphHeight = height - (margin.top + margin.bottom)        
-
-        const data: networkDataType = buildNetworkData(languageNetwork)*/        
-                
-        /*const simulation = forceSimulation<networkNode>(data.nodes)
-            .force("link",
-                forceLink<networkNode, networkLink>(data.links)
-                    .id(d => d.id)
-                    //.distance(100)
-            )
-            .force(
-                "charge", 
-                forceManyBody()
-                .strength(-80))
-            //.force("center", forceCenter(graphWidth / 2, graphHeight / 2))            
-            //.force("collision", forceCollide(18))
-            .force("x", forceX())
-            .force("y", forceY())*/
+        const radius = Math.min(width, height) / 2 - 30;        
 
         const canvasSvg = container.select<SVGSVGElement>("svg")
+            
         const svgNode = canvasSvg.node()
         const canvas = canvasSvg.select<SVGGElement>('.plot-area')
-            .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
-
-        
 
         function assignGroups(root: hierarchyData): hierarchyData {
             function visit(
@@ -297,165 +125,243 @@ export function NetworkGraph({
 
         const hierarchyData = cloneObj(data)
         assignGroups(hierarchyData)
-        //console.log(hierarchyData)
-
-        /*const networkGrouped = group(
-            data.nodes,
-            d => d.group
-        );
-        const networkHierarchyData = {
-            children: Array.from(
-                networkGrouped,
-                ([group, children]) => ({
-                    name: `Group ${group}`,
-                    children
-                })
-            )
-        };
-        const networkRoot = hierarchy(networkHierarchyData)
-            .sum(() => 1);
-        const networkPackedFn = () => pack()
-            .size([width, height])
-            .padding(1)(networkRoot)
-
-        const networkNodesData = networkPackedFn().leaves()
-        console.log(networkNodesData)*/
-        //console.log(testData)
-        const root = hierarchy(cloneObj(testData))
-            .sum(function(d) { return d.value!; })
-        //console.log(root)
         
-        const packFn = () => pack<hierarchyData>()
-            .size([width, height])
-            .padding(1)(hierarchy(cloneObj(hierarchyData))
-            .sum(function(d) { return d.value!; }))        
+        const tooltip = container.select(`#tooltip`).style("opacity", 0)
+        
+        const root = mode === "hierarchy"?hierarchy(data):data 
+        
+        type chartNode = networkNode | networkHierarchyNode;
+        type chartLink = networkLink | networkResolvedLink | networkHierarchyLink;
+        
+        let linksData:chartLink[]
+        let nodesData:chartNode[]
+        if(mode === "hierarchy"){
+            const treeFn: TreeLayout<hierarchyData>= tree<hierarchyData>()
+                .size([2 * Math.PI, radius])
+                .separation((a, b) => (a.parent == b.parent ? 1 : 2) / a.depth)
 
-        const nodesData = packFn().leaves();
-        //console.log(nodesData)
+            const rootedTree:treeNode = treeFn(root as HierarchyNode<hierarchyData>)
+                    
+            rootedTree.each(node => {            
+                node.baseX = node.x;
+                node.baseY = node.y;
+                node.finalX = node.y! * Math.cos(node.x! - Math.PI / 2);
+                node.finalY = node.y! * Math.sin(node.x! - Math.PI / 2);
 
-        const simulation = forceSimulation<networkHierarchyNode>(nodesData)
-            .force("x", forceX(-width / 2).strength(0.01))
-            .force("y", forceY(-height / 2).strength(0.01))
-            .force("cluster", forceCluster())
-            .force("collide", forceCollide())
-
-        const color = scaleOrdinal<string, string>(range(m).map(String), schemeCategory10)
-        const radius = 10
-        const nodes = canvas
-            .selectAll<SVGCircleElement, networkHierarchyNode>("circle")
-            .data(nodesData)
-            .join("circle")
-            .attr("cx", d => d.x)
-            .attr("cy", d => d.y)
-            .attr("fill", d => color(d.data.group ?? ""))
-            .attr("r", radius)
-
-        nodes.transition()
-            .delay((d, i) => Math.random() * 500)
-            .duration(750)
-            .attrTween("r", d => {
-                const i = interpolate(0, d.r);
-                return t => `${i(t)}`;
+                delete node.x
+                delete node.y
             });
 
-        nodes.on("mouseover", function(e, d){
-            console.log(d)
-        })
+            nodesData = rootedTree.descendants() as networkHierarchyNode[]
+            linksData = rootedTree.links()
+        }else{
+            linksData = (root as networkDataType).links as networkLink[]
+            nodesData = (root as networkDataType).nodes as networkNode[]
+        }
+        
+        const simulation = forceSimulation<chartNode>(nodesData)
+
+        const nodeRadius = (d:networkHierarchyNode) => {
+            return (d as networkHierarchyNode).depth === 0?8:
+                d.depth === 1?5:3
+        }
+        const baseRadius = 4
+        if(mode === "hierarchy"){
+            simulation
+                .force(
+                        "link",
+                        forceLink<networkHierarchyNode, networkHierarchyLink>(linksData as networkHierarchyLink[])
+                            .id(d => (d as networkNode).id)
+                            .distance(50)
+                    )
+                .force("x", forceX<networkHierarchyNode>(-width / 2)
+                    .x((d: networkHierarchyNode) => d.finalX ?? 0)
+                    .strength(1))
+                .force("y", forceY<networkHierarchyNode>(-height / 2)
+                    .y((d: networkHierarchyNode) => d.finalY ?? 0)
+                    .strength(1))
+                .force("charge", forceManyBody().strength(-30))
+                .force(
+                    "collide", 
+                    forceCollide<networkHierarchyNode>().radius(function(d){return nodeRadius(d)})
+                )
+                .alpha(0.15) 
+        }else if(mode === "network"){
+            simulation
+                .force(
+                    "link",
+                    forceLink<chartNode, chartLink>(linksData)
+                        .id(d => (d as networkNode).id)
+                        //.distance(100)
+                )
+                .force(
+                    "charge", 
+                    forceManyBody()//.strength(-80)
+                )
+                //.force("center", forceCenter(width / 2, height / 2))
+                //.force("collision", forceCollide(18))
+                .force("center", forceCenter())
+        }
+
+        const color = scaleOrdinal(schemeCategory10);
+
+        const links = canvas
+            .selectAll<SVGLineElement, chartLink>("line")
+            .data(linksData)
+            .join("line")
+            .attr("stroke", "#999")
+            .attr("stroke-opacity", 0.6)
+            .style("stroke-width", function(d){
+                return d.value ?? 1
+            });
+        const nodes = canvas
+            .selectAll<SVGCircleElement, chartNode>("circle")
+            .data(nodesData)
+            .join("circle")
+            //.attr("fill", d => d.children ? null : "#000")
+            .attr("stroke", 
+                d => mode === "hierarchy"? 
+                    (d as networkHierarchyNode).children ? null : "#fff":
+                    "none"
+            )
+            .attr(
+                "r", 
+                (d) => 
+                    mode === "hierarchy"?
+                        nodeRadius(d as networkHierarchyNode):
+                        (d as networkNode).radius ?? baseRadius            
+            )
+            .attr(
+                "fill", 
+                (d) => {
+                    if(mode === "hierarchy"){
+                        return (d as networkHierarchyNode).data.color ?? "steelblue";
+                    }
+                    const group = (d as networkNode).group;
+                    return group !== undefined ? color(String(group)) ?? "steelblue" : "steelblue";
+                }
+            );
+
+        const labels = canvas
+            .selectAll<SVGTextElement, chartNode>("text.label")
+            .data(nodesData)
+            .join("text")
+            .attr("class", "label")            
+            .attr("stroke-linejoin", "round")
+            .attr("stroke-width", 3)
+            .attr("dy", "0.31em")                                    
+            .attr("paint-order", "stroke")
+            .attr("stroke", "white")
+            .attr("fill", "currentColor")
+            .style("font-size", 6)
+            .style("pointer-events", "none")
+            .text(d => mode === "hierarchy"?
+                (d as networkHierarchyNode).data.name:
+                (d as networkNode).id
+            )
+
+        if(mode === "hierarchy"){
+            labels
+                .attr("text-anchor", d => (d as networkHierarchyNode).baseX! < Math.PI === !(d as networkHierarchyNode).children ? "start" : "end")
+        }else if(mode === "network"){
+            labels.attr("text-anchor", "middle")
+        }
+
+        nodes.raise()
+        labels.raise()
+
         simulation.on("tick", () => {
+            links
+                .attr(
+                    "x1", 
+                    d => mode === "hierarchy"?
+                        (d.source as networkHierarchyNode).x!:
+                        (d.source as networkNode).x!
+                )
+                .attr(
+                    "y1", 
+                    d => mode === "hierarchy"?
+                        (d.source as networkHierarchyNode).y!:
+                        (d.source as networkNode).y!
+                )
+                .attr(
+                    "x2", 
+                    d => mode === "hierarchy"? 
+                        (d.target as networkHierarchyNode).x!:
+                        (d.target as networkNode).x!
+                )
+                .attr(
+                    "y2", 
+                    d => mode === "hierarchy"?
+                        (d.target as networkHierarchyNode).y!:
+                        (d.target as networkNode).y!
+                );                    
+
             nodes
-                .attr("cx", d => d.x)
-                .attr("cy", d => d.y);
-        });
-
-        function forceCluster() {
-            const strength = 0.2;
-            let nodesRolled: networkHierarchyNode[];
-
-            function force(alpha: number) {
-                const centroids = rollup(nodesRolled, centroid, d => d.data.group);
-                const l = alpha * strength;
-                for (const d of nodesRolled) {
-                    const {x: cx, y: cy} = centroids.get(d.data.group) ?? {x: 0, y: 0};
-                    if (d.vx == null) {
-                        d.vx = 0;
-                    }
-                    if (d.vy == null) {
-                        d.vy = 0;
-                    }
-                    d.vx -= ((d.x ?? 0) - cx) * l;
-                    d.vy -= ((d.y ?? 0) - cy) * l;
-                }
-            }
-
-            force.initialize = (_: networkHierarchyNode[]) => nodesRolled = _;
-
-            return force;
-        }
-
-        function forceCollide() {
-            const alpha = 0.4; // fixed for greater rigidity!
-            const padding1 = 2; // separation between same-color nodes
-            const padding2 = 6; // separation between different-color nodes
-            let nodes: networkHierarchyNode[];
-            let maxRadius: number;
-
-            const force: Force<networkHierarchyNode, undefined> = () => {
-                const quadtreeFn = quadtree<networkHierarchyNode>(nodes, d => d.x!, d => d.y!);
+                .attr("cx", d => d.x ?? 0)
+                .attr("cy", d => d.y ?? 0);
                 
-                for (const d of nodes) {
-                    const r = d.r + maxRadius;
-                    const nx1 = d.x - r, ny1 = d.y - r;
-                    const nx2 = d.x + r, ny2 = d.y + r;
-                    quadtreeFn.visit((q, x1, y1, x2, y2) => {
-                        if (!q.length) {
-                            for (let qLeaf: QuadtreeLeaf<networkHierarchyNode> | undefined = q; qLeaf; qLeaf = qLeaf.next) {
-                                if (qLeaf.data !== d) {
-                                    const r = d.r + qLeaf.data.r + (d.data.group === qLeaf.data.data.group ? padding1 : padding2);
-                                    let x = d.x - qLeaf.data.x, y = d.y - qLeaf.data.y, l = Math.hypot(x, y);
-                                    if (l < r) {
-                                        l = (l - r) / l * alpha;
-                                        d.x -= x *= l, d.y -= y *= l;
-                                        qLeaf.data.x += x, qLeaf.data.y += y;
-                                    }
-                                }
-                            }
+            labels                
+                .attr("transform", d => {
+                    if(mode === "hierarchy"){
+                        const labelData = d as networkHierarchyNode
+                        if(labelData.depth === 0){
+                            return ''
                         }
-                        return x1 > nx2 || x2 < nx1 || y1 > ny2 || y2 < ny1;
-                    });
-                }
-            }
+                        const angle = labelData.baseX! * 180 / Math.PI - 90;
+                        const flip = labelData.baseX! >= Math.PI ? 180 : 0;
 
-            force.initialize = (
-                initNodes: networkHierarchyNode[]
-            ) => {
-                nodes = initNodes;
+                        return `rotate(${angle + flip}, ${d.x}, ${d.y})`;
+                    }
+                    return ''
+                    
+                })
+                .attr("x", d => {
+                    const xFactor = mode === "hierarchy"?
+                        (d as networkHierarchyNode).baseX! < Math.PI === !(d as networkHierarchyNode).children ? 6 : -6:
+                        0
+                    return d.x! + xFactor
+                })                
+                .attr("y", d => d.y! + (mode === "network"?(baseRadius + 4):0))                                                    
+        })
 
-                maxRadius =
-                    max(nodes, d => d.r)! +
-                    Math.max(padding1, padding2);
-            };
+        const dragFn = drag<SVGCircleElement, chartNode>()
+            .on("start", dragStarted)
+            .on("drag", dragged)
+            .on("end", dragEnded);            
 
-            return force;
+        nodes.call(dragFn)
+
+        function dragStarted(
+            event: D3DragEvent<SVGCircleElement, chartNode, chartNode>, 
+            d: chartNode
+        ) {
+            if (!event.active) simulation.alphaTarget(0.3).restart();
+            d.fx = d.x;
+            d.fy = d.y;
         }
 
-        function centroid(nodes:networkHierarchyNode[]) {
-            let x = 0;
-            let y = 0;
-            let z = 0;
-            for (const d of nodes) {
-                let k = d.r ** 2;
-                x += d.x * k;
-                y += d.y * k;
-                z += k;
-            }
-            return {x: x / z, y: y / z};
+        function dragged(
+            event: D3DragEvent<SVGCircleElement, chartNode, chartNode>,
+            d: chartNode
+        ): void {
+            d.fx = event.x;
+            d.fy = event.y;
         }
-                                                               
 
+        function dragEnded(
+            event: D3DragEvent<SVGCircleElement, chartNode, chartNode>,
+            d: chartNode
+        ): void {
+            if (!event.active) {
+                simulation.alphaTarget(0);
+            }
+
+            d.fx = null;
+            d.fy = null;
+        }
     }, [data, mode, color, width, height, {prefix, suffix, formatType} ]);
-    
-    //-width/2
-    //-height/2
+        
     return (
         <div 
             ref={ref} 

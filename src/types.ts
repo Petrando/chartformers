@@ -33,14 +33,6 @@ export type sankeyData = {
     links: sankeyLink[];
 }
 
-export type hierarchyData = {
-    name: string;
-    value?: number;
-    children?: hierarchyData[];
-    color?: string;
-    group?: string;
-}
-
 export type ageRangeGroup = {
     ageRange: string;
     male: number;
@@ -130,6 +122,7 @@ export type lineChartDatum = Record<string, string | number | Date>;
 export type lineTooltipPosData = { xPos: number, low: number, volume: number }
 
 export type curveTypes = "linear" | "basis" | "cardinal" | "catmullrom" | "natural"
+
 export type lineDecor = {
     showLine?: boolean;
     showDots?: boolean;
@@ -162,6 +155,14 @@ export type networkDataType = {
 }
 
 export type networkEdge = [string, string]
+
+export type hierarchyData = {
+    name: string;
+    value?: number;
+    children?: hierarchyData[];
+    color?: string;
+    group?: string;
+}
 
 export type networkHierarchyNode = SimulationNodeDatum & HierarchyCircularNode<hierarchyData>;
 export type networkHierarchyLink = SimulationLinkDatum<networkHierarchyNode> & 

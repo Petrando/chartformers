@@ -142,12 +142,14 @@ export type networkLink = SimulationLinkDatum<networkNode> & {
     source: string;
     target: string;
     value?: number;
+    type?: string;
 };
 
 export type networkResolvedLink = Omit<networkLink, "source" | "target"> & {
     source: networkNode;
     target: networkNode;
     value?: number;
+    type?: string;
 };
 
 export type networkDataType = {

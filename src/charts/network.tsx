@@ -89,6 +89,8 @@ export function NetworkGraph({
         const defs = canvasSvg.selectAll("defs")
         const svgNode = canvasSvg.node()
         const canvas = canvasSvg.select<SVGGElement>('.plot-area')
+                        
+        
 
         function assignGroups(root: hierarchyData): hierarchyData {
             function visit(
@@ -476,11 +478,21 @@ export function NetworkGraph({
                 .attr("y", d => clampY(d) + (mode === "network"?(baseRadius + 4):0))                                                    
         })
 
+        /*
+        | Corner       | SVG coordinate          |
+        | ------------ | ----------------------- |
+        | Top-left     | `(-width/2, -height/2)` |
+        | Top-right    | `(width/2, -height/2)`  |
+        | Bottom-left  | `(-width/2, height/2)`  |
+        | Bottom-right | `(width/2, height/2)`   |
+
+        */
+
         const clampX = (d: chartNode) => {
             const baseX = d.x ?? 0
             const r = nodeRadius(d)
             const xMin = -width/2 + r
-            const xMax = width - r
+            const xMax = width/2 - r
 
             return baseX <= xMin?xMin:
                 baseX >= xMax?xMax:
@@ -491,7 +503,7 @@ export function NetworkGraph({
             const baseY = d.y ?? 0
             const r = nodeRadius(d)
             const yMin = -height/2 + r
-            const yMax = height - r
+            const yMax = height/2 - r
 
             return baseY <= yMin?yMin:
                 baseY >= yMax?yMax:

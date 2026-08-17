@@ -1,8 +1,8 @@
-import React, {useState} from 'react';
+import React, {useState, useRef, useEffect} from 'react';
 import { select, axisBottom, min, max, format, color as d3Color,
     scaleLinear, ScaleLinear, group, hierarchy,
     drag, D3DragEvent,
-    forceSimulation, forceLink, forceManyBody, forceCenter, forceCollide, 
+    forceSimulation, forceLink, forceManyBody, forceCenter, forceCollide, Simulation,
     forceX, forceY,
     HierarchyNode, HierarchyCircularNode, HierarchyLink, pack, quadtree, rollup,
     tree, TreeLayout, linkRadial, HierarchyPointLink, HierarchyPointNode,
@@ -14,22 +14,29 @@ import { select, axisBottom, min, max, format, color as d3Color,
     QuadtreeInternalNode
  } from 'd3';
 import {
+  //Simulation,
   SimulationNodeDatum,
   SimulationLinkDatum,
-  Force
+  Force,
+  ForceLink
 } from "d3-force"; 
 import { useD3 } from '../hooks/useD3';
-import { useUIControls } from '../hooks/useUIControls';
 import { Tooltip, getTooltip, moveTooltip } from '../components/tooltip';
-import { cloneObj, indexSelectedColor, renderLineChart } from '../utils';
+import { cloneObj, indexSelectedColor, isFiniteNumber } from '../utils';
 import styles from './global.module.css';
 import { pointData, tooltipFormat, lineDecor, orientationType,
     hierarchyData,
     networkNode, networkLink, networkEdge, networkResolvedLink, networkDataType,
     
- } from '../types';
+} from '../types';
 import { useLayerIndex } from '../hooks/useLayerIndex';
 import { useParentSize } from '../hooks/useParentSize';
+
+type dijkstraResult = {
+    distances: Map<string, number>;
+    previous: Map<string, string | null>;
+    path: string[] | undefined;
+};
 
 type treeNode = HierarchyNode<hierarchyData> &
              { baseX?: number; baseY?: number; finalX?: number; finalY?: number}
@@ -46,8 +53,13 @@ type packedNode = HierarchyCircularNode<hierarchyData> &
 
 type networkHierarchyPackedNode = SimulationNodeDatum & packedNode;
 
+type chartNode = networkNode | networkHierarchyNode;
+type chartLink = networkLink | networkResolvedLink | networkHierarchyLink;
+
 type NetworkProps = {
     data: hierarchyData | networkDataType;
+    sourceNode: string;
+    targetNode: string;
     leafOnly?: boolean;   
     color?: {
         idx?: number;
@@ -58,6 +70,7 @@ type NetworkProps = {
 
 export function NetworkGraph({
         data, 
+        sourceNode, targetNode,
         leafOnly = false,
         color: {
             idx = 0,               // default idx
@@ -70,8 +83,12 @@ export function NetworkGraph({
     const [ref, parentSize] = useParentSize<HTMLDivElement>();    
     const { width, height } = parentSize;
 
+    const reRender = useRef(true)
+    const reRenderJustChanged = useRef(true)    
+
     const isMediumScreen = width > 576;
     // Define the controls element (checkbox)        
+    const simulationRef = useRef<Simulation<chartNode, undefined> | null>(null);
 
     const color = {idx, type}
     const animDuration = 750;
@@ -79,6 +96,22 @@ export function NetworkGraph({
     const mode = "name" in data?"hierarchy":
         ("nodes" in data && "links" in data)?"network":
         "invalid"
+
+    useEffect(() => {
+        reRender.current = true
+        reRenderJustChanged.current = true
+        setTimeout(()=>{reRenderJustChanged.current = false}, 250)
+    }, [data])
+    useEffect(() => {        
+        reRender.current = true        
+    }, [leafOnly, width, height])
+
+    useEffect(() => {        
+        if(!reRenderJustChanged.current){            
+            reRender.current = false
+        }        
+    }, [ sourceNode, targetNode ])
+
     const chartRef = useD3<HTMLDivElement>((container) => {
         if (width === 0 || height === 0) return;
         if(mode === "invalid") return               
@@ -89,9 +122,7 @@ export function NetworkGraph({
         const defs = canvasSvg.selectAll("defs")
         const svgNode = canvasSvg.node()
         const canvas = canvasSvg.select<SVGGElement>('.plot-area')
-                        
-        
-
+                                
         function assignGroups(root: hierarchyData): hierarchyData {
             function visit(
                 node: hierarchyData,
@@ -122,218 +153,419 @@ export function NetworkGraph({
         
         const tooltip = container.select(`#tooltip`).style("opacity", 0)
         
-        const root = mode === "hierarchy"?hierarchy(hierarchyData):hierarchyData 
-        
-        type chartNode = networkNode | networkHierarchyNode;
-        type chartLink = networkLink | networkResolvedLink | networkHierarchyLink;
-        
+        const root = mode === "hierarchy"?hierarchy(hierarchyData):hierarchyData         
+                
         let linksData:chartLink[] = []
         let nodesData:chartNode[] = []
 
         let types: (string | undefined)[] = []
         
-        if(mode === "hierarchy"){
-            if(leafOnly){
-                (root as HierarchyNode<hierarchyData>).sum(d => d.value ?? 1)
+        if(reRender.current){
+            if(mode === "hierarchy"){
+                if(leafOnly){
+                    (root as HierarchyNode<hierarchyData>).sum(d => d.value ?? 1)
 
-                const packFn = () => pack<hierarchyData>()
-                    .size([width, height])
-                    .padding(1)(root)
+                    const packFn = () => pack<hierarchyData>()
+                        .size([width, height])
+                        .padding(1)(root)
 
-                nodesData = packFn().leaves() as networkHierarchyPackedNode[]
-                linksData = []
+                    nodesData = packFn().leaves() as networkHierarchyPackedNode[]
+                    linksData = []
+                    
+                }
+                else {
+                    const treeFn: TreeLayout<hierarchyData>= tree<hierarchyData>()
+                        .size([2 * Math.PI, radius])
+                        .separation((a, b) => (a.parent == b.parent ? 1 : 2) / a.depth)
+
+                    const rootedTree:treeNode = treeFn(root as HierarchyNode<hierarchyData>)
+                            
+                    rootedTree.each(node => {            
+                        node.baseX = node.x;
+                        node.baseY = node.y;
+                        node.finalX = node.y! * Math.cos(node.x! - Math.PI / 2);
+                        node.finalY = node.y! * Math.sin(node.x! - Math.PI / 2);
+
+                        delete node.x
+                        delete node.y
+                    });
+
+                    nodesData = rootedTree.descendants() as networkHierarchyNode[]
+                    linksData = rootedTree.links()
+                }
+            }else{
+                linksData = (root as networkDataType).links as networkLink[]
+                nodesData = (root as networkDataType).nodes as networkNode[]
                 
+                const baseTypes = linksData.map(d => (d as networkLink).type)
+                types = baseTypes.some(t => t === undefined)?[]:[...baseTypes]             
             }
-            else {
-                const treeFn: TreeLayout<hierarchyData>= tree<hierarchyData>()
-                    .size([2 * Math.PI, radius])
-                    .separation((a, b) => (a.parent == b.parent ? 1 : 2) / a.depth)
-
-                const rootedTree:treeNode = treeFn(root as HierarchyNode<hierarchyData>)
-                        
-                rootedTree.each(node => {            
-                    node.baseX = node.x;
-                    node.baseY = node.y;
-                    node.finalX = node.y! * Math.cos(node.x! - Math.PI / 2);
-                    node.finalY = node.y! * Math.sin(node.x! - Math.PI / 2);
-
-                    delete node.x
-                    delete node.y
-                });
-
-                nodesData = rootedTree.descendants() as networkHierarchyNode[]
-                linksData = rootedTree.links()
-            }
-        }else{
-            linksData = (root as networkDataType).links as networkLink[]
-            nodesData = (root as networkDataType).nodes as networkNode[]
-            
-            const baseTypes = linksData.map(d => (d as networkLink).type)
-            types = baseTypes.some(t => t === undefined)?[]:[...baseTypes]             
         }
-
-        const networkType = types.length === 0?"standard":"arrow"
         
-        const simulation = forceSimulation<chartNode>(nodesData)
+        let networkType = types.length === 0?"standard":"arrow"
+        
 
         const hierarchyNodeRadius = (d:networkHierarchyNode) => {
             return (d as networkHierarchyNode).depth === 0?8:
                 d.depth === 1?5:3
         }
+
         const baseRadius = 4
-        if(mode === "hierarchy"){
-            if(leafOnly){
-                simulation
-                    .force("x", forceX(-width / 2).strength(0.01))
-                    .force("y", forceY(-height / 2).strength(0.01))
-                    .force("cluster", forceCluster())
-                    .force("collide", forceLeafCollide())
-
-                function forceCluster() {
-                    const strength = 0.2;
-                    let nodesRolled: networkHierarchyPackedNode[];
-
-                    function force(alpha: number) {
-                        const centroids = rollup(nodesRolled, centroid, d => d.data.group);
-                        const l = alpha * strength;
-                        for (const d of nodesRolled) {
-                            const {x: cx, y: cy} = centroids.get(d.data.group) ?? {x: 0, y: 0};
-                            if (d.vx == null) {
-                                d.vx = 0;
-                            }
-                            if (d.vy == null) {
-                                d.vy = 0;
-                            }
-                            d.vx -= ((d.x ?? 0) - cx) * l;
-                            d.vy -= ((d.y ?? 0) - cy) * l;
-                        }
-                    }
-
-                    force.initialize = (_: networkHierarchyPackedNode[]) => nodesRolled = _;
-
-                    return force;
-                }
-
-                function centroid(nodes:networkHierarchyPackedNode[]) {
-                    let x = 0;
-                    let y = 0;
-                    let z = 0;
-                    for (const d of nodes) {
-                        let k = d.r ** 2;
-                        x += (d.x ?? 0) * k;
-                        y += (d.y ?? 0) * k;
-                        z += k;
-                    }
-                    return {x: x / z, y: y / z};
-                }
-
-                function forceLeafCollide() {
-                    const alpha = 0.4; // fixed for greater rigidity!
-                    const padding1 = 2; // separation between same-color nodes
-                    const padding2 = 6; // separation between different-color nodes
-                    let nodes: networkHierarchyPackedNode[];
-                    let maxRadius: number;
-
-                    const force: Force<networkHierarchyPackedNode, undefined> = () => {
-                        const quadtreeFn = 
-                            quadtree<networkHierarchyPackedNode>(nodes, d => d.x!, d => d.y!);
+        
+        let simulation = forceSimulation<chartNode>()        
+        
+        if(reRender.current){
+            simulation.nodes(nodesData)//.stop()
+            //const simulation = forceSimulation<chartNode>(nodesData).stop()                
+            
+            if(mode === "hierarchy"){
+                if(leafOnly){
+                    simulation                
+                        .force("center", null)    
+                        .force("link", null)
+                        .force("charge", null)
+                        .force("x", forceX(-width / 2).strength(0.01))
+                        .force("y", forceY(-height / 2).strength(0.01))
+                        .force("cluster", forceCluster())
+                        .force("collide", forceLeafCollide())
+                        .alpha(1)
+                        .alphaTarget(0)
+                        //.alphaTarget(0.3)
+                        //.restart()                                                
                         
+                    function forceCluster() {
+                        const strength = 0.2;
+                        let nodesRolled: networkHierarchyPackedNode[];
+
+                        function force(alpha: number) {
+                            const centroids = rollup(nodesRolled, centroid, d => d.data.group);
+                            const l = alpha * strength;
+                            for (const d of nodesRolled) {
+                                const {x: cx, y: cy} = centroids.get(d.data.group) ?? {x: 0, y: 0};
+                                if (d.vx == null) {
+                                    d.vx = 0;
+                                }
+                                if (d.vy == null) {
+                                    d.vy = 0;
+                                }
+                                d.vx -= ((d.x ?? 0) - cx) * l;
+                                d.vy -= ((d.y ?? 0) - cy) * l;
+                            }
+                        }
+
+                        force.initialize = (_: networkHierarchyPackedNode[]) => nodesRolled = _;
+
+                        return force;
+                    }
+
+                    function centroid(nodes:networkHierarchyPackedNode[]) {
+                        let x = 0;
+                        let y = 0;
+                        let z = 0;
                         for (const d of nodes) {
-                            const r = d.r + maxRadius;
-                            const nx1 = d.x - r, ny1 = d.y - r;
-                            const nx2 = d.x + r, ny2 = d.y + r;
-                            quadtreeFn.visit((q, x1, y1, x2, y2) => {
-                                if (!q.length) {
-                                    for (
-                                        let qLeaf: QuadtreeLeaf<networkHierarchyPackedNode> | undefined = q; 
-                                        qLeaf; 
-                                        qLeaf = qLeaf.next
-                                    ) {
-                                        if (qLeaf.data !== d) {
-                                            const r = d.r + qLeaf.data.r + (d.data.group === qLeaf.data.data.group ? padding1 : padding2);
-                                            let x = d.x - qLeaf.data.x, y = d.y - qLeaf.data.y, l = Math.hypot(x, y);
-                                            if (l < r) {
-                                                l = (l - r) / l * alpha;
-                                                d.x -= x *= l, d.y -= y *= l;
-                                                qLeaf.data.x += x, qLeaf.data.y += y;
+                            let k = d.r ** 2;
+                            x += (d.x ?? 0) * k;
+                            y += (d.y ?? 0) * k;
+                            z += k;
+                        }
+                        return {x: x / z, y: y / z};
+                    }
+
+                    function forceLeafCollide() {
+                        const alpha = 0.4; // fixed for greater rigidity!
+                        const padding1 = 2; // separation between same-color nodes
+                        const padding2 = 6; // separation between different-color nodes
+                        let nodes: networkHierarchyPackedNode[];
+                        let maxRadius: number;
+
+                        const force: Force<networkHierarchyPackedNode, undefined> = () => {
+                            const quadtreeFn = 
+                                quadtree<networkHierarchyPackedNode>(nodes, d => d.x!, d => d.y!);
+                            
+                            for (const d of nodes) {
+                                const r = d.r + maxRadius;
+                                const nx1 = d.x - r, ny1 = d.y - r;
+                                const nx2 = d.x + r, ny2 = d.y + r;
+                                quadtreeFn.visit((q, x1, y1, x2, y2) => {
+                                    if (!q.length) {
+                                        for (
+                                            let qLeaf: QuadtreeLeaf<networkHierarchyPackedNode> | undefined = q; 
+                                            qLeaf; 
+                                            qLeaf = qLeaf.next
+                                        ) {
+                                            if (qLeaf.data !== d) {
+                                                const r = d.r + qLeaf.data.r + (d.data.group === qLeaf.data.data.group ? padding1 : padding2);
+                                                let x = d.x - qLeaf.data.x, 
+                                                    y = d.y - qLeaf.data.y, 
+                                                    l = Math.hypot(x, y);
+                                                if (l < r) {
+                                                    l = (l - r) / l * alpha;
+                                                    d.x -= x *= l, d.y -= y *= l;
+                                                    qLeaf.data.x += x, qLeaf.data.y += y;
+                                                }
                                             }
                                         }
                                     }
-                                }
-                                return x1 > nx2 || x2 < nx1 || y1 > ny2 || y2 < ny1;
-                            });
+                                    return x1 > nx2 || x2 < nx1 || y1 > ny2 || y2 < ny1;
+                                });
+                            }
                         }
+
+                        force.initialize = (
+                            initNodes: networkHierarchyPackedNode[]
+                        ) => {
+                            nodes = initNodes;
+
+                            maxRadius =
+                                max(nodes, d => d.r)! +
+                                Math.max(padding1, padding2);
+                        };
+
+                        return force;
                     }
-
-                    force.initialize = (
-                        initNodes: networkHierarchyPackedNode[]
-                    ) => {
-                        nodes = initNodes;
-
-                        maxRadius =
-                            max(nodes, d => d.r)! +
-                            Math.max(padding1, padding2);
-                    };
-
-                    return force;
-                }
-            }else{
-                simulation
-                    .force(
-                            "link",
-                            forceLink<networkHierarchyNode, networkHierarchyLink>(linksData as networkHierarchyLink[])
-                                .id(d => (d as networkNode).id)
-                                .distance(50)
+                }else{
+                    simulation
+                        .force("center", forceCenter())
+                        .force(
+                                "link",
+                                forceLink<networkHierarchyNode, networkHierarchyLink>(linksData as networkHierarchyLink[])
+                                    .id(d => (d as networkNode).id)
+                                    .distance(50)
+                            )
+                        .force("x", forceX<networkHierarchyNode>(-width / 2)
+                            .x((d: networkHierarchyNode) => d.finalX ?? 0)
+                            .strength(1))
+                        .force("y", forceY<networkHierarchyNode>(-height / 2)
+                            .y((d: networkHierarchyNode) => d.finalY ?? 0)
+                            .strength(1))
+                        .force("charge", forceManyBody().strength(-30))
+                        .force(
+                            "collide", 
+                            forceCollide<networkHierarchyNode>()
+                                .radius(hierarchyNodeRadius)
                         )
-                    .force("x", forceX<networkHierarchyNode>(-width / 2)
-                        .x((d: networkHierarchyNode) => d.finalX ?? 0)
-                        .strength(1))
-                    .force("y", forceY<networkHierarchyNode>(-height / 2)
-                        .y((d: networkHierarchyNode) => d.finalY ?? 0)
-                        .strength(1))
-                    .force("charge", forceManyBody().strength(-30))
-                    .force(
-                        "collide", 
-                        forceCollide<networkHierarchyNode>()
-                            .radius(hierarchyNodeRadius)
-                    )
-                    .alpha(0.15)
+                        //.force("cluster", null)
+                        .alpha(0.15)                    
+                        .alphaTarget(0)
+                        //.restart()                    
+
+                        //console.log(simulation.force("center"))
+                }
+                
+            }else if(mode === "network"){
+                
+                if(networkType === "standard"){
+                    simulation
+                        .force("x", null)
+                        .force("y", null)
+                        .force("cluster", null)
+                        .force("collide", null)
+                        .force(
+                            "link",
+                            forceLink<chartNode, chartLink>(linksData)
+                                .id(d => (d as networkNode).id)
+                                //.distance(100)
+                        )
+                        .force(
+                            "charge", 
+                            forceManyBody()//.strength(-80)
+                        )
+                        //.force("center", forceCenter(width / 2, height / 2))
+                        //.force("collision", forceCollide(18))
+                        //.force("cluster", null)
+                        //.force("collide", null)
+                        .force("center", forceCenter())
+                        .alpha(1)
+                        .alphaTarget(0)
+                        //.alphaTarget(0.3)
+                        //.restart()                    
+                        
+                }else if(networkType === "arrow"){
+                    simulation
+                        .force("center", null)
+                        .force("cluster", null)
+                        .force("collide", null)
+                        .force(
+                            "link", 
+                            forceLink<chartNode, chartLink>(linksData).id(d => (d as networkNode).id)
+                        )
+                        .force("charge", forceManyBody().strength(-400))                    
+                        .force("x", forceX())
+                        .force("y", forceY())
+                        .alpha(1)
+                        .alphaTarget(0)
+                        //.alphaTarget(0.3)                    
+                        //.restart()                    
+                }
+                
+                
             }
-             
-        }else if(mode === "network"){
-            if(networkType === "standard"){
-                simulation
-                    .force(
-                        "link",
-                        forceLink<chartNode, chartLink>(linksData)
-                            .id(d => (d as networkNode).id)
-                            //.distance(100)
-                    )
-                    .force(
-                        "charge", 
-                        forceManyBody()//.strength(-80)
-                    )
-                    //.force("center", forceCenter(width / 2, height / 2))
-                    //.force("collision", forceCollide(18))
-                    .force("center", forceCenter())
-            }else if(networkType === "arrow"){
-                simulation
-                    .force(
-                        "link", 
-                        forceLink<chartNode, chartLink>(linksData).id(d => (d as networkNode).id)
-                    )
-                    .force("charge", forceManyBody().strength(-400))
-                    .force("x", forceX())
-                    .force("y", forceY())
-            }
+            
+            simulationRef.current = simulation
+                        
+        }else{
+            //console.log(simulationRef.current)
+            //console.log(simulationRef.current?.nodes())
+            simulation = simulationRef.current as Simulation<chartNode, undefined>
+            const linkForce = simulation.force("link") as ForceLink<chartNode, chartLink>
+            linksData = linkForce?.links()
+            const baseTypes = linksData.map(d => (d as networkLink).type)
+            types = baseTypes.some(t => t === undefined)?[]:[...baseTypes]
+            nodesData = simulation?.nodes()
             
         }
 
+        networkType = types.length === 0?"standard":"arrow"
+                
+        function dijkstra(
+            data: {
+                nodes: chartNode[]; links: chartLink[]
+            },
+            startId: string,
+            endId?: string
+        ): dijkstraResult | string {
+
+            const sourceNodeName = data.nodes.filter(d => (
+                mode === "hierarchy"?(d as networkHierarchyNode).data.name === sourceNode:
+                mode === "network"?(d as networkNode).id === sourceNode:
+                undefined
+            ))
+            
+            if(!sourceNodeName || sourceNodeName.length === 0){
+                return "no source node"
+            }
+
+            const targetNodeName = data.nodes.filter(d => (
+                mode === "hierarchy"?(d as networkHierarchyNode).data.name === targetNode:
+                mode === "network"?(d as networkNode).id === targetNode:
+                undefined
+            ))
+            
+            if(!targetNodeName || targetNodeName.length === 0){
+                return "no target node"
+            }
+            // Distance from start node
+            const distances = new Map<string, number>();
+
+            // Previous node in shortest path
+            const previous = new Map<string, string | null>();
+
+            // Unvisited nodes
+            const unvisited = new Set<string>();
+
+            // Build adjacency list
+            const adjacency = new Map<
+                string,
+                { node: string; weight: number }[]
+            >();
+
+            for (const node of data.nodes) {
+                const nodeId = mode === "hierarchy"?(node as networkHierarchyNode).data.name:
+                    (node as networkNode).id
+                distances.set(nodeId, Infinity);
+                previous.set(nodeId, null);
+                unvisited.add(nodeId);
+                adjacency.set(nodeId, []);
+            }
+
+            for (const link of data.links) {
+                const linkSourceName = mode === "hierarchy"?(link.source as networkHierarchyNode).data.name:
+                    (link.source as networkNode).id
+                const linkTargetName = mode === "hierarchy"?(link.target as networkHierarchyNode).data.name:
+                    (link.target as networkNode).id
+                const linkValue = mode === "hierarchy"?1:
+                    (link as networkResolvedLink).value ?? 1
+                    
+                adjacency.get(linkSourceName)?.push({
+                    node: linkTargetName,
+                    weight: linkValue,
+                });
+                
+                // Remove this if your graph is directed
+                adjacency.get(linkTargetName)?.push({
+                    node: linkSourceName,
+                    weight: linkValue,
+                });
+            }
+
+            distances.set(startId, 0);
+
+            while (unvisited.size > 0) {
+                // Find closest unvisited node
+                let current: string | null = null;
+                let smallest = Infinity;
+
+                for (const id of unvisited) {
+                    const d = distances.get(id)!;
+
+                    if (d < smallest) {
+                        smallest = d;
+                        current = id;
+                    }
+                }
+
+                if (current === null) break;
+
+                // Optional early exit
+                if (current === endId) break;
+
+                unvisited.delete(current);
+
+                for (const neighbor of adjacency.get(current)!) {
+                    if (!unvisited.has(neighbor.node))
+                        continue;
+
+                    const alt =
+                        distances.get(current)! +
+                        neighbor.weight;
+
+                    if (alt < distances.get(neighbor.node)!) {
+                        distances.set(neighbor.node, alt);
+                        previous.set(neighbor.node, current);
+                    }
+                }
+            }
+
+            // Reconstruct path
+            const buildPath = (target: string) => {
+                const path: string[] = [];
+
+                let current: string | null = target;
+
+                while (current !== null) {
+                    path.unshift(current);
+                    current = previous.get(current)!;
+                }
+
+                return path;
+            };
+
+            return {
+                distances,
+                previous,
+                path:
+                    endId !== undefined
+                        ? buildPath(endId)
+                        : undefined,
+            };
+            
+        }
+        
+        const path = dijkstra(
+            { nodes: nodesData, links: linksData},
+            sourceNode, targetNode
+        )
+
+        console.log(path)
+        if(typeof path !== "string"){
+            console.log(path.distances.get(targetNode))
+        }        
+                
         const color = scaleOrdinal(schemeCategory10);        
 
         const markColor = scaleOrdinal(types as string[], schemeCategory10);
         const markers = defs.selectAll("marker")
-            .data(types)
+            .data(types, d => typeof d === "string"?d:"")
                 .join("marker")
             .attr("id", d => `arrow-${d}`)
             .attr("viewBox", "0 -5 10 10")
@@ -344,7 +576,9 @@ export function NetworkGraph({
             .attr("orient", "auto")
             .append("path")
             .attr("fill", (d) => markColor(d ?? ""))
-            .attr("d", "M0,-5L10,0L0,5");        
+            .attr("d", "M0,-5L10,0L0,5");
+            
+        //console.log(linksData)
         
         const pathLinks = canvas.selectAll<SVGPathElement, networkResolvedLink>("path.link")
             .data(linksData)
@@ -380,9 +614,20 @@ export function NetworkGraph({
                 hierarchyNodeRadius(d as networkHierarchyNode):
                 (d as networkNode).radius ?? baseRadius
          
+        //console.log(nodesData)
+
+        function nodeId(d: chartNode){
+            if(mode === "hierarchy"){
+                return (d as networkHierarchyNode).data?.name ?? ""
+            }else if(mode === "network"){
+                return (d as networkNode).id
+            }else{
+                return ""
+            }                    
+        }
         const nodes = canvas
             .selectAll<SVGCircleElement, chartNode>("circle")
-            .data(nodesData)
+            .data( nodesData, nodeId )
             .join("circle")            
             .attr("stroke", 
                 d => mode === "hierarchy"? 
@@ -417,10 +662,14 @@ export function NetworkGraph({
                 });
         }
 
+        nodes.on("mouseover", function(d){
+            console.log(reRender.current)
+        })
+
         const labelsData = (mode === "hierarchy" && leafOnly)?[]:nodesData
         const labels = canvas
             .selectAll<SVGTextElement, chartNode>("text.label")
-            .data(labelsData)
+            .data(labelsData, nodeId)
             .join("text")
             .attr("class", "label")            
             .attr("stroke-linejoin", "round")
@@ -447,7 +696,8 @@ export function NetworkGraph({
         labels.raise()
 
         simulation.on("tick", () => {            
-            pathLinks.attr("d", (d) => linkArc(d as networkResolvedLink));                   
+            pathLinks.attr("d", (d) => linkArc(d as networkResolvedLink));
+            //console.log('ticks')                   
 
             nodes
                 .attr("cx",clampX)
@@ -455,27 +705,44 @@ export function NetworkGraph({
                 
             labels                
                 .attr("transform", d => {
-                    if(mode === "hierarchy"){
-                        const labelData = d as networkHierarchyNode
-                        if(labelData.depth === 0){
-                            return ''
-                        }
-                        const angle = labelData.baseX! * 180 / Math.PI - 90;
-                        const flip = labelData.baseX! >= Math.PI ? 180 : 0;
-
-                        return `rotate(${(isNaN(angle)?0:angle) + (isNaN(flip)?0:flip)}, ${d.x}, ${d.y})`;
-                    }
-                    return ''
+                    if(mode !== 'hierarchy')
+                        return ''
                     
+                    const labelData = d as networkHierarchyNode
+                    if(labelData.depth === 0){
+                        return ''
+                    }
+
+                    const x = d.x ?? 0;
+                    const y = d.y ?? 0;
+                    const baseX = labelData.baseX ?? 0;
+
+                    // Don't generate an invalid transform
+                    if (
+                        !isFiniteNumber(x) ||
+                        !isFiniteNumber(y) ||
+                        !isFiniteNumber(baseX)
+                    ) {
+                        return "";
+                    }
+                    const angle = baseX * 180 / Math.PI - 90;
+                    const flip = baseX >= Math.PI ? 180 : 0;
+
+                    return `rotate(${angle + flip}, ${x}, ${y})`;
                 })
                 .attr("x", d => {
                     const xFactor = mode === "hierarchy"?
                         (d as networkHierarchyNode).baseX! < Math.PI === !(d as networkHierarchyNode).children ? 6 : -6:
                         0
-                    const dX = clampX(d)
-                    return dX + xFactor
+                    const baseDX = clampX(d)
+                    const dx = isFiniteNumber(baseDX)?baseDX:0
+                    return dx + xFactor
                 })                
-                .attr("y", d => clampY(d) + (mode === "network"?(baseRadius + 4):0))                                                    
+                .attr("y", d => {
+                    const baseDY = clampY(d)
+                    const dy = isFiniteNumber(baseDY)?baseDY:0
+                    return  dy + (mode === "network"?(baseRadius + 4):0)
+                })                            
         })
 
         /*
@@ -489,25 +756,27 @@ export function NetworkGraph({
         */
 
         const clampX = (d: chartNode) => {
-            const baseX = d.x ?? 0
+            const baseX = isFiniteNumber(d.x) ? d.x : 0
             const r = nodeRadius(d)
             const xMin = -width/2 + r
             const xMax = width/2 - r
 
-            return baseX <= xMin?xMin:
+            /*return baseX <= xMin?xMin:
                 baseX >= xMax?xMax:
-                baseX
+                baseX*/
+            return Math.min(Math.max(baseX, xMin), xMax)
         }
 
         const clampY = (d: chartNode) => {
-            const baseY = d.y ?? 0
+            const baseY = isFiniteNumber(d.y) ? d.y : 0
             const r = nodeRadius(d)
             const yMin = -height/2 + r
             const yMax = height/2 - r
 
-            return baseY <= yMin?yMin:
+            /*return baseY <= yMin?yMin:
                 baseY >= yMax?yMax:
-                baseY
+                baseY*/
+            return Math.min(Math.max(baseY, yMin), yMax)
         }
 
         const dragFn = drag<SVGCircleElement, chartNode>()
@@ -545,7 +814,7 @@ export function NetworkGraph({
             d.fx = null;
             d.fy = null;
         }
-    }, [data, leafOnly, mode, color, width, height, {prefix, suffix, formatType} ]);
+    }, [data, sourceNode, targetNode, leafOnly, mode, color, width, height, {prefix, suffix, formatType} ]);
         
     return (
         <div 

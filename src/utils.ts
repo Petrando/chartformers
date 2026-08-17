@@ -339,3 +339,5 @@ export function renderHistogramLine(
     lines.raise()
     
 }
+
+export const isFiniteNumber = (value: unknown): value is number => Number.isFinite(value);

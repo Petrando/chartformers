@@ -31,6 +31,7 @@ import { pointData, tooltipFormat, lineDecor, orientationType,
 } from '../types';
 import { useLayerIndex } from '../hooks/useLayerIndex';
 import { useParentSize } from '../hooks/useParentSize';
+import { exit } from 'process';
 
 type dijkstraResult = {
     distances: Map<string, number>;
@@ -202,8 +203,7 @@ export function NetworkGraph({
             }
         }
         
-        let networkType = types.length === 0?"standard":"arrow"
-        
+        let networkType = types.length === 0?"standard":"arrow"        
 
         const hierarchyNodeRadius = (d:networkHierarchyNode) => {
             return (d as networkHierarchyNode).depth === 0?8:
@@ -551,14 +551,13 @@ export function NetworkGraph({
             
         }
         
-        const path = dijkstra(
+        const shortestPath = dijkstra(
             { nodes: nodesData, links: linksData},
             sourceNode, targetNode
         )
-
-        console.log(path)
-        if(typeof path !== "string"){
-            console.log(path.distances.get(targetNode))
+        
+        if(typeof shortestPath !== "string"){
+            console.log(shortestPath.distances.get(targetNode))
         }        
                 
         const color = scaleOrdinal(schemeCategory10);        
@@ -577,21 +576,79 @@ export function NetworkGraph({
             .append("path")
             .attr("fill", (d) => markColor(d ?? ""))
             .attr("d", "M0,-5L10,0L0,5");
-            
-        //console.log(linksData)
-        
+
+        if(typeof shortestPath !== "string"){
+            console.log(shortestPath.path)
+        }
+                    
+        const linkOpacity = (d: networkResolvedLink) => {
+            if(typeof shortestPath === "string"){
+                return 1
+            }
+            const { distances, previous, path } = shortestPath as dijkstraResult
+            if(Array.isArray(path)){
+                const sourceName = mode === "network"?
+                    (d.source as networkNode).id:
+                    (d.source as networkHierarchyNode).data.name
+                const targetName = mode === "network"?
+                    (d.target as networkNode).id:
+                    (d.target as networkHierarchyNode).data.name
+
+                let inPath = false
+                for(let i = 0; i < path.length - 1; i++){
+                    if(sourceName === path[i] && targetName === path[i + 1]){
+                        inPath = true
+                        break;
+                    }
+                    //delete below for directed path
+                    if(targetName === path[i] && sourceName === path[i + 1]){
+                        inPath = true
+                        break;
+                    }
+                }                
+                return inPath?1:0.1                
+            }
+            return 0.1
+        }
+                            
         const pathLinks = canvas.selectAll<SVGPathElement, networkResolvedLink>("path.link")
-            .data(linksData)
-                .join("path")
-            .attr("class", "link")
-            .attr("fill", "none")
-            .attr("stroke-width", 1.5)
+            .data(
+                linksData, 
+                function(d){
+                    if(mode === "hierarchy"){                        
+                        const sourceName = (d.source as networkHierarchyNode).data?.name
+                        const targetName = (d.source as networkHierarchyNode).data?.name                        
+                        return `${sourceName}-${targetName}`
+                    }
+                    else if(mode === "network"){                        
+                        const sourceName = (d.source as networkNode).id
+                        const targetName = (d.target as networkNode).id
+                        return `${sourceName}-${targetName}`
+                    }
+                    return ""
+            })
+            .join(
+                enter=>enter.append("path")
+                    .attr("class", "link")
+                    .attr("fill", "none")
+                    .attr("stroke-width", 1.5)
+                    .attr("stroke", d => 
+                        networkType === "arrow"?
+                        color((d as networkResolvedLink).type ?? "#999"):
+                        "#999"
+                    )
+                    .attr("marker-end", d => `url(#arrow-${(d as networkResolvedLink).type})`)
+                    .attr("stroke-opacity", d => linkOpacity(d as networkResolvedLink)),
+                undefined,
+                exit=>exit.remove()
+            )
             .attr("stroke", d => 
                 networkType === "arrow"?
                 color((d as networkResolvedLink).type ?? "#999"):
                 "#999"
             )
-            .attr("marker-end", d => `url(#arrow-${(d as networkResolvedLink).type})`)        
+            .attr("marker-end", d => `url(#arrow-${(d as networkResolvedLink).type})`)
+            .attr("stroke-opacity", d => linkOpacity(d as networkResolvedLink))            
 
         function linkArc(d: networkResolvedLink) {
             const sourceX = clampX(d.source)
@@ -609,15 +666,44 @@ export function NetworkGraph({
             `;
         }
 
+        const nodeInPath = (d: chartNode):
+            "no path to highlight" | "source or destination" | "path" | "not path member"=> {
+            if(typeof shortestPath === "string"){
+                return "no path to highlight"
+            }
+            const { path } = shortestPath as dijkstraResult
+            if(Array.isArray(path)){
+                const nodeName = mode === "network"?
+                    (d as networkNode).id:
+                    (d as networkHierarchyNode).data.name
+
+                const idx = path.indexOf(nodeName)
+
+                return (idx === 0 || idx === path.length - 1)?
+                    "source or destination":
+                    idx > -1?"path":
+                    "not path member"
+            }
+            return "not path member"
+        }
+
+        const textOpacity = (d: chartNode) => {
+            const status = nodeInPath(d)
+            if(status === "no path to highlight"){
+                return 1
+            }
+            if(status === "source or destination" || status === "path"){
+                return 1
+            }
+            return 0.25
+        }
         const nodeRadius = (d: chartNode) =>
             mode === "hierarchy"?
                 hierarchyNodeRadius(d as networkHierarchyNode):
-                (d as networkNode).radius ?? baseRadius
-         
-        //console.log(nodesData)
+                (d as networkNode).radius ?? baseRadius                 
 
         function nodeId(d: chartNode){
-            if(mode === "hierarchy"){
+            if(mode === "hierarchy"){                
                 return (d as networkHierarchyNode).data?.name ?? ""
             }else if(mode === "network"){
                 return (d as networkNode).id
@@ -626,9 +712,35 @@ export function NetworkGraph({
             }                    
         }
         const nodes = canvas
-            .selectAll<SVGCircleElement, chartNode>("circle")
+            .selectAll<SVGCircleElement, chartNode>("circle.node")
             .data( nodesData, nodeId )
-            .join("circle")            
+            .join(
+                enter=>enter.append("circle")
+                    .attr("class", "node")
+                    .attr("stroke", 
+                        d => mode === "hierarchy"? 
+                            (d as networkHierarchyNode).children ? null : "#fff":
+                            "none"
+                    )
+                    .attr("r", nodeRadius)
+                    .attr(
+                        "fill", 
+                        (d) => {
+                            if(mode === "hierarchy"){
+                                const nodeData = d as networkHierarchyNode
+                                if(nodeData.data.color){
+                                    return nodeData.data.color
+                                }
+                                const { group } = nodeData.data
+                                return group !== undefined ? color(String(group)) ?? "steelblue" : "steelblue";
+                            }
+                            const group = (d as networkNode).group;
+                            return group !== undefined ? color(String(group)) ?? "steelblue" : "steelblue";
+                        }
+                    ),
+                undefined,
+                exit=>exit.remove()
+            )            
             .attr("stroke", 
                 d => mode === "hierarchy"? 
                     (d as networkHierarchyNode).children ? null : "#fff":
@@ -662,28 +774,50 @@ export function NetworkGraph({
                 });
         }
 
-        nodes.on("mouseover", function(d){
-            console.log(reRender.current)
+        nodes.on("mouseover", function(e, d){
+            //console.log(d)
         })
 
+        const baseFontSize = 6
+        const fontSize = (d: chartNode) => {
+            const status = nodeInPath(d)
+            if(status === "no path to highlight"){
+                return baseFontSize
+            }
+            if(status === "source or destination"){
+                return 10
+            }
+            if(status === "path"){
+                return 8
+            }
+            return baseFontSize
+        }
         const labelsData = (mode === "hierarchy" && leafOnly)?[]:nodesData
         const labels = canvas
             .selectAll<SVGTextElement, chartNode>("text.label")
             .data(labelsData, nodeId)
-            .join("text")
-            .attr("class", "label")            
-            .attr("stroke-linejoin", "round")
-            .attr("stroke-width", 3)
-            .attr("dy", "0.31em")                                    
-            .attr("paint-order", "stroke")
-            .attr("stroke", "white")
-            .attr("fill", "currentColor")
-            .style("font-size", 6)
-            .style("pointer-events", "none")
-            .text(d => mode === "hierarchy"?
-                (d as networkHierarchyNode).data.name:
-                (d as networkNode).id
+            .join(
+                enter=>enter.append("text")
+                    .attr("class", "label")            
+                    .attr("stroke-linejoin", "round")
+                    .attr("stroke-width", 3)
+                    .attr("dy", "0.31em")                                    
+                    .attr("paint-order", "stroke")
+                    .attr("stroke", "white")
+                    .attr("fill", "currentColor")
+                    .style("font-size", fontSize)
+                    .style("pointer-events", "none")
+                    .text(d => mode === "hierarchy"?
+                        (d as networkHierarchyNode).data.name:
+                        (d as networkNode).id
+                    )
+                    .style("opacity", textOpacity),
+                undefined,
+                exit=>exit.remove()
             )
+            .style("opacity", textOpacity)
+            .style("font-size", fontSize)
+            
 
         if(mode === "hierarchy"){
             labels

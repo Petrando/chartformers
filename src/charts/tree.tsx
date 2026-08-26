@@ -67,6 +67,66 @@ export function TreeDiagram({
         canvas.selectAll("circle.node").remove()
         canvas.selectAll("text.label").remove()
 
+        /*
+        const simulation = forceSimulation<hierarchyPointNode>(nodesData)
+            .force(
+                    "link",
+                    forceLink(linksData)
+                        .id(d => (d as networkNode).id)
+                        //.distance(100)
+                )
+            .force("x", forceX(-width / 2).strength(0.01))
+            .force("y", forceY(-height / 2).strength(0.01))
+            .force("charge", forceManyBody())
+            .stop()
+
+        const radialLink = linkRadial<
+            hierarchyPointLink,
+            hierarchyPointNode
+        >()
+            .angle(d => d.x)
+            .radius(d => d.y);
+
+        const links = canvas
+            .selectAll("path")
+            .data(linksData)
+            .join("path")
+            .attr("class", "link")
+            .attr("fill", "none")
+            .attr("stroke", "#555")
+            .attr("stroke-opacity", 0.4)            
+            .style("stroke-width", function(d){
+                return d.value?Math.sqrt(d.value):1.5
+            })
+            .attr("d", radialLink);
+
+        const color = scaleOrdinal<string, string>(range(m).map(String), schemeCategory10)
+        const r = 2.5
+        const nodes = canvas
+            .selectAll<SVGCircleElement, networkHierarchyNode>("circle.node")
+            .data(nodesData)
+            .join("circle")
+            .attr("class", "node")
+            .attr("transform", d => `rotate(${d.x * 180 / Math.PI - 90}) translate(${d.y},0)`)
+            //.attr("cx", d => d.y * Math.cos(d.x - Math.PI / 2))
+            //.attr("cy", d => d.y * Math.sin(d.x - Math.PI / 2))
+            .attr("fill", d => color(d.data.group ?? ""))
+            .attr("r", r)
+
+        nodes.on("mouseover", function(_, d){
+            console.log(d)
+        })
+
+        simulation.on("tick", () => {
+            nodes
+                .attr("transform", d => `rotate(${d.x * 180 / Math.PI - 90}) translate(${d.y},0)`)
+                //.attr("cx", d => d.y * Math.cos(d.x - Math.PI / 2))
+                //.attr("cy", d => d.y * Math.sin(d.x - Math.PI / 2))
+
+            links.attr("d", radialLink)
+        });
+        */
+
         const radialLink = linkRadial<
             hierarchyPointLink,
             hierarchyPointNode

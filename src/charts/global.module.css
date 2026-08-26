@@ -10,11 +10,11 @@
 }
 
 .controls-container {
-    padding: 0.5rem 1rem 0;
+    padding: 0.3rem 0.8rem 0;
 }
 
 .controls-container-sm {
-    padding: 0.4rem 0.8rem 0;
+    padding: 0.25rem 0.8rem 0;
 }
 
 .fill-container {
@@ -58,8 +58,8 @@
 }
 
 .controls-container .controls-checkbox {
-    width: 16px;
-    height: 16px;
+    width: 14px;
+    height: 14px;
 }
 
 .controls-container-sm .controls-checkbox {

@@ -1,7 +1,7 @@
 import React, {useState, useRef, useEffect} from 'react';
 import { select, axisBottom, min, max, format, color as d3Color,
     scaleLinear, ScaleLinear, scalePow, ScalePower, group, hierarchy,
-    drag, D3DragEvent,
+    drag, D3DragEvent, rgb,
     forceSimulation, forceLink, forceManyBody, forceCenter, forceCollide, Simulation,
     forceX, forceY,
     HierarchyNode, HierarchyCircularNode, HierarchyLink, pack, quadtree, rollup,
@@ -146,6 +146,8 @@ export function NetworkGraph({
             reRender.current = false
         }        
     }, [ sourceNode, targetNode, selectedGroup ])
+
+    useEffect(()=>{ setSelectedGroup("") }, [ width, height])
 
     const chartRef = useD3<HTMLDivElement>((container) => {
         if (width === 0 || height === 0) return;
@@ -677,7 +679,7 @@ export function NetworkGraph({
                         )
                 }
 
-                simulation.alpha(1).restart()
+                simulation.alpha(0.75).alphaTarget(0).restart()
                 
             }
             
@@ -871,7 +873,7 @@ export function NetworkGraph({
                 return inPath?1:0.1                
             }
             return 0.1
-        }
+        }        
                             
         const pathLinks = canvas.selectAll<SVGPathElement, networkResolvedLink>("path.link")
             .data(
@@ -978,14 +980,16 @@ export function NetworkGraph({
                 const group = (d as networkNode).group;
                 return group !== undefined ? color(String(group)) ?? "steelblue" : "steelblue";
             }
-            else if(mode === "bubble"){
-                const {groupBy} = data as bubbleDataType
-                const group = groupBy?(d as bubbleDataset)[groupBy]:undefined
-
-                return group !== undefined ? color(String(group)) ?? "steelblue" : "steelblue";
+            else if(mode === "bubble"){                
+                const group = (d as bubbleDataset)[bubbleGroupBy] as string
+                return color(group)
             }
             return "steelblue"
         }
+
+        const nodeStroke = (d: chartNode) => mode === "hierarchy"? 
+            (d as networkHierarchyNode).children ? "none" : "#fff":
+            rgb(nodeFill(d)).darker().toString()
         
         const nodes = canvas
             .selectAll<SVGCircleElement, chartNode>("circle.node")
@@ -1003,11 +1007,7 @@ export function NetworkGraph({
                 undefined,
                 exit=>exit.remove()
             )            
-            .attr("stroke", 
-                d => mode === "hierarchy"? 
-                    (d as networkHierarchyNode).children ? null : "#fff":
-                    "none"
-            )
+            .attr("stroke", nodeStroke)
             .attr("r", nodeRadius)
             .attr("fill", nodeFill);
 
@@ -1021,6 +1021,13 @@ export function NetworkGraph({
                     return interpolatedR;
                 });
         }
+
+        nodes
+            .on("mouseover", function(e, d){ select(this).style("stroke", "black")})
+            .on("mouseout", function(e, d){ 
+                const stroke = nodeStroke(d)
+                select(this).style("stroke", stroke)
+            })
 
         const textOpacity = (d: chartNode) => {
             const r = nodeRadius(d)

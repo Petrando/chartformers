@@ -141,10 +141,7 @@ export function CirclePacks({data, tooltipFormat, colorScheme = 'monochrome'}: P
             const tooltip = container.select("#tooltip").style("opacity", 0)
             const canvasSvg = container.select<SVGSVGElement>("svg")
             const svgNode = canvasSvg.node()
-            const canvas = canvasSvg.select<SVGGElement>('.plot-area')                
-                
-            //canvas.transition().duration(animDuration)
-                //.attr("transform", "translate(" + width / 2 + "," + height / 2 + ")");
+            const canvas = canvasSvg.select<SVGGElement>('.plot-area')                                            
 
             const monochromeFill = scaleLinear<string>()
                 .domain([-1, 2])

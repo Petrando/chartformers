@@ -1,4 +1,4 @@
-import React, {useState, useRef, useEffect} from 'react';
+import React, {useState, useRef, useEffect, useDeferredValue} from 'react';
 import { select, axisBottom, min, max, format, color as d3Color,
     scaleLinear, ScaleLinear, scalePow, ScalePower, group, hierarchy,
     drag, D3DragEvent, rgb,
@@ -11,7 +11,8 @@ import { select, axisBottom, min, max, format, color as d3Color,
     range,
     interpolate,
     QuadtreeLeaf,
-    QuadtreeInternalNode
+    QuadtreeInternalNode,
+    extent
  } from 'd3';
 import {
   //Simulation,
@@ -19,7 +20,8 @@ import {
   SimulationLinkDatum,
   Force,
   ForceLink
-} from "d3-force"; 
+} from "d3-force";
+import { oldPack } from './circle-packs/utils'; 
 import { useD3 } from '../hooks/useD3';
 import { Tooltip, getTooltip, moveTooltip } from '../components/tooltip';
 import { cloneObj, indexSelectedColor, isFiniteNumber } from '../utils';
@@ -31,7 +33,6 @@ import { pointData, tooltipFormat, lineDecor, orientationType,
 } from '../types';
 import { useLayerIndex } from '../hooks/useLayerIndex';
 import { useParentSize } from '../hooks/useParentSize';
-import { exit } from 'process';
 import { useContainerSize } from '../hooks/useContainerSize';
 
 type dijkstraResult = {
@@ -48,15 +49,24 @@ export type bubbleDataset = SimulationNodeDatum & {
   /** 
    * Requires at least one dynamic property with a string key and number value.
    * Note: TypeScript handles this via indexing rules alongside specific property types.
-   */
-  radius?: number;
+   */  
   [key: string]: number | primitiveOrDate;
 };
+
+type processedBubbleDataset = bubbleDataset & {
+    value: number;
+    r: number;
+    x: number;
+    y: number;
+    sortedX: number;
+    sortedY: number;
+}
 
 type bubbleDataType = {
     nodes: bubbleDataset[];
     valueProp: string;
     groupBy: string;
+    nodeId?: string;
     clusterByGroup?: boolean;    
 }
 
@@ -75,13 +85,8 @@ type packedNode = HierarchyCircularNode<hierarchyData> &
 
 type networkHierarchyPackedNode = SimulationNodeDatum & packedNode;
 
-type chartNode = networkNode | networkHierarchyNode | bubbleDataset;
+type chartNode = networkNode | networkHierarchyNode | processedBubbleDataset;
 type chartLink = networkLink | networkResolvedLink | networkHierarchyLink;
-
-type clusterAccessors<T extends SimulationNodeDatum, G> = {
-    getGroup: (node: T) => G;
-    getRadius: (node: T) => number;
-};
 
 type NetworkProps = {
     data: hierarchyData | networkDataType | bubbleDataType;
@@ -115,6 +120,21 @@ export function NetworkGraph({
     const { width, height } = chartSize
 
     const [selectedGroup, setSelectedGroup] = useState("")
+    const defferedSelectedGroup = useDeferredValue(selectedGroup)
+    const [isSorted, setIsSorted] = useState(false)
+
+    /*
+    useEffect(()=>{
+        if(defferedSelectedGroup === "" && selectedGroup !== ""){
+            setIsSorted(false)
+        }
+        if(defferedSelectedGroup !== "" && selectedGroup === ""){
+            setIsSorted(false)
+        }
+    }, [ selectedGroup, defferedSelectedGroup])*/
+    useEffect(()=>{
+        setIsSorted(false)
+    }, [selectedGroup])
 
     const reRender = useRef(true)
     const reRenderJustChanged = useRef(true)    
@@ -135,6 +155,8 @@ export function NetworkGraph({
         reRender.current = true
         reRenderJustChanged.current = true
         setTimeout(()=>{reRenderJustChanged.current = false}, 250)
+        setIsSorted(false)
+        setSelectedGroup("")
     }, [data])
 
     useEffect(() => {        
@@ -145,7 +167,7 @@ export function NetworkGraph({
         if(!reRenderJustChanged.current){                        
             reRender.current = false
         }        
-    }, [ sourceNode, targetNode, selectedGroup ])
+    }, [ sourceNode, targetNode, selectedGroup, isSorted ])
 
     useEffect(()=>{ setSelectedGroup("") }, [ width, height])
 
@@ -279,7 +301,60 @@ export function NetworkGraph({
 
         let types: (string | undefined)[] = []
 
-        //data processing
+        //force initialization: initialize here so can be used by bubble data processing
+        let simulation = forceSimulation<chartNode>()
+
+        function createSortedBubble(
+            baseNodes: bubbleDataset[], 
+            diameter: number, 
+            simulation?:Simulation<chartNode, undefined>,            
+        ): processedBubbleDataset[] {
+            const valueProp = (data as bubbleDataType).valueProp                        
+            
+            type bubbleBeforePacked = Omit<processedPackedBubble, "r" | "x" | "y" | "sortedX" | "sortedY">
+            const nodesBeforePacked = baseNodes.map(d => {
+                const value = d[valueProp]
+                return {...d, value}
+            })            
+            const bubbleRoot = { label: "bubble nodes", children : nodesBeforePacked}            
+
+            const sortedPackFn = oldPack()
+                .padding(2)
+                .size([diameter, diameter])
+                .value(function(d:bubbleBeforePacked) {                                                      
+                    return d.value; 
+                })
+
+            const sortedPacked = sortedPackFn.nodes(bubbleRoot)            
+            const focus = sortedPacked[0]            
+            const view = [focus.x, focus.y, focus.r * 2]
+
+            type packedBuble = Omit<processedBubbleDataset, "sortedX" | "sortedY" | "value">
+            const circleData = focus.children as packedBuble[]            
+
+            const k = diameter / view[2];
+
+            type processedPackedBubble = Omit<processedBubbleDataset, "x" | "y">
+            const processedCircleData:processedPackedBubble[] = circleData.map(d => {
+                const value = d[bubbleGroupBy]
+                const { x, y, r, ...rest } = d
+
+                return { 
+                    sortedX: ((x as number) - view[0]) * k, 
+                    sortedY: ((y as number) - view[1]) * k, 
+                    r: (r as number) * k,
+                    value, ...rest}
+            })
+
+            if(simulation){                
+                simulation.nodes(processedCircleData as processedBubbleDataset[])                
+            }
+            
+            return processedCircleData  as processedBubbleDataset[]
+
+        }
+
+        //data processing        
         if(reRender.current){
             if(mode === "hierarchy"){
                 if(hierarchyMode !== "default"){
@@ -341,22 +416,12 @@ export function NetworkGraph({
                 types = baseTypes.some(t => t === undefined)?[]:[...baseTypes]
                                              
             }else {//mode is "bubble"
-                nodesData = (root as bubbleDataType).nodes
+                
+                const rawNodesData = (root as bubbleDataType).nodes
 
-                const valueProp = (data as bubbleDataType).valueProp
-                const maxValue = max(
-                    nodesData, 
-                    function(d){ return (d as bubbleDataset)[valueProp]! as number })            
-
-                const radiusMax = isMediumScreen?70:45
-                const radiusScale = scalePow()
-                    .exponent(0.5)
-                    .range([2, radiusMax])
-                    .domain([0, maxValue ?? 0]);
-
-                nodesData.forEach(d => {
-                    (d as bubbleDataset).radius = radiusScale((d as bubbleDataset)[valueProp]! as number)
-                })
+                const diameter = Math.min(width, height)
+                nodesData = createSortedBubble(rawNodesData, diameter, simulation)
+                
             }
         }
         
@@ -370,10 +435,8 @@ export function NetworkGraph({
         }
 
         const baseRadius = 4
-        
-        //force initialization
-        let simulation = forceSimulation<chartNode>()
-        
+                
+        //forceSimulation settings
         const forceStrengthBubble = 0.03;
         if(reRender.current){
             simulation.nodes(nodesData)//.stop()
@@ -534,7 +597,7 @@ export function NetworkGraph({
             else if(mode === "bubble"){
                 
                 function charge(d: SimulationNodeDatum) {
-                    return -Math.pow((d as bubbleDataset).radius ?? 0, 2.0) * forceStrengthBubble;
+                    return -Math.pow((d as processedBubbleDataset).r ?? 0, 2.0) * forceStrengthBubble;
                 }                
                 
                 simulation
@@ -547,14 +610,14 @@ export function NetworkGraph({
                     simulation
                         .force('charge', forceManyBody().strength(charge))
                 }else{
-                    const cluster = forceCluster<bubbleDataset, string>(
+                    const cluster = forceCluster<processedBubbleDataset, string>(
                         d => String(d[(data as bubbleDataType).groupBy]),
-                        d => d.radius ?? 0,
+                        d => d.r ?? 0,
                         0.2
                     );
                     simulation
                         .force("cluster", cluster)
-                        .force("collide", forceCollide().radius(d => (d as bubbleDataset).radius ?? 1 + 1).iterations(3))
+                        .force("collide", forceCollide().radius(d => (d as processedBubbleDataset).r ?? 1 + 1).iterations(3))
                 }                                        
             }
 
@@ -633,7 +696,8 @@ export function NetworkGraph({
                         
             simulationRef.current = simulation
                         
-        }else{            
+        }else{
+                        
             simulation = simulationRef.current as Simulation<chartNode, undefined>                                    
             nodesData = simulation?.nodes()
             if(mode !== "bubble"){
@@ -641,46 +705,192 @@ export function NetworkGraph({
                 linksData = linkForce?.links()                
                 const baseTypes = linksData.map(d => (d as networkLink).type)
                 types = baseTypes.some(t => t === undefined)?[]:[...baseTypes]
-            }else{
-                if(selectedGroup === ""){
-                    simulation
-                        .force('x', forceX().strength(forceStrengthBubble).x(0))
-                        .force('y', forceY().strength(forceStrengthBubble).y(0))
-                    
-                }else{
-                    const screenMode = width > height?"desktop":"mobile"
-                    const selectedPosition = screenMode === "desktop"?
-                        {x:width/4, y:0}:{x:0, y:height/4}
-                    const notSelectedPosition = screenMode === "desktop"?
-                        {x:-width/4, y:0}:{x:0, y:-height/4}
+            }else{//bubble mode
+                const screenMode = width > height?"desktop":"mobile"
+                const selectedPosition = screenMode === "desktop"?
+                    {x:width/4, y:0}:{x:0, y:height/4}
+                const notSelectedPosition = screenMode === "desktop"?
+                    {x:-width/4, y:0}:{x:0, y:-height/4}                
+                if(isSorted){
+                    /**
+                     * Safe side length that is guaranteed to be able to contain the circles
+                     * (based on the critical density π/(3+2√2) ≈ 0.5390).
+                     * This is usually a bit larger than the absolute optimum, but always works.
+                     */
+                    function squareSideForCircles(radii: number[]) {
+                        if (!radii.length) return 0;
 
-                    simulation
-                        .force(
-                            'x', 
-                            forceX()
-                                .strength(forceStrengthBubble)
-                                .x(d => {
-                                    const group = (d as bubbleDataset)[bubbleGroupBy]
-                                    return group === selectedGroup?
-                                        selectedPosition.x:
-                                        notSelectedPosition.x
-                                })
+                        const totalArea = radii.reduce((sum, r) => sum + Math.PI * r * r, 0);
+                        const criticalDensity = Math.PI / (3 + 2 * Math.SQRT2); // ≈ 0.5390
+                        const sideFromArea = Math.sqrt(totalArea / criticalDensity);
+
+                        // Also respect the largest circle
+                        const maxDiameter = 2 * Math.max(...radii);
+
+                        return Math.max(sideFromArea, maxDiameter);
+                    }
+
+                    function calculateContainerSquareSize(radii: number[], padding = 0) {
+                        if (!radii || radii.length === 0) return 0;
+
+                        // 1. Sort radii in descending order (largest first leads to tighter packing)
+                        const sorted = [...radii].sort((a, b) => b - a);
+                        
+                        // 2. Compute total area lower-bound to estimate initial target container width
+                        const totalArea = sorted.reduce((sum, r) => sum + Math.PI * Math.pow(r + padding / 2, 2), 0);
+                        
+                        // A square big enough to hold the area with ~25% packing overhead ratio
+                        let targetWidth = Math.max(
+                            sorted[0] * 2 + padding, 
+                            Math.sqrt(totalArea / 0.75)
+                        );
+
+                        let currentX = 0;
+                        let currentY = 0;
+                        let currentRowHeight = 0;
+                        let maxExtentX = 0;
+
+                        // 3. Pack circles into horizontal strips using greedy Placement
+                        for (const r of sorted) {
+                            const diameter = r * 2 + padding;
+
+                            // If the circle exceeds current row limit, start a new row below
+                            if (currentX + diameter > targetWidth && currentX > 0) {
+                            currentY += currentRowHeight;
+                            currentX = 0;
+                            currentRowHeight = 0;
+                            }
+
+                            currentX += diameter;
+                            currentRowHeight = Math.max(currentRowHeight, diameter);
+                            maxExtentX = Math.max(maxExtentX, currentX);
+                        }
+
+                        const maxExtentY = currentY + currentRowHeight;
+
+                        // 4. Return the maximum dimension to ensure a perfect square shape
+                        return Math.ceil(Math.max(maxExtentX, maxExtentY));
+                    }
+                    if(selectedGroup !== ""){                        
+                        const groupBy = (data as bubbleDataType).groupBy ?? ""
+                        const selectedNodes = nodesData
+                            .filter(d => (d as processedBubbleDataset)[groupBy] === selectedGroup)                            
+                        const selectedRadiuses = selectedNodes.map(d => (d as processedBubbleDataset).r)
+                        const diameterForSelected = squareSideForCircles(selectedRadiuses) + 20                                                
+                        const diameterForSelectedGemini = 
+                            calculateContainerSquareSize(selectedRadiuses, 1) + 20
+                        const rawSelectedNodes = selectedNodes.map(d => {
+                            const { value, r, x, y, sortedX, sortedY, vx, vy, ...rest } = d as processedBubbleDataset
+                            return {...rest}
+                        })
+                        const sortedSelected = createSortedBubble(
+                            rawSelectedNodes as bubbleDataset[], 
+                            diameterForSelected
                         )
-                        .force(
-                            'y', 
-                            forceY()
-                                .strength(forceStrengthBubble)
-                                .y(d => {
-                                    const group = (d as bubbleDataset)[bubbleGroupBy]
-                                    return group === selectedGroup?
-                                        selectedPosition.y:
-                                        notSelectedPosition.y
+                        
+                        const otherNodes = nodesData
+                            .filter(d => (d as processedBubbleDataset)[groupBy] !== selectedGroup)
+                        const otherRadiuses = otherNodes.map(d => (d as processedBubbleDataset).r)
+                        const diameterForOther = squareSideForCircles(otherRadiuses) + 30
+                        const diameterForOtherGemini = 
+                            calculateContainerSquareSize(otherRadiuses, 1) + 20
+                        const rawOtherNodes = otherNodes.map(d => {
+                            const { value, r, x, y, sortedX, sortedY, vx, vy, ...rest } = d as processedBubbleDataset
+                            return {...rest}
+                        })
+                        const baseDiameter = Math.min(width, height)
+                        const sortedOther = createSortedBubble(
+                            rawOtherNodes as bubbleDataset[], 
+                            diameterForOther
+                        )                                                
+                        
+                        const getSortedReferencePos = (d: processedBubbleDataset) => {
+                            const nodeSelected = d[groupBy] === selectedGroup
+                            const reference = nodeSelected?sortedSelected:sortedOther
+                            const nodeReference = reference.find(rD => (rD as processedBubbleDataset).label === d.label)
+                            const baseSortedX  = (nodeReference?.sortedX ?? 0)
+
+                            const positionReference = nodeSelected?selectedPosition:notSelectedPosition
+                            const sortedX = baseSortedX + positionReference.x
+                            const baseSortedY  = (nodeReference?.sortedY ?? 0)
+                            const sortedY = baseSortedY + positionReference.y
+                            return { sortedX, sortedY }
+                        }
+                        simulation
+                            .force("x", forceX<processedBubbleDataset>()
+                                .x((d: processedBubbleDataset) => {
+                                    const sortedX = getSortedReferencePos(d).sortedX                                    
+                                    return sortedX
                                 })
+                                .strength(0.95))
+                            .force("y", forceY<processedBubbleDataset>()
+                                .y((d: processedBubbleDataset) => {
+                                    const sortedY = getSortedReferencePos(d).sortedY
+                                    return sortedY
+                                })
+                                .strength(0.95))
+                    }else{
+                        simulation
+                            //.force("center", forceCenter())
+                            .force(
+                                "x", 
+                                forceX<processedBubbleDataset>()
+                                    .strength(0.5)
+                                    .x((d: processedBubbleDataset) => d.sortedX)                                    
+                            )
+                            .force(
+                                "y", 
+                                forceY<processedBubbleDataset>()
+                                    .strength(0.5)
+                                    .y((d: processedBubbleDataset) => d.sortedY)                                
+                            )                            
+                    }       
+                    simulation 
+                        //.force("charge", forceManyBody().strength(-30))
+                        .force(
+                            "collide", 
+                            forceCollide<processedBubbleDataset>()
+                                .radius((d:processedBubbleDataset)=>d.r)
                         )
+                        .alpha(0.225)                    
+                        .alphaTarget(0)
+                        .restart()
                 }
-
-                simulation.alpha(0.75).alphaTarget(0).restart()
-                
+                else {
+                    if(selectedGroup === ""){
+                        simulation
+                            .force('x', forceX().strength(forceStrengthBubble).x(0))
+                            .force('y', forceY().strength(forceStrengthBubble).y(0))
+                        
+                    }else{                                                
+                        simulation
+                            .force(
+                                'x', 
+                                forceX()
+                                    .strength(forceStrengthBubble)
+                                    .x(d => {
+                                        const group = (d as processedBubbleDataset)[bubbleGroupBy]
+                                        return group === selectedGroup?
+                                            selectedPosition.x:
+                                            notSelectedPosition.x
+                                    })
+                            )
+                            .force(
+                                'y', 
+                                forceY()
+                                    .strength(forceStrengthBubble)
+                                    .y(d => {
+                                        const group = (d as processedBubbleDataset)[bubbleGroupBy]
+                                        return group === selectedGroup?
+                                            selectedPosition.y:
+                                            notSelectedPosition.y
+                                    })
+                            )
+                    }
+                    simulation.alpha(0.75).alphaTarget(0)
+                    setTimeout(()=>{simulation.restart()}, 500)
+                }
+                                
             }
             
         }
@@ -955,15 +1165,17 @@ export function NetworkGraph({
             mode === "hierarchy"?
                 hierarchyNodeRadius(d as networkHierarchyNode):
                 mode === "network"?(d as networkNode).radius ?? baseRadius:
-                    (d as bubbleDataset).radius!
+                    (d as processedBubbleDataset).r
 
-        function nodeId(d: chartNode){
+        function nodeId(d: chartNode, i: number){
             if(mode === "hierarchy"){                
                 return (d as networkHierarchyNode).data?.name ?? ""
             }else if(mode === "network"){
                 return (d as networkNode).id
             }else{
-                return (d as bubbleDataset).label ?? ""
+                //const nodeId = (data as bubbleDataType).nodeId
+                //return nodeId ?? (d as processedBubbleDataset).label
+                return i
             }                    
         }
 
@@ -981,7 +1193,7 @@ export function NetworkGraph({
                 return group !== undefined ? color(String(group)) ?? "steelblue" : "steelblue";
             }
             else if(mode === "bubble"){                
-                const group = (d as bubbleDataset)[bubbleGroupBy] as string
+                const group = (d as processedBubbleDataset)[bubbleGroupBy] as string
                 return color(group)
             }
             return "steelblue"
@@ -1023,7 +1235,15 @@ export function NetworkGraph({
         }
 
         nodes
-            .on("mouseover", function(e, d){ select(this).style("stroke", "black")})
+            .on("mouseover", function(e, d){ 
+                if(mode === "bubble"){
+                    console.log(d)
+                    const { label, value } = d as processedBubbleDataset
+                    console.log(label, " : ", value)
+                }
+                
+                select(this).style("stroke", "black")
+            })
             .on("mouseout", function(e, d){ 
                 const stroke = nodeStroke(d)
                 select(this).style("stroke", stroke)
@@ -1220,10 +1440,13 @@ export function NetworkGraph({
             d.fx = null;
             d.fy = null;
         }
-    }, [
-        data, noLabel, sourceNode, targetNode, selectedGroup, mode, color, width, height, 
-        {prefix, suffix, formatType} ]);
         
+
+        
+    }, [
+        data, noLabel, sourceNode, targetNode, isSorted, selectedGroup, mode, color, 
+        width, height, {prefix, suffix, formatType} ]);
+            
     return (
         <div 
             ref={ref} 
@@ -1247,7 +1470,9 @@ export function NetworkGraph({
                         >
                             <input 
                                 type="checkbox" 
-                                className={styles["controls-checkbox"]}                                 
+                                className={styles["controls-checkbox"]}
+                                checked={isSorted}
+                                onChange={(e)=>{setIsSorted(e.target.checked)}}                                 
                             />
                                 Sort
                         </label>          

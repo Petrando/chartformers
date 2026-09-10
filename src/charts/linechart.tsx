@@ -11,7 +11,7 @@ import { useLayerIndex } from '../hooks/useLayerIndex';
 import styles from './global.module.css';
 import stockStyles from './stockprice/stockprice.module.css'
 import { tooltipFormat } from '../types';
-import { rotateLabels, basicFormat, indexColor, isISODateString, sanitizeString } from '../utils';
+import { rotateLabels, indexColor, isISODateString, sanitizeString } from '../utils';
 import { lineChartDatum, pointData } from '../types';
 
 type tooltipDatum = pointData & {

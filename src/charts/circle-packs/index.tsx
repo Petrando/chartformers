@@ -273,8 +273,7 @@ export function CirclePacks({data, tooltipFormat, colorScheme = 'monochrome'}: P
                                 .style("display", "inline");
                         }
                     }
-                                        		 
-                    let myStroke = select(this).style('stroke');
+                                        		                     
                     if(d!=root){select(this)
                         .style("stroke-width", CIRCLESTROKE * thicknessK * 2.5)
                         .style("stroke", "#e4e4e7");}

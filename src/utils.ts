@@ -79,19 +79,6 @@ export const basicFormat = (num:number, {
     return prefix + format(formatType === "long"?",":"~s")(num) + suffix
 }
 
-export function getMouseYInData(
-    e: MouseEvent, 
-    svg: SVGSVGElement, 
-    yScale?: d3.ScaleLinear<number, number>
-) {
-    const { top } = svg.getBoundingClientRect();
-    const pixelY = e.clientY - top;
-    return {
-        pixelY,
-        dataY: yScale?.invert(pixelY) ?? 0
-    };
-}
-
 export function isISODateString(str: string | Date) {
     if(str instanceof Date){
         return true

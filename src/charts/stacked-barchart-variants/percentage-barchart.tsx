@@ -1,5 +1,4 @@
 import React, {useState, useEffect} from 'react';
-import { createPortal } from 'react-dom';
 import { axisBottom, axisLeft, format, max, ScaleBand, scaleBand, scaleLinear, select, Series, 
     stack, stackOffsetExpand, stackOffsetNone, stackOrderNone } from 'd3';
 import { useD3 } from '../../hooks/useD3';

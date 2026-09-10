@@ -5,7 +5,7 @@ import { select, scaleBand, scaleLinear, axisLeft, axisBottom, min, max, format,
 import { useD3 } from '../hooks/useD3';
 import { useParentSize } from '../hooks/useParentSize';
 import { useUIControls } from '../hooks/useUIControls';
-import { Tooltip, getTooltip, moveTooltip } from '../components/tooltip';
+import { Tooltip, moveTooltip } from '../components/tooltip';
 import { cloneObj, indexSelectedColor, renderLineChart } from '../utils';
 import { inactiveColor } from '../../dev/data/constants';
 import styles from './global.module.css';

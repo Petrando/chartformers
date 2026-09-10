@@ -1,18 +1,8 @@
 import React, {useState, useRef, useEffect, useDeferredValue} from 'react';
-import { select, axisBottom, min, max, format, color as d3Color,
-    scaleLinear, ScaleLinear, scalePow, ScalePower, group, hierarchy,
-    drag, D3DragEvent, rgb,
+import { select, max, color as d3Color, scalePow, hierarchy, drag, D3DragEvent, format, rgb,
     forceSimulation, forceLink, forceManyBody, forceCenter, forceCollide, Simulation,
-    forceX, forceY,
-    HierarchyNode, HierarchyCircularNode, HierarchyLink, pack, quadtree, rollup,
-    tree, TreeLayout, linkRadial, HierarchyPointLink, HierarchyPointNode,
-    scaleOrdinal,
-    schemeCategory10,
-    range,
-    interpolate,
-    QuadtreeLeaf,
-    QuadtreeInternalNode,
-    extent
+    forceX, forceY, HierarchyNode, HierarchyCircularNode, HierarchyLink, pack, quadtree, rollup,
+    tree, TreeLayout, scaleOrdinal, schemeCategory10, interpolate, QuadtreeLeaf,    
  } from 'd3';
 import {
   //Simulation,
@@ -24,7 +14,7 @@ import {
 import { oldPack } from './circle-packs/utils'; 
 import { useD3 } from '../hooks/useD3';
 import { Tooltip, getTooltip, moveTooltip } from '../components/tooltip';
-import { cloneObj, indexSelectedColor, isFiniteNumber } from '../utils';
+import { basicFormat, cloneObj, indexSelectedColor, isFiniteNumber } from '../utils';
 import styles from './global.module.css';
 import { pointData, tooltipFormat, lineDecor, orientationType,
     hierarchyData,
@@ -41,7 +31,7 @@ type dijkstraResult = {
     path: string[] | undefined;
 };
 
-type primitiveOrDate = string | number | boolean | symbol | null | undefined | Date;
+type primitiveOrDate = string | number | boolean | Date; //symbol | null | undefined 
 
 export type bubbleDataset = SimulationNodeDatum & {
   /** Required label property */
@@ -93,6 +83,10 @@ type NetworkProps = {
     noLabel?: boolean;
     sourceNode?: string;
     targetNode?: string;
+    linkType?:{
+        curve?: "straight" | "curved";
+        directed?: boolean;
+    };
     hierarchyMode?: "default" | "nodes only" | "leaf only";    
     color?: {
         idx?: number;
@@ -110,6 +104,10 @@ export function NetworkGraph({
         idx = 0,               // default idx
         type = 'fixed',        // default type
     } = { idx: 0, type: 'fixed' },
+    linkType: {
+        curve = "straight",               // default idx
+        directed = false,        // default type
+    } = { curve: "straight", directed: false },
     tooltipFormat: {
         prefix = "", suffix = "", formatType = "long"
     } = { prefix: "", suffix: "", formatType: "long"}
@@ -144,6 +142,7 @@ export function NetworkGraph({
     const simulationRef = useRef<Simulation<chartNode, undefined> | null>(null);
 
     const color = {idx, type}
+    const linkType={curve, directed}
     const animDuration = 250;
 
     const mode = "name" in data?"hierarchy":        
@@ -293,6 +292,18 @@ export function NetworkGraph({
         }        
         
         const tooltip = container.select(`#tooltip`).style("opacity", 0)
+
+        const tooltipData = mode === "bubble"?
+            ["label"].concat(Object.keys(((data as bubbleDataType).nodes[0] as bubbleDataset))
+                .map(key => key)):
+            ["name", "value"]
+
+        const tooltipContent = tooltip.selectAll<HTMLParagraphElement, string>("p.content")
+            .data(tooltipData, d => d)
+            .join("p")
+                .attr("class", d => `content ${d}`)
+                .style("font-weight", 300).style("margin", 1)
+                .style("font-size", 300).style("color", "wheat")
         
         const root = mode === "hierarchy"?hierarchy(chartData):chartData         
                 
@@ -354,15 +365,26 @@ export function NetworkGraph({
 
         }
 
+        const { curve, directed } = linkType
         //data processing        
         if(reRender.current){
             if(mode === "hierarchy"){
-                if(hierarchyMode !== "default"){
+
+                const createPack = () => {
                     (root as HierarchyNode<hierarchyData>).sum(d => d.value ?? 1)
 
                     const packFn = () => pack<hierarchyData>()
                         .size([width, height])
-                        .padding(1)(root)
+                        .padding(1)
+
+                    const packedRootFn = packFn()(root)
+
+                    return packedRootFn
+
+                }
+
+                const packFn = createPack
+                if(hierarchyMode !== "default"){                                        
                                                                                 
                     nodesData = hierarchyMode === "nodes only"?
                         packFn().descendants() as networkHierarchyPackedNode[]:
@@ -388,6 +410,8 @@ export function NetworkGraph({
                     }
                 }
                 else {
+                    const valueRef = packFn().descendants()
+                    
                     const treeFn: TreeLayout<hierarchyData>= tree<hierarchyData>()
                         .size([2 * Math.PI, radius])
                         .separation((a, b) => (a.parent == b.parent ? 1 : 2) / a.depth)
@@ -403,8 +427,8 @@ export function NetworkGraph({
                         delete node.x
                         delete node.y
                     });
-
-                    nodesData = rootedTree.descendants() as networkHierarchyNode[]                    
+                    
+                    nodesData = rootedTree.descendants() as networkHierarchyNode[]                                        
                     linksData = rootedTree.links()
                                         
                 }
@@ -412,8 +436,12 @@ export function NetworkGraph({
                 
                 nodesData = (root as networkDataType).nodes as networkNode[]                                
                 linksData = (root as networkDataType).links as networkLink[]
-                const baseTypes = linksData.map(d => (d as networkLink).type)
-                types = baseTypes.some(t => t === undefined)?[]:[...baseTypes]
+                if(directed){
+                    const baseTypesSet = new Set(linksData.map(d => (d as networkLink).type))
+                    const baseTypes = [...baseTypesSet]                
+                    types = baseTypes.some(t => t === undefined)?["arrow"]:[...baseTypes]
+                }
+                
                                              
             }else {//mode is "bubble"
                 
@@ -424,9 +452,7 @@ export function NetworkGraph({
                 
             }
         }
-        
-        let networkType = types.length === 0?"standard":"arrow"        
-        
+                                        
         const hierarchyNodeRadius = (d:networkHierarchyNode) => {
             return hierarchyMode === "default"?
                 ((d as networkHierarchyNode).depth === 0?8:
@@ -557,7 +583,7 @@ export function NetworkGraph({
             }
             else if(mode === "network"){
                 
-                if(networkType === "standard"){
+                if(curve === "straight"){
                     simulation                        
                         .force(
                             "link",
@@ -571,21 +597,31 @@ export function NetworkGraph({
                         )
                         //.force("center", forceCenter(width / 2, height / 2))
                         //.force("collision", forceCollide(18))                        
-                        .force("center", forceCenter())                        
+                        .force("center", forceCenter().x(0).y(0))                        
+                        //.force("x", forceX(0))
+                        //.force("y", forceY(0))
                         .alpha(1)
                         .alphaTarget(0)
                         //.alphaTarget(0.3)
                         //.restart()                    
                         
-                }else if(networkType === "arrow"){
+                }else if(curve === "curved"){
                     simulation                        
                         .force(
                             "link", 
                             forceLink<chartNode, chartLink>(linksData).id(d => (d as networkNode).id)
                         )
-                        .force("charge", forceManyBody().strength(-400))                    
-                        .force("x", forceX(0))
-                        .force("y", forceY(0))
+                        .force(
+                            "charge", 
+                            forceManyBody()//.strength(-300)
+                        )                    
+                        .force(
+                            "center", 
+                            forceCenter()
+                                //.x(0).y(0)
+                        )
+                        //.force("x", forceX(0))
+                        //.force("y", forceY(0))
                         .alpha(1)
                         .alphaTarget(0)
                         //.alphaTarget(0.3)                    
@@ -703,8 +739,11 @@ export function NetworkGraph({
             if(mode !== "bubble"){
                 const linkForce = simulation.force("link") as ForceLink<chartNode, chartLink>
                 linksData = linkForce?.links()                
-                const baseTypes = linksData.map(d => (d as networkLink).type)
-                types = baseTypes.some(t => t === undefined)?[]:[...baseTypes]
+                if(directed){
+                    const baseTypesSet = new Set(linksData.map(d => (d as networkLink).type))
+                    const baseTypes = [...baseTypesSet]
+                    types = baseTypes.some(t => t === undefined)?["arrow"]:[...baseTypes]
+                }
             }else{//bubble mode
                 const screenMode = width > height?"desktop":"mobile"
                 const selectedPosition = screenMode === "desktop"?
@@ -893,9 +932,7 @@ export function NetworkGraph({
                                 
             }
             
-        }
-
-        networkType = types.length === 0?"standard":"arrow"
+        }    
         
         const noLinks = mode === "bubble" || (mode === "hierarchy" && hierarchyMode !== "default")
         function dijkstra(
@@ -1038,9 +1075,13 @@ export function NetworkGraph({
         const shortestPath = dijkstra(
             { nodes: nodesData, links: linksData},
             sourceNode, targetNode
-        )                                
-
+        )        
+        
+        const noShortestPath = typeof shortestPath === "string"
+        
         const markColor = scaleOrdinal(types as string[], schemeCategory10);
+
+        const baseLinkColor = "#999"
         const markers = defs.selectAll("marker")
             .data(types, d => typeof d === "string"?d:"")
                 .join("marker")
@@ -1052,14 +1093,13 @@ export function NetworkGraph({
             .attr("markerHeight", 6)
             .attr("orient", "auto")
             .append("path")
-            .attr("fill", (d) => markColor(d ?? ""))
-            .attr("d", "M0,-5L10,0L0,5");        
-                    
-        const linkOpacity = (d: networkResolvedLink) => {
-            if(typeof shortestPath === "string"){
-                return 1
-            }
-            const { distances, previous, path } = shortestPath as dijkstraResult
+            .attr("fill", (d) => d==="arrow"?baseLinkColor:markColor(d ?? ""))
+            .attr("d", "M0,-5L10,0L0,5");                    
+                          
+        //console.log(shortestPath)
+        const { distances, previous, path } = shortestPath as dijkstraResult
+        
+        const linkInShortestPath = (d: chartLink) => {            
             if(Array.isArray(path)){
                 const sourceName = mode === "network"?
                     (d.source as networkNode).id:
@@ -1080,10 +1120,36 @@ export function NetworkGraph({
                         break;
                     }
                 }                
-                return inPath?1:0.1                
+                return inPath
             }
-            return 0.1
-        }        
+            return false
+        }
+
+        const blurredLinkOpacity = 0.25
+        const linkOpacity = (d: chartLink) => {
+            if(noShortestPath){
+                return 1
+            }
+            const inPath = linkInShortestPath(d)
+            return inPath?1:blurredLinkOpacity
+        }       
+        
+        const linkInteractible = (d: chartLink) => {
+            if(noShortestPath){ return "auto"}
+            const inPath = linkInShortestPath(d)
+            return inPath?"auto":"none"
+        }
+
+        const linkArrow = (d: chartLink) => {
+            const condition = noShortestPath?directed:(directed && linkInShortestPath(d))
+            
+            return condition?
+                (d as networkResolvedLink).type?
+                    `url(#arrow-${(d as networkResolvedLink).type})`:"url(#arrow-arrow)":
+                    ""
+            
+            
+        }
                             
         const pathLinks = canvas.selectAll<SVGPathElement, networkResolvedLink>("path.link")
             .data(
@@ -1107,22 +1173,24 @@ export function NetworkGraph({
                     .attr("fill", "none")
                     .attr("stroke-width", 1.5)
                     .attr("stroke", d => 
-                        networkType === "arrow"?
-                        color((d as networkResolvedLink).type ?? "#999"):
-                        "#999"
+                        (d as networkResolvedLink).type?
+                        color((d as networkResolvedLink).type!):
+                        baseLinkColor
                     )
-                    .attr("marker-end", d => `url(#arrow-${(d as networkResolvedLink).type})`)
-                    .attr("stroke-opacity", d => linkOpacity(d as networkResolvedLink)),
+                    .style("pointer-events", linkInteractible)
+                    .attr("marker-end", linkArrow)
+                    .attr("stroke-opacity", linkOpacity),
                 undefined,
                 exit=>exit.remove()
             )
             .attr("stroke", d => 
-                networkType === "arrow"?
-                color((d as networkResolvedLink).type ?? "#999"):
-                "#999"
+                (d as networkResolvedLink).type?
+                color((d as networkResolvedLink).type!):
+                baseLinkColor
             )
-            .attr("marker-end", d => `url(#arrow-${(d as networkResolvedLink).type})`)
-            .attr("stroke-opacity", d => linkOpacity(d as networkResolvedLink))            
+            .attr("marker-end", linkArrow)
+            .attr("stroke-opacity", linkOpacity)            
+            .style("pointer-events", linkInteractible)
 
         function linkArc(d: networkResolvedLink) {
             const sourceX = clampX(d.source)
@@ -1130,7 +1198,7 @@ export function NetworkGraph({
 
             const targetX = clampX(d.target)
             const targetY = clampY(d.target)
-            if(networkType === "standard"){
+            if(curve === "straight"){
                 return  `M${sourceX},${sourceY} L${targetX},${targetY}`
             }
             const r = Math.hypot(targetX - sourceX, targetY - sourceY);
@@ -1203,6 +1271,22 @@ export function NetworkGraph({
             (d as networkHierarchyNode).children ? "none" : "#fff":
             rgb(nodeFill(d)).darker().toString()
         
+        const blurredNodeOpacity = 0.5
+        const nodeOpacity = (d: chartNode) => {
+            const inPath = nodeInPath(d)
+            if(inPath === "no path to highlight"){
+                return 1
+            }
+            return inPath === "not path member"?blurredNodeOpacity:1
+        }
+
+        const nodeInteractible = (d: chartNode) => {
+            const inPath = nodeInPath(d)
+            if(inPath === "no path to highlight"){
+                return "auto"
+            }
+            return inPath === "not path member"?"none":"auto"
+        }
         const nodes = canvas
             .selectAll<SVGCircleElement, chartNode>("circle.node")
             .data( nodesData, nodeId )
@@ -1215,13 +1299,17 @@ export function NetworkGraph({
                             "none"
                     )
                     .attr("r", nodeRadius)
-                    .attr("fill", nodeFill),
+                    .attr("fill", nodeFill)
+                    .style("opacity", nodeOpacity)
+                    .style("pointer-events", nodeInteractible),
                 undefined,
                 exit=>exit.remove()
             )            
             .attr("stroke", nodeStroke)
             .attr("r", nodeRadius)
-            .attr("fill", nodeFill);
+            .attr("fill", nodeFill)
+            .style("opacity", nodeOpacity)
+            .style("pointer-events", nodeInteractible);
 
         if(mode === "hierarchy" && hierarchyMode !== "default"){
             nodes.transition()
@@ -1233,20 +1321,139 @@ export function NetworkGraph({
                     return interpolatedR;
                 });
         }
-
+        
+        const baseFontSize = 6
+        const highlightFontSize = 12
+        const connectionFontSize = 10
+        const hilitStroke = "black"
         nodes
-            .on("mouseover", function(e, d){ 
-                if(mode === "bubble"){
-                    console.log(d)
-                    const { label, value } = d as processedBubbleDataset
-                    console.log(label, " : ", value)
+            .on("pointerenter", function(e, d){                                 
+                
+                select(this).style("stroke", hilitStroke)
+
+                if(mode === "hierarchy" || mode === "bubble"){
+                    tooltip.transition().duration(250).style("opacity", 1)
                 }
                 
-                select(this).style("stroke", "black")
+                if(mode === "network" && noShortestPath){                    
+                    //console.log(labels)
+                    const targetNodeLinks = pathLinks.filter(pathD => (pathD.source as networkNode).id === (d as networkNode).id)                        
+                    const targets = targetNodeLinks.data().map(dLink => (dLink.target as networkNode).id)
+                    const sourceNodeLinks = pathLinks.filter(pathD => (pathD.target as networkNode).id === (d as networkNode).id)
+                    const sources = sourceNodeLinks.data().map(dLink => (dLink.source as networkNode).id)
+
+                    //blur non connection links
+                    pathLinks.filter(pathD => 
+                        (pathD.source as networkNode).id !== (d as networkNode).id &&
+                        (pathD.target as networkNode).id !== (d as networkNode).id
+                    )
+                        .style("opacity", blurredLinkOpacity)
+
+                    const connections = [...sources, ...targets]
+                    labels.filter(dLabel => 
+                        !((dLabel as networkNode).id === (d as networkNode).id) &&
+                        !connections.includes((dLabel as networkNode).id))
+                        .style("opacity", 0)
+
+                    nodes
+                        .filter(dLabel => 
+                        !((dLabel as networkNode).id === (d as networkNode).id) &&
+                        !connections.includes((dLabel as networkNode).id))
+                        .style("opacity", blurredNodeOpacity)
+
+                    labels.filter(dLabel => (dLabel as networkNode).id === (d as networkNode).id)
+                        .style("font-size", highlightFontSize)
+
+                    labels.filter(dLabel => connections.includes((dLabel as networkNode).id))
+                        .style("font-size", connectionFontSize)                                        
+                    
+                }
+                else if(mode === "hierarchy"){                    
+                    const nameTooltip = tooltipContent.filter(dT => dT === "name").node()                    
+                    select(nameTooltip).text(`${(d as networkHierarchyNode).data.name}`)
+
+                    const valueTooltip = tooltipContent.filter(dT => dT === "value").node()
+                    select(valueTooltip).text(`${basicFormat((d as networkHierarchyNode).value!)}`)
+                }
+                else if(mode === "bubble"){                    
+                    for(const p of tooltipData){
+                    
+                        const tooltipP = tooltipContent.filter(d => d === p)
+                            .node()
+
+                        const baseTooltipPValue = (d as bubbleDataset)[p]
+                        const tooltipPValue = typeof baseTooltipPValue === "number"?
+                            baseTooltipPValue.toLocaleString():baseTooltipPValue
+                        
+                        const content = p === "label"?
+                            tooltipPValue:
+                            `${p}: ${tooltipPValue}`
+                        select(tooltipP).text(`${content}`)
+                                                
+                    }
+                }
+                                                                    
             })
-            .on("mouseout", function(e, d){ 
+            .on("pointermove", function(e, d){
+                moveTooltip(tooltip, {e, svg:svgNode as SVGSVGElement })
+            })
+            .on("pointerleave", function(e, d){ 
                 const stroke = nodeStroke(d)
                 select(this).style("stroke", stroke)
+
+                tooltip.transition().duration(250).style("opacity", 0)
+
+                if(mode === "network" && noShortestPath){
+                    pathLinks.style("opacity", linkOpacity)
+                    nodes.style("opacity", nodeOpacity)                    
+                    labels.style("opacity", textOpacity).style("font-size", fontSize)                    
+                }
+            })
+
+        pathLinks
+            .on("pointerenter", function(e, d){                
+                select(this).style("stroke", hilitStroke)
+                if(mode === "network"){                    
+                    tooltip.transition().duration(250).style("opacity", 1)
+                    const source = (d.source as networkNode).id
+                    const target = (d.target as networkNode).id
+                    if(noShortestPath){
+                        labels.filter(dLabel=> (dLabel as networkNode).id !== source &&
+                                (dLabel as networkNode).id !== target)
+                            .style("opacity", 0)
+
+                        labels.filter(dLabel=> (dLabel as networkNode).id === source ||
+                                (dLabel as networkNode).id === target)
+                            .style("font-size", connectionFontSize)
+                    }
+                    
+                    tooltip.transition().duration(250).style("opacity", 1)
+                    const nameTooltip = tooltipContent.filter(dT => dT === "name").node()                    
+                    select(nameTooltip).text(`${source} ⟶ ${target}`)
+
+                    const valueTooltip = tooltipContent.filter(dT => dT === "value").node()
+                    const baseValueText = (d as networkResolvedLink).value
+                    const valueText = typeof baseValueText === "number"?basicFormat(baseValueText):"---"
+                    select(valueTooltip).text(`${valueText}`)                    
+                }
+
+            })
+            .on("pointermove", function(e, d){
+                if(mode === "network"){
+                    moveTooltip(tooltip, {e, svg:svgNode as SVGSVGElement })
+                }
+                
+            })
+            .on("pointerleave", function(e, d){
+                select(this).style("stroke", baseLinkColor)
+                if(mode === "network"){
+                    tooltip.transition().duration(250).style("opacity", 0)
+
+                    if(noShortestPath){
+                        labels.style("opacity", textOpacity).style("font-size", fontSize)
+                    }
+                }
+                
             })
 
         const textOpacity = (d: chartNode) => {
@@ -1263,18 +1470,17 @@ export function NetworkGraph({
             }
             return 0.25
         }
-
-        const baseFontSize = 6
+        
         const fontSize = (d: chartNode) => {
             const status = nodeInPath(d)
             if(status === "no path to highlight"){
                 return baseFontSize
             }
             if(status === "source or destination"){
-                return 10
+                return highlightFontSize
             }
             if(status === "path"){
-                return 8
+                return connectionFontSize
             }
             return baseFontSize
         }
@@ -1321,8 +1527,7 @@ export function NetworkGraph({
         labels.raise()
 
         simulation.on("tick", () => {            
-            pathLinks.attr("d", (d) => linkArc(d as networkResolvedLink));
-            //console.log('ticks')                   
+            pathLinks.attr("d", (d) => linkArc(d as networkResolvedLink));                               
 
             nodes
                 .attr("cx",clampX)
@@ -1439,15 +1644,12 @@ export function NetworkGraph({
 
             d.fx = null;
             d.fy = null;
-        }
-        
-
-        
+        }                
     }, [
-        data, noLabel, sourceNode, targetNode, isSorted, selectedGroup, mode, color, 
+        data, noLabel, sourceNode, targetNode, linkType, isSorted, selectedGroup, mode, color, 
         width, height, {prefix, suffix, formatType} ]);
             
-    return (
+        return (
         <div 
             ref={ref} 
             style={{ width: parentWidth, height: parentHeight, display:'flex', flexDirection:'column', }}

@@ -1,6 +1,5 @@
 import React, {FunctionComponent, ReactNode} from 'react'
 import * as d3 from 'd3';
-import { getMouseYInData } from '../utils';
 import styles from "./tooltip.module.css"
 
 type ITooltip = {
@@ -59,29 +58,41 @@ export const getTooltip = (
     svg:d3.Selection<(SVGAElement | HTMLDivElement), any, any, any>, 
     id="tooltip"
 ) => {
-    const tooltip = svg.select(`#${id}`)
-        //.style("pointer-events", "none")
-        //.style("position", "fixed")
-        //.style("left", "auto").style("top", "auto").style("bottom", "auto").style("right", "auto")
-        //.style("padding", "8px 5px")
-        //.style("max-width", "200px")
+    const tooltip = svg.select(`#${id}`)        
         .style("opacity", 0);
 
     return tooltip
 }
-//WARNING : still using any
+
 type PositioningProps = {
     e: MouseEvent;
     svg: SVGSVGElement; 
     yScale?: d3.ScaleLinear<number, number>;
 }
 
+function getMouseYInData(
+    e: MouseEvent, 
+    svg: SVGSVGElement, 
+    yScale?: d3.ScaleLinear<number, number>
+) {
+    const { top } = svg.getBoundingClientRect();
+    const pixelY = e.clientY - top;
+    return {
+        pixelY,
+        dataY: yScale?.invert(pixelY) ?? 0
+    };
+}
+
+//WARNING : still using any
 export function moveTooltip(tooltip:any, positionProps:PositioningProps){
     const { e, svg, yScale } = positionProps;
     const { pixelY } = getMouseYInData(e, svg, yScale)
-    const position = pixelY < 100?"bottom":"top"
+    console.log(pixelY, svg.getBoundingClientRect().height)
+    const tooltipDimensions = tooltip.node()?.getBoundingClientRect()
+    const tooltipHeight = tooltipDimensions.height ?? 100
+    const position = pixelY < tooltipHeight?"bottom":"top"
     const { offsetWidth, offsetHeight } = tooltip.node() || {};
-              
+                  
     const clientWidth = typeof document !== 'undefined'?document.documentElement.clientWidth:0
     const baseXPos =  e.x - (offsetWidth/2); 
 

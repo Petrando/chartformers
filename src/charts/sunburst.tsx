@@ -3,11 +3,9 @@ import * as d3 from 'd3';
 import { useD3 } from '../hooks/useD3';
 import { useParentSize } from '../hooks/useParentSize';
 import { Tooltip, moveTooltip } from '../components/tooltip';
-import { cloneObj, indexSelectedColor, indexColor, basicFormat } from '../utils';
-import { inactiveColor } from '../../dev/data/constants';
-import { flareData } from '../../dev/data/hierarchy-data'
+import { cloneObj, basicFormat } from '../utils';
 import styles from './global.module.css';
-import { pointData, tooltipFormat, hierarchyData } from '../types';
+import { tooltipFormat, hierarchyData } from '../types';
 import { useLayerIndex } from '../hooks/useLayerIndex';
 
 type rect = {

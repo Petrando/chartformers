@@ -57,7 +57,8 @@ type bubbleDataType = {
     valueProp: string;
     groupBy: string;
     nodeId?: string;
-    clusterByGroup?: boolean;    
+    clusterByGroup?: boolean;
+    tooltipColumns?: string[];    
 }
 
 type treeNode = HierarchyNode<hierarchyData> &
@@ -293,7 +294,9 @@ export function NetworkGraph({
         
         const tooltip = container.select(`#tooltip`).style("opacity", 0)
 
+        console.log(data)
         const tooltipData = mode === "bubble"?
+            (data as bubbleDataType).tooltipColumns ??
             ["label"].concat(Object.keys(((data as bubbleDataType).nodes[0] as bubbleDataset))
                 .map(key => key)):
             ["name", "value"]
@@ -1386,7 +1389,7 @@ export function NetworkGraph({
                             baseTooltipPValue.toLocaleString():baseTooltipPValue
                         
                         const content = p === "label"?
-                            tooltipPValue:
+                            (tooltipPValue as string).toUpperCase():
                             `${p}: ${tooltipPValue}`
                         select(tooltipP).text(`${content}`)
                                                 
@@ -1652,41 +1655,39 @@ export function NetworkGraph({
         return (
         <div 
             ref={ref} 
-            style={{ width: parentWidth, height: parentHeight, display:'flex', flexDirection:'column', }}
+            style={{ width: parentWidth, height: parentHeight, display:'flex', flexDirection:'column', overflow: "hidden" }}
         >                     
             <div 
                 ref={chartRef} 
                 className={`${styles["fill-container"]}`} 
                 style={{display:"flex", flexDirection:"column"}}
             >
-                {
-                    mode === "bubble" &&
-                    <div                     
-                        className={`controls ${styles[isMediumScreen?"controls-container":"controls-container-sm"]}`}
-                    >          
-                        <label 
-                            className={`
-                                ${styles["controls-label"]}                                 
-                            `} 
-                            style={{paddingRight: '12px'}}
-                        >
-                            <input 
-                                type="checkbox" 
-                                className={styles["controls-checkbox"]}
-                                checked={isSorted}
-                                onChange={(e)=>{setIsSorted(e.target.checked)}}                                 
-                            />
-                                Sort
-                        </label>          
-                        <div                         
-                            className={`legends-container ${styles["legends-container"]}`}
+                <div                     
+                    className={`controls ${styles[isMediumScreen?"controls-container":"controls-container-sm"]}`}
+                    style={{display:mode === "bubble"?"flex":"none", zIndex: 1}}
+                >          
+                    <label 
+                        className={`
+                            ${styles["controls-label"]}                                 
+                        `} 
+                        style={{paddingRight: '12px'}}
+                    >
+                        <input 
+                            type="checkbox" 
+                            className={styles["controls-checkbox"]}
+                            checked={isSorted}
+                            onChange={(e)=>{setIsSorted(e.target.checked)}}                                 
                         />
-                    </div>
-                }
+                            Sort
+                    </label>          
+                    <div                         
+                        className={`legends-container ${styles["legends-container"]}`}
+                    />
+                </div>
                 <div 
                     ref={chartContainerRef}
                     className={`${styles["fill-container"]}`}
-                    style={{ display:"flex", flexDirection:"column" }}> 
+                    style={{ display:"flex", flexDirection:"column", overflow: "hidden", zIndex: 2 }}> 
                     <svg                                                        
                         className={`${styles["chart-svg"]} ${styles["fill-container"]}`}                    
                         viewBox={`${-width/2} ${-height/2} ${width} ${height}`}

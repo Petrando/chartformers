@@ -75,22 +75,41 @@ function getMouseYInData(
     svg: SVGSVGElement, 
     yScale?: d3.ScaleLinear<number, number>
 ) {
-    const { top } = svg.getBoundingClientRect();
+    const { top, height } = svg.getBoundingClientRect();
     const pixelY = e.clientY - top;
     return {
         pixelY,
-        dataY: yScale?.invert(pixelY) ?? 0
+        dataY: yScale?.invert(pixelY) ?? 0,
+        svgHeight: height 
     };
 }
 
 //WARNING : still using any
 export function moveTooltip(tooltip:any, positionProps:PositioningProps){
     const { e, svg, yScale } = positionProps;
-    const { pixelY } = getMouseYInData(e, svg, yScale)
-    console.log(pixelY, svg.getBoundingClientRect().height)
+    const { pixelY, svgHeight } = getMouseYInData(e, svg, yScale)
+    
     const tooltipDimensions = tooltip.node()?.getBoundingClientRect()
     const tooltipHeight = tooltipDimensions.height ?? 100
-    const position = pixelY < tooltipHeight?"bottom":"top"
+    
+    const tooltipBottomOverflow = (overlapTolerate:number = 0.5) => {
+        const bottomPosition = pixelY + tooltipHeight
+        const bottomOverlap = bottomPosition - svgHeight
+
+        if(bottomOverlap > tooltipHeight * overlapTolerate){
+            return true
+        }
+        return false
+    }
+    const overlap = tooltipBottomOverflow()
+    const position = pixelY < tooltipHeight?
+        (overlap?"top":"bottom"):"top"
+    /*if(tooltipHeight < ((svgHeight/2) * 0.4)){
+        position = pixelY < tooltipHeight?"bottom":"top"    
+    }else{
+        position = pixelY < (svgHeight/2)?"bottom":"top"
+    }*/
+    
     const { offsetWidth, offsetHeight } = tooltip.node() || {};
                   
     const clientWidth = typeof document !== 'undefined'?document.documentElement.clientWidth:0

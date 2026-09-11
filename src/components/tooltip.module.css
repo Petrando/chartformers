@@ -4,12 +4,11 @@
     background-color: rgba(20, 20, 20, 0.92); /* Deep dark with slight transparency */
     backdrop-filter: blur(4px);
 
-    padding: 0.25rem 0.3rem;
+    padding: 0.25rem 0.5rem;
     border-radius: 0.5rem;
 
     box-shadow: 0 4px 12px rgba(0,0,0,0.4);
-
-    position: fixed;
+    
     pointer-events: none;
 
     color: #f0f0f0; /* Soft white text */

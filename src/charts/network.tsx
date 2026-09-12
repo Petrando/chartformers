@@ -121,9 +121,8 @@ export function NetworkGraph({
     const [selectedGroup, setSelectedGroup] = useState("")
     const defferedSelectedGroup = useDeferredValue(selectedGroup)
     const [isSorted, setIsSorted] = useState(false)
-
-    /*
-    useEffect(()=>{
+    
+    /*useEffect(()=>{
         if(defferedSelectedGroup === "" && selectedGroup !== ""){
             setIsSorted(false)
         }
@@ -891,9 +890,12 @@ export function NetworkGraph({
                         .force(
                             "collide", 
                             forceCollide<processedBubbleDataset>()
-                                .radius((d:processedBubbleDataset)=>d.r)
+                                .radius((d:processedBubbleDataset)=>!isSorted?d.r:d.r/3)
                         )
-                        .alpha(0.225)                    
+                        .alpha(isSorted?
+                            selectedGroup!==""?0.065:0.075:
+                            0.225
+                        )                    
                         .alphaTarget(0)
                         .restart()
                 }

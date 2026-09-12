@@ -293,8 +293,7 @@ export function NetworkGraph({
         }        
         
         const tooltip = container.select(`#tooltip`).style("opacity", 0)
-
-        console.log(data)
+        
         const tooltipData = mode === "bubble"?
             (data as bubbleDataType).tooltipColumns ??
             ["label"].concat(Object.keys(((data as bubbleDataType).nodes[0] as bubbleDataset))
@@ -1098,8 +1097,7 @@ export function NetworkGraph({
             .append("path")
             .attr("fill", (d) => d==="arrow"?baseLinkColor:markColor(d ?? ""))
             .attr("d", "M0,-5L10,0L0,5");                    
-                          
-        //console.log(shortestPath)
+                                  
         const { distances, previous, path } = shortestPath as dijkstraResult
         
         const linkInShortestPath = (d: chartLink) => {            
@@ -1338,8 +1336,7 @@ export function NetworkGraph({
                     tooltip.transition().duration(250).style("opacity", 1)
                 }
                 
-                if(mode === "network" && noShortestPath){                    
-                    //console.log(labels)
+                if(mode === "network" && noShortestPath){                                        
                     const targetNodeLinks = pathLinks.filter(pathD => (pathD.source as networkNode).id === (d as networkNode).id)                        
                     const targets = targetNodeLinks.data().map(dLink => (dLink.target as networkNode).id)
                     const sourceNodeLinks = pathLinks.filter(pathD => (pathD.target as networkNode).id === (d as networkNode).id)
@@ -1415,7 +1412,12 @@ export function NetworkGraph({
 
         pathLinks
             .on("pointerenter", function(e, d){                
-                select(this).style("stroke", hilitStroke)
+                select(this)
+                    .style(
+                        "stroke", 
+                        (d as networkResolvedLink).type?
+                        d3Color(color((d as networkResolvedLink).type!))?.darker().toString() ?? hilitStroke:hilitStroke
+                    )
                 if(mode === "network"){                    
                     tooltip.transition().duration(250).style("opacity", 1)
                     const source = (d.source as networkNode).id
@@ -1448,7 +1450,12 @@ export function NetworkGraph({
                 
             })
             .on("pointerleave", function(e, d){
-                select(this).style("stroke", baseLinkColor)
+                select(this)
+                    .style(
+                        "stroke", 
+                        (d as networkResolvedLink).type?
+                        color((d as networkResolvedLink).type!):baseLinkColor
+                    )
                 if(mode === "network"){
                     tooltip.transition().duration(250).style("opacity", 0)
 

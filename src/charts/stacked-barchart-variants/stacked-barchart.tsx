@@ -548,7 +548,7 @@ export function StackedBarChart({ data, focusOnPlot = false, colorIdx = 0, orien
             return orientation === 'vertical' ? valueScalePos(d) : labelScalePos(d)
         }
 
-        const rectHeight = (d: ExtendedSeriesPoint) => {            
+        const rectHeight = (d: ExtendedSeriesPoint):number => {            
             return orientation === 'vertical' ? valueScaleDimension(d) : labelScaleBandWidth
         }
         

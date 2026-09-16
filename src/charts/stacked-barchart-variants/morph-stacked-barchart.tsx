@@ -292,15 +292,19 @@ export function MorphStackedBarChart({
                     return newPlot
                 })
                 setJustPlotted(true)
-            })        
+            })
 
         const xLabels = sortedData.map(function(d:LayeredData) { return d.label; });            
 
-        const prevXLabels = prevData === null?[]:
-                prevData.map(d => d.name)
-
-        const x: ScaleBand<string> = scaleBand<string>()
-            .rangeRound([0, graphWidth])
+        const prevXLabels = prevData?.map(d => d.name) ?? []
+        let isFirstRender = false;
+        if(prevData === null){
+            isFirstRender = true;
+            setPrevData(cloneObj(chartData));
+        }
+                
+        const labelScale: ScaleBand<string> = scaleBand<string>()
+            .rangeRound(orientation === 'vertical'?[0, graphWidth]:[graphHeight, 0])
             .domain(xLabels)
             .paddingInner(
                 (mode !== "grouped" || 
@@ -310,15 +314,61 @@ export function MorphStackedBarChart({
                 ))                    
             )?(isMediumScreen?0.4:0.25):0.1)
             .paddingOuter(0.2)
-            .align(0.2) 
+            .align(0.2)
+            
+        const singleLayerActive = (focusOnPlot && plotted[0] !== "all") || selectedKeys.length === 1
+        const isStacked = mode === "stacked" || mode === "percentage"
 
-        const xAxis = axisBottom(x)
-            .tickValues(x.domain())
-            .tickSizeOuter(0)
+        const baseValueMax = mode === "stacked"?(focusOnPlot?(plotted[0] === "all"?
+                        max(chartData, (d: LayeredData) => d.total):
+                            max(chartData, (d: LayeredData) => (d[plotted[0]] as number))):
+                        max(chartData, (d: LayeredData) => d.total)):
+                    mode === "grouped"?(plotted[0] === "all"
+                        ? max(chartData, d =>
+                            max(
+                                Object.entries(d)
+                                    .filter(([key]) => key !== "total" && key !== "label" && key !== "totalPos" && key !== "totalMin")
+                                    .map(([, value]) => value as number)     
+                            )
+                        )
+                        : max(chartData, d => d[plotted[0]] as number)):
+                        1
+        const valueMax = Math.max(0, baseValueMax ?? 0)
+
+        const baseValueMin = mode === "stacked"?(focusOnPlot?(plotted[0] === "all"?
+                        min(chartData, (d: LayeredData) => d.totalMin):
+                            min(chartData, (d: LayeredData) => (d[plotted[0]] as number))):
+                        min(chartData, (d: LayeredData) => d.totalMin)):
+                    mode === "grouped"?(plotted[0] === "all"
+                        ? min(chartData, d =>
+                            min(
+                                Object.entries(d)
+                                    .filter(([key]) => key !== "total" && key !== "label" && key !== "totalPos" && key !== "totalMin")
+                                    .map(([, value]) => value as number)     
+                            )
+                        )
+                        : min(chartData, d => d[plotted[0]] as number)):
+                        1
+        const valueMin = Math.min(0, baseValueMin ?? 0)
+
+        const valueScale: ScaleLinear<number, number> = scaleLinear()
+            .domain([valueMin, valueMax ?? 0])
+            .range(orientation === 'vertical'?[graphHeight, 0]:[0, graphWidth])
+            .nice();
 
         const xAxisTextClass = (!isMediumScreen && orientation === 'vertical')?stackedBarStyles.rotatedAxisText:
             stackedBarStyles.axisText;
-
+                                                    
+        
+        const xAxis = orientation === 'vertical' 
+            ?axisBottom(labelScale)
+                .tickValues(labelScale.domain())
+                .tickSizeOuter(0):
+             axisBottom(valueScale)                
+                .ticks(4, "s")
+                .tickSizeOuter(0)
+                .tickSize(-graphHeight);
+            
         canvas.select<SVGGElement>(".x-axis")                        
             .attr("transform", `translate(0,${graphHeight})`)
             .transition().duration(animDuration)
@@ -336,50 +386,14 @@ export function MorphStackedBarChart({
         canvas.select<SVGGElement>(".x-axis") 
             .selectAll("path")
             .style("display", "none")
-                
-        const y:ScaleLinear<number, number> = scaleLinear()
-                .range([graphHeight, 0]);
-        
-        const baseYMax = mode === "stacked"?(focusOnPlot?(plotted[0] === "all"?
-                        max(chartData, (d: LayeredData) => d.total):
-                            max(chartData, (d: LayeredData) => (d[plotted[0]] as number))):
-                        max(chartData, (d: LayeredData) => d.total)):
-                    mode === "grouped"?(plotted[0] === "all"
-                        ? max(chartData, d =>
-                            max(
-                                Object.entries(d)
-                                    .filter(([key]) => key !== "total" && key !== "label" && key !== "totalPos" && key !== "totalMin")
-                                    .map(([, value]) => value as number)     
-                            )
-                        )
-                        : max(chartData, d => d[plotted[0]] as number)):
-                        1
-        const yMax = Math.max(0, baseYMax ?? 0)
-
-        const baseYMin = mode === "stacked"?(focusOnPlot?(plotted[0] === "all"?
-                        min(chartData, (d: LayeredData) => d.totalMin):
-                            min(chartData, (d: LayeredData) => (d[plotted[0]] as number))):
-                        min(chartData, (d: LayeredData) => d.totalMin)):
-                    mode === "grouped"?(plotted[0] === "all"
-                        ? min(chartData, d =>
-                            min(
-                                Object.entries(d)
-                                    .filter(([key]) => key !== "total" && key !== "label" && key !== "totalPos" && key !== "totalMin")
-                                    .map(([, value]) => value as number)     
-                            )
-                        )
-                        : min(chartData, d => d[plotted[0]] as number)):
-                        1
-        const yMin = Math.min(0, baseYMin ?? 0)
-                                                                    
-        y.domain([yMin, yMax]);
-        let yAxis = axisLeft(y).tickSize(-graphWidth).ticks(4, mode === "percentage" ?".0%":"s");            
-        
-        canvas.select<SVGGElement>(".y-axis")  
-            .attr("transform", `translate(0,0)`)
-            .style("color", "steelblue")          
-                .transition().duration(animDuration)
-                    .delay((prevMode === "stacked" && mode === "grouped")?1000:0)
+            
+        const yAxis = orientation === 'vertical'
+            ? axisLeft(valueScale).ticks(4, "s").tickSize(-graphWidth)
+            : axisLeft(labelScale).tickSizeOuter(0);                    
+                                        
+        canvas.select<SVGGElement>(".y-axis")            
+            .attr("transform", `translate(0,0)`)               
+                .transition().duration(isFirstRender?0:animDuration)
             .call(yAxis)
             .selectAll(".tick")
             .filter(d => d === 0)
@@ -397,18 +411,12 @@ export function MorphStackedBarChart({
                 //.transition().duration(animDuration)
             .attr("transform", 
                 orientation === "vertical"?
-                `translate(0, ${y(0) || 0})`:
-                `translate(${y(0) || 0}, 0)`
+                `translate(0, ${valueScale(0) || 0})`:
+                `translate(${valueScale(0) || 0}, 0)`
             )
 
         const tooltip = getTooltip(container as any)
-            .style("opacity", 0);
-
-        let isFirstRender = false;
-        if(prevData === null){
-            isFirstRender = true;
-            setPrevData(cloneObj(chartData));
-        }
+            .style("opacity", 0);        
         
         const dataLayers: Series<LayeredData, string | string[]>[] =
             stack<LayeredData>()
@@ -528,7 +536,98 @@ export function MorphStackedBarChart({
 
         });
 
-        const singleLayerActive = (focusOnPlot && plotted[0] !== "all") || selectedKeys.length === 1
+        function labelScalePos(d: ExtendedSeriesPointWithSorted){
+            const xPos = labelScale(d.data.label as string) ?? 0
+            if(mode==="grouped" && (!focusOnPlot || (focusOnPlot && plotted[0] === "all"))){
+                const sortReference = !isSorted?selectedKeys:d.data.sortedLayers
+                const idx = sortReference.indexOf(d.barKey)
+                return xPos + (idx * (labelScale.bandwidth()/selectedKeys.length))
+            }                            
+            return xPos
+        }
+
+        function labelScaleBandwidth(d: ExtendedSeriesPointWithSorted){
+            return (mode === "grouped" && (!focusOnPlot || (focusOnPlot && plotted[0] === "all")))?
+                labelScale.bandwidth()/selectedKeys.length:labelScale.bandwidth()
+        }
+
+        function valueScalePos(d: ExtendedSeriesPointWithSorted){
+            if(isStacked){
+                if(!singleLayerActive){
+                    const orientationDimension = orientation === 'vertical'?graphHeight:graphWidth
+                    if(isFirstRender) return 0
+                    
+                    return plotted[0] === "all"
+                        ? valueScale(orientation === 'vertical'?d[1]:d[0])
+                        :  (focusOnPlot && orientation !== 'vertical')?
+                            valueScale(0):
+                            (orientationDimension - (valueScale(d[0]) - valueScale(d[1])))
+                } else {
+                    const value = Number(d.data[d.barKey])
+                
+                    return orientation === 'vertical'?
+                        value >= 0 ? valueScale(value) : valueScale(0):
+                            value >= 0 ? valueScale(0) : valueScale(value)
+                }
+            }else {
+                const value = Number(d.data[d.barKey])
+            
+                return orientation === 'vertical'?
+                    value >= 0 ? valueScale(value) : valueScale(0):
+                        value >= 0 ? valueScale(0) : valueScale(value)
+
+            }
+            /*
+            if(mode === "grouped"){
+                return graphHeight - (y(d[0]) - y(d[1]))
+            }                                                               
+            return plotted[0]==="all"?y(d[1]):
+                d.key.startsWith(plotted[0])?graphHeight - (y(d[0]) - y(d[1])):y(d[1]);
+            */
+        }
+
+        function valueScaleDimension(d:ExtendedSeriesPointWithSorted){
+            if(isStacked){
+                if(!singleLayerActive){
+                    const dimension = orientation === 'vertical'?
+                    valueScale(d[0]) - valueScale(d[1]):
+                    valueScale(d[1]) - valueScale(d[0])
+                
+                    return isNaN(dimension) ? 0 : dimension < 0?0:dimension;
+                }else {
+                    const value = Number(d.data[d.barKey])
+                    const rectDimension = Math.abs(valueScale(value) - valueScale(0));
+                    return isNaN(rectDimension)?0:rectDimension<0?0:rectDimension;
+                }
+            }else{
+                const value = Number(d.data[d.barKey])
+                const rectDimension = Math.abs(valueScale(value) - valueScale(0));
+                return isNaN(rectDimension)?0:rectDimension<0?0:rectDimension;
+            }
+            /*const height = y(d[0]) - y(d[1]);
+            return height;
+            */
+        }
+
+        const prevIsStacked = prevMode === "stacked" || prevMode === "percentage"
+
+        const rectXPos = (d: ExtendedSeriesPointWithSorted) => {            
+            return orientation === 'vertical' ? labelScalePos(d) : valueScalePos(d)
+        }
+
+        const rectWidth = (d: ExtendedSeriesPointWithSorted) => {            
+            return orientation === 'vertical' ? labelScaleBandwidth(d) : valueScaleDimension(d)
+        }
+
+        const rectYPos = (d: ExtendedSeriesPointWithSorted) => {            
+            return orientation === 'vertical' ? valueScalePos(d) : labelScalePos(d)
+        }
+
+        const rectHeight = (d: ExtendedSeriesPointWithSorted):number => {            
+            return orientation === 'vertical' ? valueScaleDimension(d) : labelScaleBandwidth(d)
+        }
+        
+            
         function strokeDasharray(d:ExtendedSeriesPointWithSorted){            
             if(mode === "grouped"){
                 return "none"                    
@@ -580,84 +679,6 @@ export function MorphStackedBarChart({
             return 0
         }
 
-        function xPos(d: ExtendedSeriesPointWithSorted){
-            const xPos = x(d.data.label as string) ?? 0
-            if(mode==="grouped" && (!focusOnPlot || (focusOnPlot && plotted[0] === "all"))){
-                const sortReference = !isSorted?selectedKeys:d.data.sortedLayers
-                const idx = sortReference.indexOf(d.barKey)
-                return xPos + (idx * (x.bandwidth()/selectedKeys.length))
-            }                            
-            return xPos
-        }
-
-        function rectWidth(d: ExtendedSeriesPointWithSorted){
-            return (mode === "grouped" && (!focusOnPlot || (focusOnPlot && plotted[0] === "all")))?
-                x.bandwidth()/selectedKeys.length:x.bandwidth()
-        }
-
-        
-        const stackedMode = mode === "stacked" || mode === "percentage"            
-        function yPos(d: ExtendedSeriesPointWithSorted){
-            if(stackedMode){
-                if(!singleLayerActive){
-                    const orientationDimension = orientation === 'vertical'?graphHeight:graphWidth
-                    if(isFirstRender) return 0
-                    
-                    return plotted[0] === "all"
-                        ? y(orientation === 'vertical'?d[1]:d[0])
-                        :  (focusOnPlot && orientation !== 'vertical')?
-                            y(0):
-                            (orientationDimension - (y(d[0]) - y(d[1])))
-                } else {
-                    const value = Number(d.data[d.barKey])
-                
-                    return orientation === 'vertical'?
-                        value >= 0 ? y(value) : y(0):
-                            value >= 0 ? y(0) : y(value)
-                }
-            }else {
-                const value = Number(d.data[d.barKey])
-            
-                return orientation === 'vertical'?
-                    value >= 0 ? y(value) : y(0):
-                        value >= 0 ? y(0) : y(value)
-
-            }
-            /*
-            if(mode === "grouped"){
-                return graphHeight - (y(d[0]) - y(d[1]))
-            }                                                               
-            return plotted[0]==="all"?y(d[1]):
-                d.key.startsWith(plotted[0])?graphHeight - (y(d[0]) - y(d[1])):y(d[1]);
-            */
-        }
-
-        function rectHeight(d:ExtendedSeriesPointWithSorted){
-            if(stackedMode){
-                if(!singleLayerActive){
-                    const dimension = orientation === 'vertical'?
-                    y(d[0]) - y(d[1]):
-                    y(d[1]) - y(d[0])
-                
-                    return isNaN(dimension) ? 0 : dimension < 0?0:dimension;
-                }else {
-                    const value = Number(d.data[d.barKey])
-                    const rectDimension = Math.abs(y(value) - y(0));
-                    return isNaN(rectDimension)?0:rectDimension<0?0:rectDimension;
-                }
-            }else{
-                const value = Number(d.data[d.barKey])
-                const rectDimension = Math.abs(y(value) - y(0));
-                return isNaN(rectDimension)?0:rectDimension<0?0:rectDimension;
-            }
-            /*const height = y(d[0]) - y(d[1]);
-            return height;
-            */
-        }        
-                
-        const isStacked = mode === "stacked" || mode === "percentage"
-        const prevIsStacked = prevMode === "stacked" || prevMode === "percentage"
-
         serie.selectAll<SVGRectElement, ExtendedSeriesPointWithSorted>("rect")
             .data((d) => d, (d) => d.data.label)
             .join(
@@ -666,22 +687,37 @@ export function MorphStackedBarChart({
                         const theBars = enter
                             .append("rect")
                             .attr("class", styles.rect)
-                            .attr("x", function(d) {return x(d.data.label) ?? 0; })
-                            .attr("width", x.bandwidth())
-                            .attr("y", function(d){
-                                if(!prevXLabels.includes(d.data.label)){
-                                    return graphHeight
+                            .attr("x", function(d) {
+                                if(orientation === "vertical"){
+                                    return labelScale(d.data.label) ?? 0; 
+                                }else{
+                                    if(!prevXLabels.includes(d.data.label)){
+                                        return valueScale(0)
+                                    }
+                                    return valueScalePos(d) + valueScaleDimension(d)
                                 }
-                                return yPos(d) + rectHeight(d)
+                                
                             })
-                            .attr("height", 0)
+                            .attr("width", orientation === "vertical"?labelScale.bandwidth():0)
+                            .attr("y", function(d){
+                                if(orientation === "vertical"){
+                                    if(!prevXLabels.includes(d.data.label)){
+                                        return valueScale(0)
+                                    }
+                                    return valueScalePos(d) + valueScaleDimension(d)
+                                    
+                                }else{
+                                    return labelScale(d.data.label) ?? 0;
+                                }                                
+                            })
+                            .attr("height", orientation === "vertical"?0:labelScale.bandwidth())
                             .attr("stroke-dasharray", strokeDasharray)
                             .attr("stroke-dashoffset", strokeDashoffset)
                                 .transition().duration(animDuration)                                
-                            .attr("x", xPos)
+                            .attr("x", rectXPos)
                             .attr("width", rectWidth)                        
                             .attr("height", rectHeight)
-                            .attr("y", yPos)
+                            .attr("y", rectHeight)
 
                         return theBars
                     }
@@ -689,18 +725,28 @@ export function MorphStackedBarChart({
                         const theBars = enter
                             .append("rect")
                             .attr("class", styles.rect)
-                            .attr("x", function(d) {return x(d.data.label) ?? 0; })
-                            .attr("width", x.bandwidth())
-                            .attr("y", graphHeight)
-                            .attr("height", 0)                      
+                            .attr("x", function(d) {
+                                if(orientation === "vertical"){
+                                    return labelScale(d.data.label) ?? 0; 
+                                }else{
+                                    return valueScale(0)//graphHeight
+                                }                                
+                            })
+                            .attr("width", orientation === "vertical"?
+                                labelScale.bandwidth():0)
+                            .attr("y", function(d){
+                                return orientation === "vertical"?
+                                    graphHeight:labelScale(d.data.label) ?? 0
+                            })
+                            .attr("height", orientation === "vertical"?0:labelScale.bandwidth())                      
                             .attr("stroke-dasharray", strokeDasharray)
                             .attr("stroke-dashoffset", strokeDashoffset)          
                                 .transition().duration(animDuration)                                
-                            .attr("x", xPos)
+                            .attr("x", rectXPos)
                             .attr("width", rectWidth)                        
                             .attr("height", rectHeight)
                                 .transition().duration(animDuration)
-                            .attr("y", yPos)
+                            .attr("y", rectYPos)
 
                         return theBars
                         
@@ -709,16 +755,27 @@ export function MorphStackedBarChart({
                         const theBars = enter
                             .append("rect")
                             .attr("class", styles.rect)
-                            .attr("x", function(d) {return x(d.data.label) ?? 0; })
-                            .attr("width", x.bandwidth())
-                            .attr("y", graphHeight)
-                            .attr("height", 0)
+                            .attr("x", function(d) {
+                                if(orientation === "vertical"){
+                                    return labelScale(d.data.label) ?? 0; 
+                                }else{
+                                    return valueScale(0)//graphHeight
+                                }
+                                
+                            })
+                            .attr("width", orientation === "vertical"?
+                                labelScale.bandwidth():0)
+                            .attr("y", function(d){
+                                return orientation === "vertical"?
+                                    graphHeight:labelScale(d.data.label) ?? 0
+                            })
+                            .attr("height", orientation === "vertical"?0:labelScale.bandwidth())
                             .attr("stroke-dasharray", strokeDasharray)
                             .attr("stroke-dashoffset", strokeDashoffset)
                                 .transition().duration(animDuration)
-                            .attr("y", yPos)
+                            .attr("y", rectYPos)
                                 .transition().duration(animDuration)                                
-                            .attr("x", xPos)
+                            .attr("x", rectXPos)
                             .attr("width", rectWidth)                        
                             .attr("height", rectHeight)
 
@@ -754,7 +811,7 @@ export function MorphStackedBarChart({
                     `Total : ${basicFormat(total as number, tooltipFormat)}`:"~")
             })
             .on("mousemove", (e, d)=>{                                                                               
-                moveTooltip(tooltip, {e, svg:svgNode as SVGSVGElement, yScale: y})
+                moveTooltip(tooltip, {e, svg:svgNode as SVGSVGElement, yScale: valueScale})
             })
             .on("mouseout", function(e, d){
                 if(mode === "grouped" && isSorted){
@@ -776,37 +833,37 @@ export function MorphStackedBarChart({
                 .transition().duration(animDuration)
                 .attr("stroke-dasharray", strokeDasharray)
                 .attr("stroke-dashoffset", strokeDashoffset)
-                .attr("x", xPos)                    
+                .attr("x", rectXPos)                    
                 .attr("width", rectWidth)
                 .attr("height", rectHeight)
-                .attr("y", yPos)
+                .attr("y", rectYPos)
         }
 
         function transitionXWidth_then_YHeight(){
             serie.selectAll<SVGRectElement, ExtendedSeriesPointWithSorted>("rect")
                 .attr("class", updateRectClass)                    
                     .transition().duration(animDuration)                    
-                .attr("x", xPos)                    
+                .attr("x", rectXPos)                    
                 .attr("width", rectWidth)                    
                     .transition().duration(animDuration)
                 .attr("stroke-dasharray", strokeDasharray)
                 .attr("stroke-dashoffset", strokeDashoffset)
                 .attr("height", rectHeight)
-                .attr("y", yPos)
+                .attr("y", rectYPos)
         }
 
         function transitionYHeight_then_XWidth(){
             serie.selectAll<SVGRectElement, ExtendedSeriesPointWithSorted>("rect")
                 .attr("class", updateRectClass)                    
                     .transition().duration(animDuration)
-                .attr("y", yPos)
+                .attr("y", rectYPos)
                 .attr("height", rectHeight)
                     .transition().duration(animDuration)
                 .attr("stroke-dasharray", strokeDasharray)
                 .attr("stroke-dashoffset", strokeDashoffset)                    
-                .attr("x", xPos)                    
+                .attr("x", rectXPos)                    
                 .attr("width", rectWidth)
-        }        
+        }
 
         if(mode === prevMode){
             transitionNormal()
@@ -814,14 +871,18 @@ export function MorphStackedBarChart({
             if(isStacked){
                 if(prevIsStacked){
                     transitionNormal()
-                }else{
-                    transitionYHeight_then_XWidth()                                    
+                }else{                    
+                    orientation === "vertical"?
+                        transitionYHeight_then_XWidth():
+                        transitionXWidth_then_YHeight()                                    
                 }
             }else{
                 if(!prevIsStacked){
                     transitionNormal()
                 }else{
-                    transitionXWidth_then_YHeight()
+                    orientation === "vertical"?
+                        transitionXWidth_then_YHeight():
+                        transitionYHeight_then_XWidth()
                 }
             }
         }

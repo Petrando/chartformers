@@ -319,10 +319,10 @@ export function MorphStackedBarChart({
         const singleLayerActive = (focusOnPlot && plotted[0] !== "all") || selectedKeys.length === 1
         const isStacked = mode === "stacked" || mode === "percentage"
 
-        const baseValueMax = mode === "stacked"?(focusOnPlot?(plotted[0] === "all"?
+        const baseValueMax = mode === "stacked"?
+                    singleLayerActive?
+                        max(chartData, (d: LayeredData) => (d[plotted[0]] as number)):
                         max(chartData, (d: LayeredData) => d.total):
-                            max(chartData, (d: LayeredData) => (d[plotted[0]] as number))):
-                        max(chartData, (d: LayeredData) => d.total)):
                     mode === "grouped"?(plotted[0] === "all"
                         ? max(chartData, d =>
                             max(
@@ -335,10 +335,10 @@ export function MorphStackedBarChart({
                         1
         const valueMax = Math.max(0, baseValueMax ?? 0)
 
-        const baseValueMin = mode === "stacked"?(focusOnPlot?(plotted[0] === "all"?
-                        min(chartData, (d: LayeredData) => d.totalMin):
-                            min(chartData, (d: LayeredData) => (d[plotted[0]] as number))):
-                        min(chartData, (d: LayeredData) => d.totalMin)):
+        const baseValueMin = mode === "stacked"?
+                    singleLayerActive?
+                        min(chartData, (d: LayeredData) => (d[plotted[0]] as number)):
+                        min(chartData, (d: LayeredData) => d.total):
                     mode === "grouped"?(plotted[0] === "all"
                         ? min(chartData, d =>
                             min(
@@ -358,14 +358,13 @@ export function MorphStackedBarChart({
 
         const xAxisTextClass = (!isMediumScreen && orientation === 'vertical')?stackedBarStyles.rotatedAxisText:
             stackedBarStyles.axisText;
-                                                    
-        
+                                                            
         const xAxis = orientation === 'vertical' 
             ?axisBottom(labelScale)
                 .tickValues(labelScale.domain())
                 .tickSizeOuter(0):
              axisBottom(valueScale)                
-                .ticks(4, "s")
+                .ticks(4, mode === "percentage"?".0%":"s")
                 .tickSizeOuter(0)
                 .tickSize(-graphHeight);
             
@@ -388,7 +387,7 @@ export function MorphStackedBarChart({
             .style("display", "none")
             
         const yAxis = orientation === 'vertical'
-            ? axisLeft(valueScale).ticks(4, "s").tickSize(-graphWidth)
+            ? axisLeft(valueScale).ticks(4, mode === "percentage"?".0%":"s").tickSize(-graphWidth)
             : axisLeft(labelScale).tickSizeOuter(0);                    
                                         
         canvas.select<SVGGElement>(".y-axis")            
@@ -626,8 +625,7 @@ export function MorphStackedBarChart({
         const rectHeight = (d: ExtendedSeriesPointWithSorted):number => {            
             return orientation === 'vertical' ? valueScaleDimension(d) : labelScaleBandwidth(d)
         }
-        
-            
+                    
         function strokeDasharray(d:ExtendedSeriesPointWithSorted){            
             if(mode === "grouped"){
                 return "none"                    
@@ -683,7 +681,7 @@ export function MorphStackedBarChart({
             .data((d) => d, (d) => d.data.label)
             .join(
                 enter=>{                        
-                    if((isStacked && prevIsStacked) || (!isStacked && !prevIsStacked)){
+                    if((isStacked && prevIsStacked) || (!isStacked && !prevIsStacked)){                        
                         const theBars = enter
                             .append("rect")
                             .attr("class", styles.rect)
@@ -693,19 +691,20 @@ export function MorphStackedBarChart({
                                 }else{
                                     if(!prevXLabels.includes(d.data.label)){
                                         return valueScale(0)
-                                    }
-                                    return valueScalePos(d) + valueScaleDimension(d)
-                                }
-                                
+                                    }else{
+                                        return valueScalePos(d) + valueScaleDimension(d)
+                                    }                                    
+                                }                                
                             })
                             .attr("width", orientation === "vertical"?labelScale.bandwidth():0)
                             .attr("y", function(d){
                                 if(orientation === "vertical"){
-                                    if(!prevXLabels.includes(d.data.label)){
+                                    if(!prevXLabels.includes(d.data.label)){                                        
                                         return valueScale(0)
                                     }
-                                    return valueScalePos(d) + valueScaleDimension(d)
-                                    
+                                    else{
+                                        return valueScalePos(d) + valueScaleDimension(d)
+                                    }                                                                                                            
                                 }else{
                                     return labelScale(d.data.label) ?? 0;
                                 }                                
@@ -717,7 +716,7 @@ export function MorphStackedBarChart({
                             .attr("x", rectXPos)
                             .attr("width", rectWidth)                        
                             .attr("height", rectHeight)
-                            .attr("y", rectHeight)
+                            .attr("y", rectYPos)
 
                         return theBars
                     }
@@ -779,14 +778,13 @@ export function MorphStackedBarChart({
                             .attr("width", rectWidth)                        
                             .attr("height", rectHeight)
 
-                        return theBars
-                                
+                        return theBars                                
                     }
-                    const theBars = enter
-                    return theBars
+                    
+                    return enter
                 },
                 undefined,
-                exit=>exit.attr("opacity", 0).remove()
+                exit=>exit.attr("opacity", 0).style("fill", "grey").remove()
             )
             .on("mouseover", function(e, d){                
                 if(mode === "grouped" && isSorted){

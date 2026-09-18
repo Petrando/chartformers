@@ -3,12 +3,14 @@ import { select } from 'd3';
 import { sankey, sankeyLinkHorizontal, SankeyGraph, SankeyNode, SankeyLink,
     sankeyLeft, sankeyRight, sankeyCenter, sankeyJustify
  } from "d3-sankey";
+ import { sankeyCircular } from "d3-sankey-circular"
 import { useD3 } from '../hooks/useD3';
 import { useParentSize } from '../hooks/useParentSize';
 import { useLayerIndex } from '../hooks/useLayerIndex';
 import { indexColor, basicFormat } from '../utils';
 import { Tooltip, getTooltip, tooltipMove } from '../components/tooltip';
 import { rawLink, sankeyData, sankeyNode, sankeyLink, tooltipFormat } from '../types';
+import { SankeyCircularNode, SankeyCircularLink, SankeyCircularGraph } from 'd3-sankey-circular';
 import styles from './global.module.css';
 import sankeyStyles from './sankey.module.css'
 
@@ -116,6 +118,7 @@ export function Sankey({data, tooltipFormat}: SankeyProps) {
             if(width === 0 || height === 0){
                 return
             }
+            
             const margin = { top: 30, right: 20, bottom: 20, left: 20 };            
 
             const baseHeight = height - (margin.top + margin.bottom)
@@ -155,7 +158,8 @@ export function Sankey({data, tooltipFormat}: SankeyProps) {
                 return { enteringValue, exitingValue }
             }
 
-            const mySankey = sankey<sankeyNode, sankeyLink>()                                
+            const mySankey = sankey<sankeyNode, sankeyLink>()
+                .nodeAlign(sankeyCenter)                                               
                 .nodeSort(sortNode?
                     (a, b) => {
                         const { enteringValue:aEnteringValue, exitingValue: aExitingValue } = calculateNodeFlow(a)
@@ -490,7 +494,7 @@ export function Sankey({data, tooltipFormat}: SankeyProps) {
                     return indexColor(colorIndex, false)
                 });
 
-                const labels = canvas.selectAll<SVGTextElement, SankeyNode<sankeyNode, sankeyLink>>("text.label")
+            const labels = canvas.selectAll<SVGTextElement, SankeyNode<sankeyNode, sankeyLink>>("text.label")
                 .data(nodes, d=>d.name)
                 .join(
                     enter=>enter.append("text")

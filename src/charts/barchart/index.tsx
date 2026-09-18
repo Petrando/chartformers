@@ -2,16 +2,16 @@ import React, {useState} from 'react';
 import { createPortal } from "react-dom";
 import { select, scaleBand, scaleLinear, axisLeft, axisBottom, min, max, format,
  } from 'd3';
-import { useD3 } from '../hooks/useD3';
-import { useParentSize } from '../hooks/useParentSize';
-import { useUIControls } from '../hooks/useUIControls';
-import { Tooltip, moveTooltip } from '../components/tooltip';
-import { cloneObj, indexSelectedColor, renderLineChart } from '../utils';
-import { inactiveColor } from '../../dev/data/constants';
-import styles from './global.module.css';
+import { useD3 } from '../../hooks/useD3';
+import { useParentSize } from '../../hooks/useParentSize';
+import { useUIControls } from '../../hooks/useUIControls';
+import { Tooltip, moveTooltip } from '../../components/tooltip';
+import { cloneObj, indexSelectedColor, renderLineChart } from '../../utils';
+import { inactiveColor } from '../../../dev/data/constants';
+import styles from '../global.module.css';
 import barchartStyles from './barchart.module.css';
-import { pointData, tooltipFormat, lineDecor, orientationType } from '../types';
-import { useLayerIndex } from '../hooks/useLayerIndex';
+import { pointData, tooltipFormat, lineDecor, orientationType } from '../../types';
+import { useLayerIndex } from '../../hooks/useLayerIndex';
 
 type BarchartProps = {
     data: pointData[];

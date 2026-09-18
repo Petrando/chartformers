@@ -4,14 +4,14 @@ import { sankey, sankeyLinkHorizontal, SankeyGraph, SankeyNode, SankeyLink,
     sankeyLeft, sankeyRight, sankeyCenter, sankeyJustify
  } from "d3-sankey";
  import { sankeyCircular } from "d3-sankey-circular"
-import { useD3 } from '../hooks/useD3';
-import { useParentSize } from '../hooks/useParentSize';
-import { useLayerIndex } from '../hooks/useLayerIndex';
-import { indexColor, basicFormat } from '../utils';
-import { Tooltip, getTooltip, tooltipMove } from '../components/tooltip';
-import { rawLink, sankeyData, sankeyNode, sankeyLink, tooltipFormat } from '../types';
+import { useD3 } from '../../hooks/useD3';
+import { useParentSize } from '../../hooks/useParentSize';
+import { useLayerIndex } from '../../hooks/useLayerIndex';
+import { indexColor, basicFormat } from '../../utils';
+import { Tooltip, getTooltip, tooltipMove } from '../../components/tooltip';
+import { rawLink, sankeyData, sankeyNode, sankeyLink, tooltipFormat } from '../../types';
 import { SankeyCircularNode, SankeyCircularLink, SankeyCircularGraph } from 'd3-sankey-circular';
-import styles from './global.module.css';
+import styles from '../global.module.css';
 import sankeyStyles from './sankey.module.css'
 
 export type LayoutNode =

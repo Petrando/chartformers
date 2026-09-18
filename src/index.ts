@@ -7,7 +7,7 @@ export { PercentageBarChart } from './charts/stacked-barchart-variants/percentag
 export { MorphStackedBarChart } from './charts/stacked-barchart-variants/morph-stacked-barchart'
 export { Sankey } from './charts/sankey';
 export { CirclePacks } from './charts/circle-packs';
-export { PopulationPyramid } from './charts/population-pyramid';
+export { PopulationPyramid } from './charts/population-pyramid'
 export { StockPriceChart} from './charts/stockprice'
 export { Sunburst } from './charts/sunburst'
 export { WaterfallChart } from './charts/waterfall/waterfall';

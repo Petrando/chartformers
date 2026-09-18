@@ -5,15 +5,15 @@ import {select, scaleBand, scaleLinear, axisLeft, axisBottom, axisTop, axisRight
     median, mean, range,
     color
 } from 'd3';
-import { useD3 } from '../hooks/useD3';
-import { useParentSize } from '../hooks/useParentSize';
-import { Tooltip, getTooltip, moveTooltip } from '../components/tooltip';
-import { cloneObj, indexSelectedColor, renderHistogramLine, renderLineChart } from '../utils';
-import { inactiveColor } from '../../dev/data/constants';
-import styles from './global.module.css';
+import { useD3 } from '../../hooks/useD3';
+import { useParentSize } from '../../hooks/useParentSize';
+import { Tooltip, getTooltip, moveTooltip } from '../../components/tooltip';
+import { cloneObj, indexSelectedColor, renderHistogramLine, renderLineChart } from '../../utils';
+import { inactiveColor } from '../../../dev/data/constants';
+import styles from '../global.module.css';
 import histogramStyles from './histogram.module.css'
-import { tooltipFormat, histogramDatum, histogramChartData, binnedData } from '../types';
-import { useContainerSize } from '../hooks/useContainerSize';
+import { tooltipFormat, histogramDatum, histogramChartData, binnedData } from '../../types';
+import { useContainerSize } from '../../hooks/useContainerSize';
 
 type sortOption = {
     sortable?: boolean;

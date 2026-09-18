@@ -1,14 +1,14 @@
 import React, { useState, useEffect } from "react";
 import { scaleBand, scaleLinear, axisBottom, format, axisLeft, axisRight, stack, stackOrderNone, stackOffsetNone, max, sum, Selection, ScaleLinear, Axis, NumberValue, SeriesPoint } from "d3"
-import { Tooltip, getTooltip, tooltipMove, hideTooltip  } from "../components/tooltip";
-import { ManIcon, WomanIcon } from "../components/icons";
-import { useD3 } from "../hooks/useD3";
-import { useParentSize } from "../hooks/useParentSize";
-import { useContainerSize } from "../hooks/useContainerSize";
-import { cloneObj } from "../utils";
+import { Tooltip, getTooltip, tooltipMove, hideTooltip  } from "../../components/tooltip";
+import { ManIcon, WomanIcon } from "../../components/icons";
+import { useD3 } from "../../hooks/useD3";
+import { useParentSize } from "../../hooks/useParentSize";
+import { useContainerSize } from "../../hooks/useContainerSize";
+import { cloneObj } from "../../utils";
 import pyramidStyles from "./population-pyramid.module.css"
-import styles from './global.module.css';
-import { ageRangeGroup } from "../types"
+import styles from '../global.module.css';
+import { ageRangeGroup } from "../../types"
 
 type PopulationPyramidProps = {
     data: ageRangeGroup[];    

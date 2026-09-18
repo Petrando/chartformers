@@ -1,14 +1,14 @@
 import React, {useState} from 'react';
 import {pie, arc, format, PieArcDatum, interpolate, ascending} from 'd3';
-import { useD3 } from '../hooks/useD3';
-import { useParentSize } from '../hooks/useParentSize';
-import { useContainerSize } from '../hooks/useContainerSize';
-import { useLayerIndex } from '../hooks/useLayerIndex';
-import { cloneObj, indexSelectedColor } from '../utils';
-import { inactiveColor } from '../../dev/data/constants';
-import styles from './global.module.css';
+import { useD3 } from '../../hooks/useD3';
+import { useParentSize } from '../../hooks/useParentSize';
+import { useContainerSize } from '../../hooks/useContainerSize';
+import { useLayerIndex } from '../../hooks/useLayerIndex';
+import { cloneObj, indexSelectedColor } from '../../utils';
+import { inactiveColor } from '../../../dev/data/constants';
+import styles from '../global.module.css';
 import pieStyles from './piechart.module.css'
-import { pointData } from '../types';
+import { pointData } from '../../types';
 
 type PiechartProps = {
     data: pointData[];

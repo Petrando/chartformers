@@ -1,4 +1,4 @@
-import React, {useState, useEffect, useRef} from 'react';
+import React, {useState, useEffect, useRef, useDeferredValue} from 'react';
 import { select } from 'd3';
 import { sankey, sankeyLinkHorizontal, SankeyGraph, SankeyNode, SankeyLink,
     sankeyLeft, sankeyRight, sankeyCenter, sankeyJustify
@@ -11,6 +11,7 @@ import { indexColor, basicFormat } from '../../utils';
 import { Tooltip, getTooltip, tooltipMove } from '../../components/tooltip';
 import { rawLink, sankeyData, sankeyNode, sankeyLink, tooltipFormat } from '../../types';
 import { SankeyCircularNode, SankeyCircularLink, SankeyCircularGraph } from 'd3-sankey-circular';
+import { detectCircularConnection } from './utils';
 import styles from '../global.module.css';
 import sankeyStyles from './sankey.module.css'
 
@@ -103,6 +104,21 @@ export function Sankey({data, tooltipFormat}: SankeyProps) {
         reRenderedBy.current = "dimension"
 
     }, [parentWidth, parentHeight])
+
+    const result = detectCircularConnection(data)
+    const prevData = useDeferredValue(data)
+    const prevIsCircularData = useRef<boolean | undefined>(undefined)
+        
+    useEffect(()=>{
+        if(prevData !== data){
+            const prevResult = detectCircularConnection(prevData)
+            prevIsCircularData.current = prevResult.hasCircularConnection
+        }
+    }, [data, prevData])
+
+    console.log(result.hasCircularConnection, prevIsCircularData.current)
+    //console.log(result.hasCircularConnection, prevIsCircularData.current)
+    
     
     const isMidSmallScreen = parentWidth <= 768;
     const animDuration = 1000
@@ -156,25 +172,35 @@ export function Sankey({data, tooltipFormat}: SankeyProps) {
                 }, 0) ?? 0
 
                 return { enteringValue, exitingValue }
-            }
+            }            
 
-            const mySankey = sankey<sankeyNode, sankeyLink>()
-                .nodeAlign(sankeyCenter)                                               
-                .nodeSort(sortNode?
-                    (a, b) => {
-                        const { enteringValue:aEnteringValue, exitingValue: aExitingValue } = calculateNodeFlow(a)
-                        const { enteringValue:bEnteringValue, exitingValue: bExitingValue } = calculateNodeFlow(b)
-                        return Math.max(aEnteringValue, aExitingValue) - Math.max(bEnteringValue, bExitingValue)
-                    }:
-                    null
-                )
-                .linkSort(sortLink?
-                    (a, b)=> a.value - b.value:
-                    null
+            const circularSankeyFn = sankeyCircular<SankeyCircularNode, SankeyCircularLink>()
+            const standardSankeyFn = sankey<sankeyNode, sankeyLink>().nodeAlign(sankeyCenter)                                               
+                    .nodeSort(sortNode?
+                        (a, b) => {
+                            const { enteringValue:aEnteringValue, exitingValue: aExitingValue } = calculateNodeFlow(a)
+                            const { enteringValue:bEnteringValue, exitingValue: bExitingValue } = calculateNodeFlow(b)
+                            return Math.max(aEnteringValue, aExitingValue) - Math.max(bEnteringValue, bExitingValue)
+                        }:
+                        null
+                    )
+                    .linkSort(sortLink?
+                        (a, b)=> a.value - b.value:
+                        null
+                    )
+            const mySankey = 
+                result.hasCircularConnection?
+                circularSankeyFn
+                /*.nodeAlign(sankeyCenter)*/                
+                :(
+                    prevIsCircularData.current?circularSankeyFn:standardSankeyFn
                 )                
+                
+                
+            mySankey
                 .nodeWidth(graphWidth<=540?8:(graphWidth > 540 && graphWidth <= 768)?12:15)
                 .nodePadding(graphWidth<=540?5:8)                
-                .extent([[0, 0], [graphWidth, graphHeight]])    
+                .extent([[0, 0], [graphWidth, graphHeight]])
             
             const graph:LayoutGraph = mySankey({
                 nodes: clonedNodes.map((d: sankeyNode) => Object.assign({}, d)),
@@ -220,7 +246,10 @@ export function Sankey({data, tooltipFormat}: SankeyProps) {
                 return strokeDashoffset(d) + " " + strokeDashoffset(d)
             }
             
-            const linkDelay = (d: SankeyLink<sankeyNode, sankeyLink>) => {                
+            const linkDelay = (d: SankeyLink<sankeyNode, sankeyLink>) => {
+                if(result.hasCircularConnection){
+                    return 0
+                }                
                 if(!isFreshData.current){
                     return 0
                 }
@@ -252,7 +281,10 @@ export function Sankey({data, tooltipFormat}: SankeyProps) {
                         .attr("stroke-dashoffset", strokeDashoffset)                                                       
                         .attr("stroke-width", d => Math.max(1, d.width!))                         
                             .transition().duration(animDuration)
-                            .delay(function(d){                                
+                            .delay(function(d){
+                                if(result.hasCircularConnection){
+                                    return 0
+                                }                                
                                 if(!isFreshData.current){                                    
                                     return animDuration
                                 }
@@ -335,6 +367,9 @@ export function Sankey({data, tooltipFormat}: SankeyProps) {
                 });                        
 
             const nodeDelay = (d:SankeyNode<sankeyNode, sankeyLink>) => {
+                if(result.hasCircularConnection){
+                    return 0
+                }
                 if(!isFreshData.current || d.depth === 0){
                     return 0
                 }
@@ -545,7 +580,8 @@ export function Sankey({data, tooltipFormat}: SankeyProps) {
                 <div 
                     style={{
                         position: "absolute", right: "12px", top: "6px",
-                        display: "flex", alignItems: "center"
+                        display: result.hasCircularConnection?"none":"flex", alignItems: "center",
+                        pointerEvents: result.hasCircularConnection?"none":"auto"
                     }}
                 >
                     <label 

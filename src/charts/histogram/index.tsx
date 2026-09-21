@@ -9,7 +9,8 @@ import { useD3 } from '../../hooks/useD3';
 import { useParentSize } from '../../hooks/useParentSize';
 import { useContainerSize } from '../../hooks/useContainerSize';
 import { Tooltip, getTooltip, moveTooltip } from '../../components/tooltip';
-import { cloneObj, indexSelectedColor, renderHistogramLine, renderLineChart } from '../../utils';
+import { cloneObj, indexSelectedColor, renderLineChart } from '../../utils';
+import { renderHistogramLine } from './utils'
 import { inactiveColor } from '../../../dev/data/constants';
 import styles from '../global.module.css';
 import histogramStyles from './histogram.module.css'

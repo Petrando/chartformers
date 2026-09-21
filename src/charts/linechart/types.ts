@@ -1,0 +1,1 @@
+export type lineChartDatum = Record<string, string | number | Date>;

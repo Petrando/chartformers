@@ -9,37 +9,6 @@ export type pointData = {
     value: number;
 }
 
-export type rawLink = {
-  source: string
-  target: string
-  value: number
-}
-
-export type sankeyNode = {
-    name: string;    
-}
-
-export type sankeyLink = {
-    source: any;
-    target: any;
-    value: number;    
-    sourceName?: string;
-    targetName?: string;
-    id?: string;
-}
-
-export type sankeyData = {
-    nodes: sankeyNode[];
-    links: sankeyLink[];
-}
-
-export type ageRangeGroup = {
-    ageRange: string;
-    male: number;
-    female: number;
-    Total?: number;
-}
-
 export type tooltipFormat = {
     formatType?: "long" | "short";
     prefix?: string;
@@ -78,21 +47,6 @@ export interface PackLink {
     target: PackNode;
 }
 
-export interface waterfallDatum {
-    label: string;
-    start?: number;
-    value: number;
-    end?: number;
-    //the 'type' property should only be 'total' | 'variation' but strengthening the type will cause
-    //import problem. Think about the solution later
-    type: string;//"total" | "variation";
-}
-
-export interface deltaWaterfallDatum {
-    label: string;
-    data: waterfallDatum[];
-}
-
 export type numericKeys<T> = {
   [K in keyof T]: T[K] extends number ? K : never
 }[keyof T]
@@ -107,16 +61,6 @@ export type chordDatum = {
     values: number[]
 }
 
-export type histogramDatum = Record<string, unknown>;
-
-export type histogramChartData<T extends histogramDatum> = {
-    title: string;
-    valueKey?: string;
-    data: T[] | histogramChartData<T>[];
-};
-
-export type binnedData = Bin<histogramDatum, number>;
-
 export type lineChartDatum = Record<string, string | number | Date>;
 
 export type lineTooltipPosData = { xPos: number, low: number, volume: number }
@@ -127,6 +71,14 @@ export type lineDecor = {
     showLine?: boolean;
     showDots?: boolean;
     curve?: curveTypes;
+}
+
+export type hierarchyData = {
+    name: string;
+    value?: number;
+    children?: hierarchyData[];
+    color?: string;
+    group?: string;
 }
 
 export type orientationType = "vertical" | "horizontal"
@@ -158,13 +110,7 @@ export type networkDataType = {
 
 export type networkEdge = [string, string]
 
-export type hierarchyData = {
-    name: string;
-    value?: number;
-    children?: hierarchyData[];
-    color?: string;
-    group?: string;
-}
+
 
 export type networkHierarchyNode = SimulationNodeDatum & HierarchyCircularNode<hierarchyData>;
 export type networkHierarchyLink = SimulationLinkDatum<networkHierarchyNode> & 

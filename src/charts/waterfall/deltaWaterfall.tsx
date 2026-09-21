@@ -8,7 +8,8 @@ import { renderLineChart, rotateLabels } from '../../utils';
 import { Tooltip, getTooltip, moveTooltip } from '../../components/tooltip';
 import styles from '../global.module.css';
 import waterfallStyles from './waterfall.module.css'
-import { tooltipFormat, deltaWaterfallDatum, waterfallDatum } from '../../types';
+import { tooltipFormat } from '../../types';
+import { deltaWaterfallDatum, waterfallDatum } from './types'
 
 type WaterfallProps = {
     data: deltaWaterfallDatum[];    

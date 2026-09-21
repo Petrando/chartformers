@@ -8,7 +8,7 @@ import { useContainerSize } from "../../hooks/useContainerSize";
 import { cloneObj } from "../../utils";
 import pyramidStyles from "./population-pyramid.module.css"
 import styles from '../global.module.css';
-import { ageRangeGroup } from "../../types"
+import { ageRangeGroup } from "./types"
 
 type PopulationPyramidProps = {
     data: ageRangeGroup[];    

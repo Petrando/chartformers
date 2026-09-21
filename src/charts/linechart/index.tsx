@@ -5,14 +5,15 @@ import {
     scaleBand,
     curveLinear, curveBasis, curveCardinal, curveCatmullRom, curveNatural
 } from 'd3';
-import { useD3 } from '../hooks/useD3';
-import { useParentSize } from '../hooks/useParentSize';
-import { useLayerIndex } from '../hooks/useLayerIndex';
-import styles from './global.module.css';
-import stockStyles from './stockprice/stockprice.module.css'
-import { tooltipFormat } from '../types';
-import { rotateLabels, indexColor, isISODateString, sanitizeString } from '../utils';
-import { lineChartDatum, pointData } from '../types';
+import { useD3 } from '../../hooks/useD3';
+import { useParentSize } from '../../hooks/useParentSize';
+import { useLayerIndex } from '../../hooks/useLayerIndex';
+import styles from '../global.module.css';
+import stockStyles from '../stockprice/stockprice.module.css'
+import { tooltipFormat } from '../../types';
+import { rotateLabels, indexColor, isISODateString, sanitizeString } from '../../utils';
+import { pointData } from '../../types';
+import { lineChartDatum } from './types'
 
 type tooltipDatum = pointData & {
     title: string;

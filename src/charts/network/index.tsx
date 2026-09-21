@@ -11,19 +11,16 @@ import {
   Force,
   ForceLink
 } from "d3-force";
-import { oldPack } from './circle-packs/utils'; 
-import { useD3 } from '../hooks/useD3';
-import { Tooltip, getTooltip, moveTooltip } from '../components/tooltip';
-import { basicFormat, cloneObj, indexSelectedColor, isFiniteNumber } from '../utils';
-import styles from './global.module.css';
-import { pointData, tooltipFormat, lineDecor, orientationType,
-    hierarchyData,
-    networkNode, networkLink, networkEdge, networkResolvedLink, networkDataType,
-    
-} from '../types';
-import { useLayerIndex } from '../hooks/useLayerIndex';
-import { useParentSize } from '../hooks/useParentSize';
-import { useContainerSize } from '../hooks/useContainerSize';
+import { oldPack } from '../circle-packs/utils'; 
+import { useD3 } from '../../hooks/useD3';
+import { useLayerIndex } from '../../hooks/useLayerIndex';
+import { useParentSize } from '../../hooks/useParentSize';
+import { useContainerSize } from '../../hooks/useContainerSize';
+import { Tooltip, getTooltip, moveTooltip } from '../../components/tooltip';
+import { basicFormat, cloneObj, indexSelectedColor, isFiniteNumber } from '../../utils';
+import styles from '../global.module.css';
+import { tooltipFormat, hierarchyData } from '../../types';
+import { networkNode, networkLink, networkEdge, networkResolvedLink, networkDataType } from './types'
 
 type dijkstraResult = {
     distances: Map<string, number>;

@@ -1,11 +1,12 @@
 import React, {useState} from 'react';
 import {scaleBand, scaleLinear, axisLeft, axisBottom, min, max, format} from 'd3';
-import { useD3 } from '../hooks/useD3';
-import { useParentSize } from '../hooks/useParentSize';
-import { Tooltip, getTooltip, moveTooltip } from '../components/tooltip';
-import styles from './global.module.css';
-import { tooltipFormat, dumbbellDatum, numericKeys } from '../types';
-import { useContainerSize } from '../hooks/useContainerSize';
+import { useD3 } from '../../hooks/useD3';
+import { useParentSize } from '../../hooks/useParentSize';
+import { useContainerSize } from '../../hooks/useContainerSize';
+import { Tooltip, getTooltip, moveTooltip } from '../../components/tooltip';
+import styles from '../global.module.css';
+import { tooltipFormat } from '../../types';
+import { dumbbellDatum, numericKeys } from './types'
 
 type DumbbellProps<T> = {
     data: dumbbellDatum[];    

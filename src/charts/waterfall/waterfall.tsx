@@ -12,7 +12,8 @@ import { formatWaterfallData, colors } from './utils';
 import { renderLineChart, rotateLabels } from '../../utils';
 import styles from '../global.module.css';
 import waterfallStyles from './waterfall.module.css'
-import { tooltipFormat, waterfallDatum, pointData, lineDecor, curveTypes, orientationType } from '../../types';
+import { tooltipFormat, pointData, lineDecor, curveTypes, orientationType } from '../../types';
+import { waterfallDatum } from './types'
 
 type WaterfallProps = {
     data: waterfallDatum[];    

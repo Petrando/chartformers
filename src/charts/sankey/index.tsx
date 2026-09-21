@@ -9,7 +9,8 @@ import { useParentSize } from '../../hooks/useParentSize';
 import { useLayerIndex } from '../../hooks/useLayerIndex';
 import { indexColor, basicFormat } from '../../utils';
 import { Tooltip, getTooltip, tooltipMove } from '../../components/tooltip';
-import { rawLink, sankeyData, sankeyNode, sankeyLink, tooltipFormat } from '../../types';
+import { tooltipFormat } from '../../types';
+import { rawLink, sankeyData, sankeyNode, sankeyLink } from './types'
 import { SankeyCircularNode, SankeyCircularLink, SankeyCircularGraph } from 'd3-sankey-circular';
 import { detectCircularConnection } from './utils';
 import styles from '../global.module.css';
@@ -114,11 +115,7 @@ export function Sankey({data, tooltipFormat}: SankeyProps) {
             const prevResult = detectCircularConnection(prevData)
             prevIsCircularData.current = prevResult.hasCircularConnection
         }
-    }, [data, prevData])
-
-    console.log(result.hasCircularConnection, prevIsCircularData.current)
-    //console.log(result.hasCircularConnection, prevIsCircularData.current)
-    
+    }, [data, prevData])        
     
     const isMidSmallScreen = parentWidth <= 768;
     const animDuration = 1000
@@ -190,13 +187,9 @@ export function Sankey({data, tooltipFormat}: SankeyProps) {
                     )
             const mySankey = 
                 result.hasCircularConnection?
-                circularSankeyFn
-                /*.nodeAlign(sankeyCenter)*/                
-                :(
-                    prevIsCircularData.current?circularSankeyFn:standardSankeyFn
-                )                
-                
-                
+                    circularSankeyFn                                
+                    :(prevIsCircularData.current?circularSankeyFn:standardSankeyFn)                
+                                
             mySankey
                 .nodeWidth(graphWidth<=540?8:(graphWidth > 540 && graphWidth <= 768)?12:15)
                 .nodePadding(graphWidth<=540?5:8)                

@@ -3,13 +3,14 @@ import {
     format, chord, descending, arc, ribbon, interpolate, Chord, ChordGroup, tickStep, sum, range, 
     select 
 } from 'd3';
-import { indexColor, cloneObj } from '../utils';
-import { useLayerIndex } from '../hooks/useLayerIndex';
-import { useD3 } from '../hooks/useD3';
-import { useParentSize } from '../hooks/useParentSize';
-import { Tooltip, getTooltip, moveTooltip } from '../components/tooltip';
-import styles from './global.module.css';
-import { tooltipFormat, chordDatum } from '../types';
+import { indexColor, cloneObj } from '../../utils';
+import { useLayerIndex } from '../../hooks/useLayerIndex';
+import { useD3 } from '../../hooks/useD3';
+import { useParentSize } from '../../hooks/useParentSize';
+import { Tooltip, getTooltip, moveTooltip } from '../../components/tooltip';
+import styles from '../global.module.css';
+import { tooltipFormat } from '../../types';
+import { chordDatum } from './types'
 
 type ChordProps = {
     data: chordDatum[];    
@@ -76,6 +77,8 @@ export function ChordDiagram({
         const names = data.map(d => d.name)
         const values = data.map(d => d.values)
         const res = chordFn(values)                    
+        console.log(data)
+        console.log(res)
 
         const freshRender = prevData === null
         const withExit = !prevNames.every(d=>names.includes(d))
@@ -170,7 +173,13 @@ export function ChordDiagram({
                     }),
                 exit=>exit.transition().duration(animDuration)
                     .style("fill-opacity", 0).remove()
-            );
+            )
+            .on("mouseover", function(e, d){
+                console.log(d)
+            })
+            .on("mouseout", function(e, d){
+                console.log(d)
+            });
         
         const arcGen = arc<ChordGroup>()
             .innerRadius(r - 10)
@@ -218,7 +227,15 @@ export function ChordDiagram({
 
                     return nodeG
                 }
-            )            
+            )
+            
+        node    
+            .on("mouseover", function(e, d){
+                console.log(d)
+            })
+            .on("mouseout", function(e, d){
+                console.log(d)
+            })
 
         node.selectAll<SVGPathElement, ChordGroup>("path")
             .data(d => [d]) // Bind the parent's data to the single child path

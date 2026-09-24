@@ -1,5 +1,5 @@
 import React, {useState, useRef, useEffect, useDeferredValue} from 'react';
-import { select, max, color as d3Color, scalePow, hierarchy, drag, D3DragEvent, format, rgb,
+import { select, max, color as d3Color, scalePow, hierarchy, drag, D3DragEvent, rgb,
     forceSimulation, forceLink, forceManyBody, forceCenter, forceCollide, Simulation,
     forceX, forceY, HierarchyNode, HierarchyCircularNode, HierarchyLink, pack, quadtree, rollup,
     tree, TreeLayout, scaleOrdinal, schemeCategory10, interpolate, QuadtreeLeaf,    

@@ -79,6 +79,13 @@ export const basicFormat = (num:number, {
     return prefix + format(formatType === "long"?",":"~s")(num) + suffix
 }
 
+export const formatNum = (num: number) => {
+    if(num < 0){
+        return num.toFixed(4)
+    }
+    return num.toLocaleString()
+}
+
 export function isISODateString(str: string | Date) {
     if(str instanceof Date){
         return true

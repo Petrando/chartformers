@@ -3,17 +3,19 @@ import {
     format, chord, descending, arc, ribbon, interpolate, Chord, ChordGroup, tickStep, sum, range, 
     select 
 } from 'd3';
-import { indexColor, cloneObj } from '../../utils';
+import { indexColor, cloneObj, formatNum } from '../../utils';
 import { useLayerIndex } from '../../hooks/useLayerIndex';
 import { useD3 } from '../../hooks/useD3';
 import { useParentSize } from '../../hooks/useParentSize';
 import { Tooltip, getTooltip, moveTooltip } from '../../components/tooltip';
+import { flatToMatrix } from './utils';
 import styles from '../global.module.css';
 import { tooltipFormat } from '../../types';
-import { chordDatum } from './types'
+import { chordDatum, node, link, chordData } from './types'
 
+type dataProp = chordData | link[];
 type ChordProps = {
-    data: chordDatum[];    
+    data: dataProp;    
     tooltipFormat?: tooltipFormat;
 }
 
@@ -29,7 +31,7 @@ export function ChordDiagram({
             prefix = "", suffix = "", formatType = "long"
         } = { prefix: "", suffix: "", formatType: "long"}
     }:ChordProps) {    
-    const prevData = useRef<chordDatum[] | null>(null)
+    const prevData = useRef<dataProp | null>(null)
     const defferedData = useDeferredValue(data)
     const [ref, parentSize] = useParentSize<HTMLDivElement>();    
     const { width, height } = parentSize;        
@@ -38,8 +40,8 @@ export function ChordDiagram({
     // Define the controls element (checkbox)    
 
     useEffect(()=>{
-        if(JSON.stringify(data) !== JSON.stringify(defferedData)){
-            prevData.current = defferedData.length > 0?defferedData:null
+        if(data !== defferedData){
+            prevData.current = defferedData
         }
     }, [ data, defferedData ])
     
@@ -49,8 +51,13 @@ export function ChordDiagram({
             return {value: value, angle: value * k + d.startAngle, dIndex: d.index};
         });
     }
-
-    const layersRef = useLayerIndex(data.map(d => d.name))
+ 
+    const dataMode = "links" in data?"comprehensive":"basic"
+    const dataLinks = dataMode === "comprehensive"?(data as chordData).links:(data as link[])
+    const matrixData = flatToMatrix(dataLinks)
+    const names = matrixData.map(d => d.name)
+    //const { names } = getNamesAndDataMode(data)
+    const layersRef = useLayerIndex(names)
     const animDuration = 750;
     const chartRef = useD3<HTMLDivElement>((container) => {
         if (width === 0 || height === 0) return;
@@ -63,22 +70,31 @@ export function ChordDiagram({
             .attr("transform", "translate(" + width/2 + "," + height/2 + ")");
 
         const tooltip = getTooltip(container as any)
-            .style("opacity", 0);                    
+            .style("opacity", 0);
+            
+        canvasSvg
+        .on("pointerenter pointerleave", function(){
+            tooltip.style("opacity", 0)
+        })
         
         const chordFn = chord()
             .padAngle(0.05)     // padding between entities (black arc)
             .sortSubgroups(descending)
 
         const previousData = prevData.current ?? []
-        const prevNames = previousData.map(d => d.name)
-        const prevValues = previousData.map(d => d.values)
+        const prevDataMode = "links" in previousData?"comprehensive":"basic"
+        const prevDataLinks = prevDataMode === "comprehensive"?(previousData as chordData).links:(previousData as link[])
+        const prevMatrixData = flatToMatrix(prevDataLinks)
+        const prevNames = prevMatrixData.map(d => d.name)
+        const prevValues = prevMatrixData.map(d => d.values)
         const prevRes = chordFn(prevValues)        
-
-        const names = data.map(d => d.name)
-        const values = data.map(d => d.values)
-        const res = chordFn(values)                    
-        console.log(data)
-        console.log(res)
+        
+        const names = matrixData.map(d => d.name)
+        const values = matrixData.map(d => d.values)
+        const res = chordFn(values)
+        console.log(matrixData)
+        console.log(values)
+        console.log(res)                            
 
         const freshRender = prevData === null
         const withExit = !prevNames.every(d=>names.includes(d))
@@ -132,13 +148,10 @@ export function ChordDiagram({
     
         const ribbonGen = ribbon<Chord, SVGPathElement>().radius(r - 10);
 
-        canvas
+        const links = canvas
             .selectAll<SVGPathElement, Chord>("path.link")
             .data(
-                res, 
-                function(d){
-                    return names[d.source.index] + " " + names[d.target.index]
-            })
+                res)
             .join(
                 enter=>{
                     const paths = enter
@@ -174,13 +187,7 @@ export function ChordDiagram({
                 exit=>exit.transition().duration(animDuration)
                     .style("fill-opacity", 0).remove()
             )
-            .on("mouseover", function(e, d){
-                console.log(d)
-            })
-            .on("mouseout", function(e, d){
-                console.log(d)
-            });
-        
+                    
         const arcGen = arc<ChordGroup>()
             .innerRadius(r - 10)
             .outerRadius(r)
@@ -197,7 +204,7 @@ export function ChordDiagram({
             }
         }
                         
-        const node = canvas
+        const nodes = canvas
             .selectAll<SVGGElement, ChordGroup>("g.nodes")
             .data(res.groups, d => names[d.index])            
             .join(
@@ -227,17 +234,9 @@ export function ChordDiagram({
 
                     return nodeG
                 }
-            )
-            
-        node    
-            .on("mouseover", function(e, d){
-                console.log(d)
-            })
-            .on("mouseout", function(e, d){
-                console.log(d)
-            })
+            )                    
 
-        node.selectAll<SVGPathElement, ChordGroup>("path")
+        nodes.selectAll<SVGPathElement, ChordGroup>("path")
             .data(d => [d]) // Bind the parent's data to the single child path
             .join(
                 enter => {
@@ -314,7 +313,7 @@ export function ChordDiagram({
 
         const chordTick = tickStep(0, sum(values.flat()), 100); // adjust depending on your data scale        
                         
-        const ticks = node
+        const ticks = nodes
             .selectAll<SVGGElement, groupTick>("g.group-tick")
             // Keying ticks by value ensures they don't "shuffle" during growth
             .data(d => groupTicks(d, chordTick), (d: groupTick) => d.value) 
@@ -353,12 +352,12 @@ export function ChordDiagram({
 
         ticks.select("text")
             .filter(d => d.value % (chordTick * 5) === 0)
-            .text(d => format(".1~%")(d.value))
+            .text(d => d.value>0?format(".0s")(d.value):format(".1~%")(d.value))
             .attr("x", 8)
             .attr("transform", d => d.angle > Math.PI ? "rotate(180) translate(-16)" : null)
             .style("text-anchor", d => d.angle > Math.PI ? "end" : "start");
 
-        node.select("text")
+        nodes.select("text")
             .attr("font-weight", "bold")
             .text(function(d) {
                 const thisNode = this as Element
@@ -366,8 +365,123 @@ export function ChordDiagram({
                     ? `↑ ${names[d.index]}`
                     : `${names[d.index]} ↓`;
             })
+
+        const blurredOpacity = 0.3
+                
+        nodes    
+            .on("pointerenter", function(e, d){
+                e.stopPropagation()                
+                nodes.filter(dNode => dNode.index !== d.index).style("opacity", blurredOpacity)
+                links.filter(dLink => dLink.source.index !== d.index && dLink.target.index !== d.index)
+                    .style("opacity", blurredOpacity)
+                    
+                const sourceLinks = links.filter(dLink => 
+                    dLink.target.index === d.index && dLink.source.index !== d.index)
+                const targetLinks = links.filter(dLink => 
+                    dLink.source.index === d.index && dLink.target.index !== d.index)
+                const selfLink = links.filter(dLink => 
+                    dLink.source.index === d.index && dLink.target.index === d.index)
+                const sourceData = sourceLinks.data()
+                const targetData = targetLinks.data()
+                const selfData = selfLink.data()
+                const inValues = sourceData.reduce((acc, curr) => {
+                    return acc + curr.target.value
+                }, 0)
+                const outValues = targetData.reduce((acc, curr) => {                    
+                    return acc + curr.source.value
+                }, 0)
+                const selfValues = selfData.reduce((acc, curr) => {
+                    return acc + curr.source.value
+                }, 0)                
+                
+                tooltip.transition().duration(250).style("opacity", 1)
+                
+                const name = names[d.index]
+                tooltip.select('p.name').style("display", "block").text(name)
+                tooltip.select('p.value1').style("display", "flex")
+                tooltip.select('p.value1 span.label')
+                    .text('inflows: ')
+                tooltip.select('p.value1 span.value')
+                    .text(`${prefix}${formatNum(inValues)}${suffix}`)
+
+                tooltip.select('p.value2').style("display", "flex")
+                tooltip.select('p.value2 span.label')
+                    .text('outflows: ')
+                tooltip.select('p.value2 span.value')
+                    .text(`${prefix}${formatNum(outValues)}${suffix}`)
+                    
+                tooltip.select('p.selfValue').style("display", "flex")
+                tooltip.select('p.selfValue span.label')
+                    .text('internal: ')
+                tooltip.select('p.selfValue span.value')
+                    .text(`${prefix}${formatNum(selfValues)}${suffix}`)                                                
+                
+            })
+            .on("pointermove", (e, d)=>{
+                moveTooltip(tooltip, {e, svg:svgNode as SVGSVGElement })
+            })
+            .on("pointerleave", function(e, d){                
+                nodes.filter(dNode => dNode.index !== d.index).style("opacity", 1)
+                links.style("opacity", 1)
+
+                tooltip.transition().duration(250).style("opacity", 0)
+            })
         
-    }, [data, width, height,  {prefix, suffix, formatType}]);
+        links
+            .on("pointerenter", function(e, d){
+                e.stopPropagation()
+                nodes.filter(dNode => dNode.index !== d.source.index && dNode.index !== d.target.index)
+                    .style("opacity", blurredOpacity)
+                links.filter(dLink => dLink.source.index !== d.source.index || dLink.target.index !== d.target.index)
+                    .style("opacity", blurredOpacity)
+
+                tooltip.transition().duration(250).style("opacity", 1)                
+                                                
+                const sourceName = names[d.source.index];
+                const targetName = names[d.target.index];                
+                const sourceValue = `${prefix}${formatNum(d.source.value)}${suffix}`
+                const targetValue = `${prefix}${formatNum(d.target.value)}${suffix}`
+                const value = `
+                    ${prefix}
+                    ${formatNum(d.source.value - d.target.value)}
+                    ${suffix}
+                ` 
+                               
+                if(sourceName === targetName){
+                    tooltip.select('p.name').style("display", "block")
+                        .text(`${sourceName} (internal): ${sourceValue}`)
+                    tooltip.select('p.value1').style("display", "none")
+                    tooltip.select('p.value2').style("display", "none")
+                    tooltip.select('p.selfValue').style("display", "none")
+                }else{
+                    tooltip.select('p.name').style("display", "none")
+                    tooltip.select('p.value1').style("display", "flex")
+                    tooltip.select('p.value1 span.label').text(`${sourceName} → ${targetName}:`)
+                    tooltip.select('p.value1 span.value').text(`${sourceValue}`)
+
+                    tooltip.select('p.value2').style("display", "flex")
+                    tooltip.select('p.value2 span.label').text(`${targetName} → ${sourceName}:`)
+                    tooltip.select('p.value2 span.value').text(`${targetValue}`)
+
+                    tooltip.select('p.selfValue').style("display", "flex")
+                    tooltip.select('p.selfValue span.label').text(`Total ${sourceName} → ${targetName}:`)
+                    tooltip.select('p.selfValue span.value').text(`${value}`)                                            
+                }                                                   
+                               
+            })
+            .on("pointermove", (e, d)=>{
+                moveTooltip(tooltip, {e, svg:svgNode as SVGSVGElement })
+            })
+            .on("pointerleave", function(e, d){                
+                nodes.filter(dNode => dNode.index !== d.source.index && dNode.index !== d.target.index)
+                    .style("opacity", 1)
+                links.filter(dLink => dLink.source.index !== d.source.index || dLink.target.index !== d.target.index)
+                    .style("opacity", 1)
+
+                tooltip.transition().duration(250).style("opacity", 1)
+            });
+        
+    }, [matrixData, width, height,  {prefix, suffix, formatType}]);
     
     return (
         <div 
@@ -388,7 +502,37 @@ export function ChordDiagram({
                     </g>                        
                 </svg>            
                 
-                <Tooltip />
+                <Tooltip>
+                    <p className='name' 
+                        style={{
+                            fontWeight: 700, margin: "3px", fontSize: "13px", color: "wheat", 
+                            textAlign:"center"
+                        }}
+                    >
+                        Tooltip
+                    </p>
+                    <p className='value1' 
+                        style={{
+                            fontWeight: "300px", margin: "3px",  fontSize: "12px", color: "wheat", 
+                            display:"flex", }}>
+                        <span className='label' style={{ flex: 1, textAlign:"left", whiteSpace: 'nowrap' }} />
+                        <span className='value' style={{ flex: 1, textAlign:"right", paddingLeft: 4, fontWeight: 600 }} />
+                    </p>
+                    <p className='value2' 
+                        style={{
+                            fontWeight: "300px", margin: "3px",  fontSize: "12px", color: "wheat", 
+                            display:"flex"}}>                        
+                        <span className='label' style={{ flex: 1, textAlign:"left", whiteSpace: 'nowrap' }} />
+                        <span className='value' style={{ flex: 1, textAlign:"right", paddingLeft: 4, fontWeight: 600 }} />
+                    </p>
+                    <p className='selfValue' 
+                        style={{
+                            fontWeight: "300px", margin: "3px",  fontSize: "12px", color: "wheat", 
+                            display:"flex"}}>
+                        <span className='label' style={{ flex: 1, textAlign:"left", whiteSpace: 'nowrap' }} />
+                        <span className='value' style={{ flex: 1, textAlign:"right", paddingLeft: 4, fontWeight: 600 }} />
+                    </p>
+                </Tooltip>
             </div> 
         </div>
     );

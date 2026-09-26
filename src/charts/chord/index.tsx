@@ -91,10 +91,7 @@ export function ChordDiagram({
         
         const names = matrixData.map(d => d.name)
         const values = matrixData.map(d => d.values)
-        const res = chordFn(values)
-        console.log(matrixData)
-        console.log(values)
-        console.log(res)                            
+        const res = chordFn(values)                                    
 
         const freshRender = prevData === null
         const withExit = !prevNames.every(d=>names.includes(d))
@@ -394,7 +391,7 @@ export function ChordDiagram({
                     return acc + curr.source.value
                 }, 0)                
                 
-                tooltip.transition().duration(250).style("opacity", 1)
+                tooltip.style("opacity", 1)
                 
                 const name = names[d.index]
                 tooltip.select('p.name').style("display", "block").text(name)
@@ -417,14 +414,14 @@ export function ChordDiagram({
                     .text(`${prefix}${formatNum(selfValues)}${suffix}`)                                                
                 
             })
-            .on("pointermove", (e, d)=>{
+            .on("pointermove", (e, d)=>{                
                 moveTooltip(tooltip, {e, svg:svgNode as SVGSVGElement })
             })
             .on("pointerleave", function(e, d){                
                 nodes.filter(dNode => dNode.index !== d.index).style("opacity", 1)
                 links.style("opacity", 1)
 
-                tooltip.transition().duration(250).style("opacity", 0)
+                tooltip.style("opacity", 0)
             })
         
         links
@@ -435,7 +432,7 @@ export function ChordDiagram({
                 links.filter(dLink => dLink.source.index !== d.source.index || dLink.target.index !== d.target.index)
                     .style("opacity", blurredOpacity)
 
-                tooltip.transition().duration(250).style("opacity", 1)                
+                tooltip.style("opacity", 1)                
                                                 
                 const sourceName = names[d.source.index];
                 const targetName = names[d.target.index];                
@@ -469,7 +466,7 @@ export function ChordDiagram({
                 }                                                   
                                
             })
-            .on("pointermove", (e, d)=>{
+            .on("pointermove", (e, d)=>{                
                 moveTooltip(tooltip, {e, svg:svgNode as SVGSVGElement })
             })
             .on("pointerleave", function(e, d){                
@@ -478,7 +475,7 @@ export function ChordDiagram({
                 links.filter(dLink => dLink.source.index !== d.source.index || dLink.target.index !== d.target.index)
                     .style("opacity", 1)
 
-                tooltip.transition().duration(250).style("opacity", 1)
+                tooltip.style("opacity", 0)
             });
         
     }, [matrixData, width, height,  {prefix, suffix, formatType}]);

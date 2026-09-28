@@ -7,7 +7,7 @@ import { schemeSet1, schemeSet2, schemeSet3, schemeCategory10, schemeTableau10, 
     curveCatmullRom,
     curveNatural
   } from "d3"
-import { tooltipFormat, pointData, curveTypes, orientationType } from "./types";
+import { tooltipFormat, pointData, curveTypes, orientationType, formatType } from "./types";
 
 export const cloneObj = (arr:any) => {    
     try{
@@ -79,11 +79,18 @@ export const basicFormat = (num:number, {
     return prefix + format(formatType === "long"?",":"~s")(num) + suffix
 }
 
-export const formatNum = (num: number) => {
+export const formatNum = (num: number, formatType:formatType = "long") => {
     if(num < 0){
         return num.toFixed(4)
     }
-    return num.toLocaleString()
+    return formatType === "long"?format(",")(num):format("~s")(num)
+}
+export const formatTooltipNum = (num: number, tooltipFormat: tooltipFormat) => {
+    const { formatType, prefix, suffix } = tooltipFormat
+
+    const sign = num < 0?"-":""
+    const formattedNum = formatNum(Math.abs(num), formatType)
+    return `${prefix}${sign}${formattedNum}${suffix}`
 }
 
 export function isISODateString(str: string | Date) {

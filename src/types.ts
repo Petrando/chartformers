@@ -1,16 +1,11 @@
-import { Bin, HierarchyNode as d3HierarchyNode, HierarchyCircularNode, HierarchyLink } from "d3";
-import {
-  SimulationNodeDatum,
-  SimulationLinkDatum
-} from "d3-force";
-
 export type pointData = {
     label: string;
     value: number;
 }
 
+export type formatType = "long" | "short";
 export type tooltipFormat = {
-    formatType?: "long" | "short";
+    formatType?: formatType;
     prefix?: string;
     suffix?: string;
 }
@@ -47,22 +42,6 @@ export interface PackLink {
     target: PackNode;
 }
 
-export type numericKeys<T> = {
-  [K in keyof T]: T[K] extends number ? K : never
-}[keyof T]
-
-export type dumbbellDatum = {
-  label: string;
-  [key: string]: number | string;
-}
-
-export type chordDatum = {
-    name: string;
-    values: number[]
-}
-
-export type lineChartDatum = Record<string, string | number | Date>;
-
 export type lineTooltipPosData = { xPos: number, low: number, volume: number }
 
 export type curveTypes = "linear" | "basis" | "cardinal" | "catmullrom" | "natural"
@@ -82,39 +61,3 @@ export type hierarchyData = {
 }
 
 export type orientationType = "vertical" | "horizontal"
-
-export type networkNode = SimulationNodeDatum & {
-    id: string;
-    group?: number; 
-    radius?: number;
-    color?: string;
-};
-
-export type networkLink = SimulationLinkDatum<networkNode> & {
-    source: string;
-    target: string;
-    value?: number;
-    type?: string;
-};
-
-export type networkResolvedLink = Omit<networkLink, "source" | "target"> & {
-    source: networkNode;
-    target: networkNode;
-    value?: number;
-    type?: string;
-};
-
-export type networkDataType = {
-    nodes: networkNode[], links: networkLink[]
-}
-
-export type networkEdge = [string, string]
-
-
-
-export type networkHierarchyNode = SimulationNodeDatum & HierarchyCircularNode<hierarchyData>;
-export type networkHierarchyLink = SimulationLinkDatum<networkHierarchyNode> & 
-    HierarchyLink<hierarchyData> & 
-    {
-        value?: number;
-    };

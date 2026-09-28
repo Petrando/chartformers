@@ -306,7 +306,7 @@ export function DeltaWaterfall({
         const barWidthOpenClose = effectiveTimeframe === -1 && selected !== "open" && selected !== "close"? 
             x1.bandwidth():x0.bandwidth()
 
-        canvas.selectAll<SVGRectElement, openCloseData>(`rect.open`)
+        const openBars = canvas.selectAll<SVGRectElement, openCloseData>(`rect.open`)
             .data(
                 openData,
                 d => d?.label || "" + " - open"
@@ -324,7 +324,9 @@ export function DeltaWaterfall({
                 undefined,
                 exit =>
                     exit.remove()
-            )            
+            )
+            
+        openBars
                 .transition().duration(animDuration)            
             .attr("x", d => xPosOpenClose(d, "open"))
             .attr("width", barWidthOpenClose)
@@ -345,7 +347,7 @@ export function DeltaWaterfall({
             .style("opacity", selected !== "close"?1:0)
             .style("pointer-events", selected !== "close"?"auto":"none");
 
-        canvas.selectAll<SVGRectElement, openCloseData>(`rect.close`)
+        const closeBars = canvas.selectAll<SVGRectElement, openCloseData>(`rect.close`)
             .data(closeData,
                 (d) => d?.label || "" + " - close"
             )
@@ -362,6 +364,8 @@ export function DeltaWaterfall({
                 undefined,
                 exit => exit.remove()
             )            
+
+        closeBars
                 .transition().duration(animDuration)                        
             .attr("x", d => xPosOpenClose(d, selected === "close"?"open":"close"))
             .attr("width", barWidthOpenClose)
@@ -555,6 +559,21 @@ export function DeltaWaterfall({
                 dotFill: waterfallLineColor
              }
         )
+
+        openBars
+            .on("pointerenter", function(e, d){
+                console.log(d)
+            })
+
+        closeBars
+            .on("pointerenter", function(e, d){
+                console.log(d)
+            })
+
+        bars
+            .on("pointerenter", function(e, d){
+                console.log(d)
+            })
         
         
     }, [effectiveTimeframe, data, width, height, selected, isSorted,  {prefix, suffix, formatType}]);

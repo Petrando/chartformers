@@ -1,7 +1,5 @@
 import React, { useEffect, useState, useRef } from 'react';
-import {scaleBand, scaleLinear, axisLeft, axisBottom, format, 
-    line, curveBasis, curveLinear, curveCardinal, curveCatmullRom, curveNatural,
-    ScaleBand, ScaleLinear, Selection,
+import {scaleBand, scaleLinear, axisLeft, axisBottom, format,     
     color
 } from 'd3';
 import { useD3 } from '../../hooks/useD3';
@@ -9,10 +7,10 @@ import { useParentSize } from '../../hooks/useParentSize';
 import { Tooltip, getTooltip, moveTooltip } from '../../components/tooltip';
 import { useContainerSize } from '../../hooks/useContainerSize';
 import { formatWaterfallData, colors } from './utils';
-import { renderLineChart, rotateLabels } from '../../utils';
+import { formatTooltipNum, renderLineChart, rotateLabels } from '../../utils';
 import styles from '../global.module.css';
 import waterfallStyles from './waterfall.module.css'
-import { tooltipFormat, pointData, lineDecor, curveTypes, orientationType } from '../../types';
+import { tooltipFormat, pointData, lineDecor } from '../../types';
 import { waterfallDatum } from './types'
 
 type WaterfallProps = {
@@ -191,7 +189,7 @@ export function WaterfallChart({
 
                 canvas
                     .selectAll<SVGTextElement, waterfallDatum>(".label")
-                    .style("opacity", 1)
+                    .style("opacity", textOpacity)
             })
             .on("click", function(_, d){
                 if(mode === d){
@@ -329,7 +327,7 @@ export function WaterfallChart({
                     .style("fill", rectFill)
                         .transition().duration(barAnimDuration)
                         .delay((_, i)=> {
-                            return changeBy.current === "data"?((i + 1) * barAnimDuration):0
+                            return 0//changeBy.current === "data"?((i + 1) * barAnimDuration):0
                         })
                     .attr("y", yPos)
                     .attr("height", rectHeight)
@@ -344,7 +342,7 @@ export function WaterfallChart({
                     }),
                 update=>{                                        
                     if(mode === "waterfall" && changeBy.current === "data"){
-                        update.transition().duration(barAnimDuration)
+                        update.transition().duration(animDuration)
                             .style("fill", rectFill)
                             .attr("x", xPos)
                             .attr("width", xScale.bandwidth())
@@ -354,7 +352,8 @@ export function WaterfallChart({
                             .attr("height", 0)
                             .attr("rx", 5)
                             .attr("ry", 5)
-                        .transition().duration(barAnimDuration).delay((d, i)=> (i + 1) * barAnimDuration)            
+                        .transition().duration(animDuration)
+                        //.delay((d, i)=> 0(i + 1) * barAnimDuration)            
                             .attr("y", yPos)
                             .attr("height", rectHeight)
                         .on("end", function(_, i){
@@ -381,7 +380,49 @@ export function WaterfallChart({
                     return update
                 },
                 exit=>exit.transition().duration(animDuration).style("opacity", 0).remove()
-            )                                
+            )
+        
+        const tooltipFormat = { formatType, prefix, suffix}
+        bars    
+            .on("pointerenter", function(e, d){           
+                //U+25B2 / U+25BC     "▲" + 
+                tooltip.select("p.label span.label span.chev")
+                    .style("color", d.value >= 0?colors.inflows:colors.outflows)
+                    .text(
+                        d.value > 0?"▲":
+                        d.value < 0?"▼":
+                        ""
+                    )
+                tooltip.select("p.label span.label span.text").text(d.label + " :")                
+                tooltip.select("p.label span.value").text(formatTooltipNum(d.value, tooltipFormat))
+                if(d.type === "total"){                    
+                    tooltip.select("p.from").style("display", "none")
+                    tooltip.select("p.to").style("display", "none")
+                }else{                    
+                    
+                    if(mode === "waterfall"){
+                        tooltip.select("p.from").style("display", "flex")
+                        tooltip.select("p.from span.label").text("from: ")
+                        tooltip.select("p.from span.value")
+                            .text(formatTooltipNum(d.start, tooltipFormat))
+
+                        tooltip.select("p.to").style("display", "flex")
+                        tooltip.select("p.to span.label").text("to: ")
+                        tooltip.select("p.to span.value")
+                            .text(formatTooltipNum(d.end, tooltipFormat))
+                    }else{
+                        tooltip.select("p.from").style("display", "none")
+                        tooltip.select("p.to").style("display", "none")
+                    }                    
+                }
+                tooltip.style("opacity", 1)
+            })
+            .on("pointermove", function(e, d){
+                moveTooltip(tooltip, {e, svg:svgNode as SVGSVGElement })
+            })
+            .on("pointerleave", function(e, d){
+                tooltip.style("opacity", 0)
+            })                                
 
         const labelSize = 12
 
@@ -405,13 +446,18 @@ export function WaterfallChart({
             return baseXPosition + ( barWidth / 2 )
         }
 
+        function textOpacity(d: waterfallDatum, i: number){
+            const height = rectHeight(d, i)
+            return height < 20?0:1
+        }
+
         const labels =  canvas
             .selectAll<SVGTextElement, waterfallDatum>(".label")
             .data(renderData, (d) => d.label)
             .join(
                 enter=>enter.append("text")
                     .attr("class", `label ${waterfallStyles["label"]}`)
-                    .text(d => format(formatType === "long"?",":"~s")
+                    .text(d => format("~s")
                         (mode !== "waterfall"?Math.abs(d.value):d.value))
                     .attr("text-anchor", "middle")
                     .style("font-size", labelSize)                    
@@ -421,25 +467,25 @@ export function WaterfallChart({
                     .attr("x", textXPos)
                     .attr("y", textYPos)
                     .transition()
-                    .duration(barAnimDuration)
-                    .delay((d, i)=> ((i + 1) * barAnimDuration) + barAnimDuration)
-                    .style("opacity", 1)
+                    .duration(animDuration)
+                    //.delay((d, i)=> ((i + 1) * barAnimDuration) + barAnimDuration)
+                    .style("opacity", textOpacity)
                     .attr("x", textXPos)
                     .attr("y", textYPos)
                     ,
                 update=>update
                         .attr("class", `label ${waterfallStyles["label"]}`)
-                        .text(d => format(formatType === "long"?",":"~s")
+                        .text(d => format("~s")
                             (mode !== "waterfall"?Math.abs(d.value):d.value))
                         .attr("text-anchor", "middle")
                         .style("font-size", labelSize)                    
                         .style("font-weight", "bold")
-                    .transition().duration(barAnimDuration)//.delay((d, i)=> (i + 1) * barAnimDuration)
-                        .style("opacity", 1)
+                    .transition().duration(animDuration)//.delay((d, i)=> (i + 1) * barAnimDuration)
+                        .style("opacity", textOpacity)
                         .attr("x", textXPos)
                         .attr("y", textYPos), 
                 exit=>exit
-                    .transition().duration(barAnimDuration)
+                    .transition().duration(animDuration)
                         .style("opacity", 0)
                     .remove()
             )
@@ -454,6 +500,7 @@ export function WaterfallChart({
                     
         const waterfallLineColor = mode === "waterfall"?"#2b2b22":
             colors[mode]
+
         renderLineChart(
             canvas, {scale:xScale, offset:xScale.bandwidth()/2}, yScale, {data:baseLineData}, width, orientation, 
             { 
@@ -515,7 +562,37 @@ export function WaterfallChart({
                         </g>                        
                     </svg>            
                 
-                <Tooltip />
+                    <Tooltip>
+                        <p className='label' 
+                            style={{
+                                fontWeight: 700, margin: "3px", fontSize: "13px", color: "wheat", 
+                                display:"flex",
+                            }}
+                        >
+
+                            <span className='label' style={{ flex: 1, textAlign:"left", whiteSpace: 'nowrap' }}>
+                                <span className='chev' />
+                                <span className='text' />
+                            </span>
+                            <span className='value' style={{ flex: 1, textAlign:"right", paddingLeft: 4, fontWeight: 600 }} />
+                        </p>
+                        <p className='from' 
+                            style={{
+                                fontWeight: "300px", margin: "3px",  fontSize: "12px", color: "wheat", 
+                                display: "flex", justifyContent: "flex-end"
+                        }}>
+                            <span className='label' style={{ width: "auto", textAlign:"right", whiteSpace: 'nowrap' }} />
+                            <span className='value' style={{ width: "auto", textAlign:"right", paddingLeft: 4, fontWeight: 600 }} />
+                        </p>
+                        <p className='to' 
+                            style={{
+                                fontWeight: "300px", margin: "3px",  fontSize: "12px", color: "wheat", 
+                                display: "flex", justifyContent: "flex-end"
+                        }}>                        
+                            <span className='label' style={{ width: "auto", textAlign:"right", whiteSpace: 'nowrap' }} />
+                            <span className='value' style={{ width: "auto", textAlign:"right", paddingLeft: 4, fontWeight: 600 }} />
+                        </p>                        
+                    </Tooltip>
                 </div>
             </div>
         </div>

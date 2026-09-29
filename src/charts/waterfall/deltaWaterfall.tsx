@@ -48,15 +48,26 @@ export function DeltaWaterfall({
     const changeBy = useRef("data")    
     const canLegendHover = useRef(true)
 
+    const isFirstRender = useRef(true);
     const [ selected, setSelected ] = useState<LegendKey | "">("")
 
     const dataRef = useRef(data)
+
+    useEffect(() => {            
+        if(isFirstRender.current){
+            isFirstRender.current = false
+        }else{            
+            changeBy.current = "mode"            
+        }
+        //canLegendHover.current = false           
+    }, [ selected ])
     
     useEffect(() => {
         dataRef.current = data;
         setPlottedTimeframe(-1)
         setSelected("")
         setIsSorted(false)
+        changeBy.current = "data"
     }, [data])    
 
     const effectiveTimeframe =

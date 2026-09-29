@@ -4,7 +4,7 @@ import { useD3 } from '../../hooks/useD3';
 import { useParentSize } from '../../hooks/useParentSize';
 import { useContainerSize } from '../../hooks/useContainerSize';
 import { formatWaterfallData, colors } from './utils';
-import { renderLineChart, rotateLabels } from '../../utils';
+import { formatTooltipNum, renderLineChart, rotateLabels } from '../../utils';
 import { WaterfallTooltip as Tooltip } from './tooltip';
 import { getTooltip, moveTooltip } from '../../components/tooltip';
 import styles from '../global.module.css';
@@ -568,23 +568,75 @@ export function DeltaWaterfall({
         )
 
         const tooltip = getTooltip(container as any)
-                    .style("opacity", 0);
-        console.log(tooltip)
+                    .style("opacity", 0);        
 
+        const tooltipFormat = { formatType, prefix, suffix}
+
+        const displayLabelAndValue = (label: string, value: number) => {
+            tooltip.select("p.label span.label span.chev")
+                .style("color", value >= 0?colors.inflows:colors.outflows)
+                .text(
+                    value > 0?"▲":
+                    value < 0?"▼":
+                    ""
+                )
+            tooltip.select("p.label span.label span.text").text(label)                
+            tooltip.select("p.label span.value").text(formatTooltipNum(value, tooltipFormat))
+        }
+
+        const openClosePointerEnter = (e: MouseEvent, d: openCloseData) => {
+            const { value, label } = d.data
+            displayLabelAndValue(
+                d.label + " " + label + " :",
+                value
+            )            
+
+            tooltip.select("p.from").style("display", "none")
+            tooltip.select("p.to").style("display", "none")
+
+            tooltip.style("opacity", 1)
+        }
+        const pointerMove = (e: MouseEvent) => {
+            moveTooltip(tooltip, {e, svg:svgNode as SVGSVGElement })
+        }
+
+        const pointerLeave = () => {
+            tooltip.style("opacity", 0)
+        }
         openBars
-            .on("pointerenter", function(e, d){
-                console.log(d)
-            })
+            .on("pointerenter", openClosePointerEnter)
+            .on("pointermove", pointerMove)
+            .on("pointerleave", pointerLeave)
 
         closeBars
-            .on("pointerenter", function(e, d){
-                console.log(d)
-            })
+            .on("pointerenter", openClosePointerEnter)
+            .on("pointermove", pointerMove)
+            .on("pointerleave", pointerLeave)
 
         bars
-            .on("pointerenter", function(e, d){
-                console.log(d)
+            .on("pointerenter", function(e, d){                
+                const {label, value} = d
+                displayLabelAndValue(label, value)
+                if(waterfallMode === "waterfall"){
+                    tooltip.select("p.from").style("display", "flex")
+                    tooltip.select("p.from span.label").text("from: ")
+                    tooltip.select("p.from span.value")
+                        .text(formatTooltipNum(d.start, tooltipFormat))
+
+                    tooltip.select("p.to").style("display", "flex")
+                    tooltip.select("p.to span.label").text("to: ")
+                    tooltip.select("p.to span.value")
+                        .text(formatTooltipNum(d.end, tooltipFormat))
+                }else{
+                    tooltip.select("p.from").style("display", "none")
+                    tooltip.select("p.to").style("display", "none")
+                }
+                tooltip.style("opacity", 1) 
             })
+            .on("pointermove", pointerMove)
+            .on("pointerleave", pointerLeave)
+
+        
         
         
     }, [effectiveTimeframe, data, width, height, selected, isSorted,  

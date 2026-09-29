@@ -5,15 +5,17 @@ import { useParentSize } from '../../hooks/useParentSize';
 import { useContainerSize } from '../../hooks/useContainerSize';
 import { formatWaterfallData, colors } from './utils';
 import { renderLineChart, rotateLabels } from '../../utils';
-import { Tooltip, getTooltip, moveTooltip } from '../../components/tooltip';
+import { WaterfallTooltip as Tooltip } from './tooltip';
+import { getTooltip, moveTooltip } from '../../components/tooltip';
 import styles from '../global.module.css';
 import waterfallStyles from './waterfall.module.css'
-import { tooltipFormat } from '../../types';
+import { tooltipFormat, lineDecor } from '../../types';
 import { deltaWaterfallDatum, waterfallDatum } from './types'
 
 type WaterfallProps = {
     data: deltaWaterfallDatum[];    
     tooltipFormat?: tooltipFormat;
+    lineProps?: lineDecor;
 }
 
 interface openCloseData {
@@ -29,7 +31,12 @@ export function DeltaWaterfall({
         data,         
         tooltipFormat: {
             prefix = "", suffix = "", formatType = "long"
-        } = { prefix: "", suffix: "", formatType: "long"}
+        } = { prefix: "", suffix: "", formatType: "long"},
+        lineProps: {
+            showLine = false, showDots = true, curve = "linear"
+        } = {
+            showLine: false, showDots: true, curve: "linear"
+        }
     }:WaterfallProps) {
     const [ref, parentSize] = useParentSize<HTMLDivElement>();    
     const { width: parentWidth, height: parentHeight } = parentSize;
@@ -503,7 +510,7 @@ export function DeltaWaterfall({
                 data: openLineData, idExtension: "open"
             }, 
             width, "vertical", 
-            { showLine: true, showDots: true, 
+            { showLine, showDots, curve,
                 lineStroke: String(color(colors.open)?.darker()), 
                 dotFill: colors.open
             })
@@ -523,7 +530,7 @@ export function DeltaWaterfall({
                 data: closeLineData, idExtension: "close"
             }, 
             width, "vertical", 
-            { showLine: true, showDots: true, 
+            { showLine, showDots, curve, 
                 lineStroke: String(color(colors.close)?.darker()), 
                 dotFill: colors.close
             })
@@ -554,11 +561,15 @@ export function DeltaWaterfall({
             }, 
             width, "vertical", 
             { 
-                showLine: true, showDots: true,
+                showLine, showDots, curve,
                 lineStroke: String(color(waterfallLineColor)?.darker()), 
                 dotFill: waterfallLineColor
              }
         )
+
+        const tooltip = getTooltip(container as any)
+                    .style("opacity", 0);
+        console.log(tooltip)
 
         openBars
             .on("pointerenter", function(e, d){
@@ -576,9 +587,11 @@ export function DeltaWaterfall({
             })
         
         
-    }, [effectiveTimeframe, data, width, height, selected, isSorted,  {prefix, suffix, formatType}]);
+    }, [effectiveTimeframe, data, width, height, selected, isSorted,  
+        { showLine, showDots, curve},
+        {prefix, suffix, formatType}]);
     
-    const CHEVRON_SIZE = 20    
+    const CHEVRON_SIZE = 15    
     
     return (
         <div 

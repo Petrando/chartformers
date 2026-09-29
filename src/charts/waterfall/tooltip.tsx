@@ -9,7 +9,6 @@ export const WaterfallTooltip = () => (
                 display:"flex",
             }}
         >
-
             <span className='label' style={{ flex: 1, textAlign:"left", whiteSpace: 'nowrap' }}>
                 <span className='chev' />
                 <span className='text' />

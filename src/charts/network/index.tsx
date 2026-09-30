@@ -1630,7 +1630,17 @@ export function NetworkGraph({
             event: D3DragEvent<SVGCircleElement, chartNode, chartNode>, 
             d: chartNode
         ) {
-            if (!event.active) simulation.alphaTarget(0.3).restart();
+            if (!event.active) {
+                if(mode === "bubble" && isSorted){
+                    simulation
+                        .force(
+                            "collide", 
+                            forceCollide<processedBubbleDataset>()
+                                .radius((d:processedBubbleDataset)=>d.r)
+                        )
+                }
+                simulation.alphaTarget(0.3).restart();
+            }
             d.fx = d.x;
             d.fy = d.y;
         }
@@ -1648,7 +1658,16 @@ export function NetworkGraph({
             d: chartNode
         ): void {
             if (!event.active) {
-                simulation.alphaTarget(0);
+                if(mode === "bubble"){
+                    simulation
+                        .force(
+                            "collide", 
+                            forceCollide<processedBubbleDataset>()
+                                .radius((d:processedBubbleDataset)=>!isSorted?d.r:d.r/3)
+                        )
+                }
+                simulation
+                .alphaTarget(0);
             }
 
             d.fx = null;

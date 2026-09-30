@@ -384,7 +384,7 @@ export function DeltaWaterfall({
                         .style("pointer-events", "none")
                         .style("opacity", 0)                    
                         .attr("x", textXPos)
-                        .attr("y", textYPos)
+                        .attr("y", y(0))
                         .transition()
                         .duration(animDuration)
                         //.delay((d, i)=> ((i + 1) * barAnimDuration) + barAnimDuration)

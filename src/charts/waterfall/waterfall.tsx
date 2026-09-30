@@ -512,7 +512,10 @@ export function WaterfallChart({
         
         labels.raise()                  
         
-    }, [data, width, height, orientation, mode, { showLine, showDots, curve}, isSorted, {prefix, suffix, formatType}]);
+    }, [
+        data, width, height, orientation, mode, { showLine, showDots, curve}, isSorted, 
+        {prefix, suffix, formatType}
+    ]);
     
     return (
         <div 

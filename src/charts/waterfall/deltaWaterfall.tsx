@@ -67,7 +67,7 @@ export function DeltaWaterfall({
         setPlottedTimeframe(-1)
         setSelected("")
         setIsSorted(false)
-        changeBy.current = "data"
+        changeBy.current = "dataS"
     }, [data])    
 
     const effectiveTimeframe =
@@ -317,6 +317,96 @@ export function DeltaWaterfall({
                 .transition().duration(animDuration)
             .attr("transform", `translate(0, ${y(0) || 0})`)
 
+        const labelSize = 12
+        type drawLabelsParams<T extends openCloseData | waterfallDatum> = {
+            labelData: T[];
+            xPos: (d: T, i: number) => number;
+            barWidth: number;
+            yPos: (d: T, i: number) => number;
+            barHeight: (d: T, i: number) => number;
+            labelFor?: "open" | "close";
+            
+        }
+        const drawLabels = <T extends openCloseData | waterfallDatum>(
+            {
+                labelData, xPos, barWidth, yPos, barHeight, labelFor 
+            }: drawLabelsParams<T>
+        ) => {
+            //when not waterfall mode, labelData is []
+            //therefore labelData[0] is undefined
+            const labelMode = labelData[0] && "data" in labelData[0]?"openClose":"waterfall"
+
+            function textXPos(d: T, i: number){
+                const baseXPosition = xPos(d, i)
+
+                return baseXPosition + ( barWidth / 2 )
+            }
+            function textYPos(d: T, i: number){
+                const yPosition = yPos(d, i)
+                const textPadding = 12                            
+                const height = barHeight(d, i)
+                return yPosition + (height/2) + (labelSize/2)
+            }            
+            
+            function textOpacity(d: T, i: number){
+
+                if(selected === "open" && labelFor === "close"){
+                    return 0
+                }
+                if(selected === "close" && labelFor === "open"){
+                    return 0
+                }
+                const height = barHeight(d, i)
+                return height >= 20 && barWidth >= 20?1:0
+            }
+
+            const labelText = (d: T) => {
+                const value = labelMode === "openClose"?(d as openCloseData).data.value:
+                    (d as waterfallDatum).value
+
+                return format("~s")
+                    (waterfallMode !== "waterfall"?Math.abs(value):value)
+            }
+
+            const labelClass = labelFor ? `${labelFor}label`:"label"
+            const labels = canvas
+                .selectAll<SVGTextElement, T>(`.${labelClass}`)
+                .data(
+                    labelData,
+                    d => d?.label + `${labelFor?"-" + labelFor:""}`
+                ).join(
+                    enter=>enter.append("text")
+                        .attr("class", `${labelClass} ${waterfallStyles["label"]}`)
+                        .text(labelText)
+                        .attr("text-anchor", "middle")
+                        .style("font-size", labelSize)                    
+                        .style("font-weight", "bold")
+                        .style("pointer-events", "none")
+                        .style("opacity", 0)                    
+                        .attr("x", textXPos)
+                        .attr("y", textYPos)
+                        .transition()
+                        .duration(animDuration)
+                        //.delay((d, i)=> ((i + 1) * barAnimDuration) + barAnimDuration)
+                        .style("opacity", textOpacity)
+                        .attr("x", textXPos)
+                        .attr("y", textYPos),
+                    update=>update
+                        .attr("class", `${labelClass} ${waterfallStyles["label"]}`)
+                            .text(labelText)
+                            .attr("text-anchor", "middle")
+                            .style("font-size", labelSize)                    
+                            .style("font-weight", "bold")
+                        .transition().duration(animDuration)//.delay((d, i)=> (i + 1) * barAnimDuration)
+                            .style("opacity", textOpacity)
+                            .attr("x", textXPos)
+                            .attr("y", textYPos), 
+                    exit=>exit.remove()
+                )
+
+            return labels
+        }
+
         const xPosOpenClose = (d: openCloseData, type: "open" | "close") => {
             return effectiveTimeframe === -1?(x0(d.label) ?? 0) + (x1(type) ?? 0):
                 x0(type) ?? 0
@@ -324,6 +414,19 @@ export function DeltaWaterfall({
         const barWidthOpenClose = effectiveTimeframe === -1 && selected !== "open" && selected !== "close"? 
             x1.bandwidth():x0.bandwidth()
 
+        const openX = (d: openCloseData, i: number) => xPosOpenClose(d, "open")
+        const openY = (d: openCloseData, i: number) => {
+            return effectiveTimeframe === -1
+                ? (d.data.value >= 0
+                    ? y(d.data.value)
+                    : y(0))
+                : y(Math.max(d.data.start!, d.data.end!));
+        }
+        const openHeight = (d: openCloseData, i: number) => {
+            return effectiveTimeframe === -1
+                ? Math.abs(y(d.data.value) - y(0))
+                : Math.abs(y(d.data.start!) - y(d.data.end!));
+        }
         const openBars = canvas.selectAll<SVGRectElement, openCloseData>(`rect.open`)
             .data(
                 openData,
@@ -337,34 +440,52 @@ export function DeltaWaterfall({
                         .attr("fill", colors.open)
                         .attr("y", y(0) ?? 0)
                         .attr("height", 0)
-                        .attr("x", d => xPosOpenClose(d, "open"))
+                        .attr("x", openX)
                         .attr("width", barWidthOpenClose),
                 undefined,
                 exit =>
                     exit.remove()
-            )
+            )        
             
         openBars
                 .transition().duration(animDuration)            
-            .attr("x", d => xPosOpenClose(d, "open"))
+            .attr("x", openX)
             .attr("width", barWidthOpenClose)
-            .attr("y", d => {                
-
-                return effectiveTimeframe === -1
-                    ? (d.data.value >= 0
-                        ? y(d.data.value)
-                        : y(0))
-                    : y(Math.max(d.data.start!, d.data.end!));
-            })
-            .attr("height", d =>{                
-
-                return effectiveTimeframe === -1
-                    ? Math.abs(y(d.data.value) - y(0))
-                    : Math.abs(y(d.data.start!) - y(d.data.end!));
-            })
+            .attr("y", openY)
+            .attr("height", openHeight)
             .style("opacity", selected !== "close"?1:0)
             .style("pointer-events", selected !== "close"?"auto":"none");
 
+        const openLabels = drawLabels({
+            labelData: openData,
+            xPos: openX, barWidth:barWidthOpenClose,
+            yPos: openY, barHeight: openHeight,
+            labelFor: "open"
+        })        
+
+        const closeX = (d: openCloseData, i: number) => xPosOpenClose(d, selected === "close"?"open":"close")
+        
+        const closeY = (d: openCloseData, i: number) =>
+                effectiveTimeframe === -1?
+                (d.data.value >= 0
+                    ? y(d.data.value)
+                    : y(0)):
+                    d.data.start! <= d.data.end!?
+                        y(d.data.value):y(0)
+
+        const closeHeight = (d: openCloseData, i: number) =>{
+            if(effectiveTimeframe === -1){
+                return Math.abs(y(d.data.value) - y(0))
+            }else{
+                const barHeight = Math.abs( y(d.data.start!) - y(d.data.end!) )
+                if(d.data.start! <= d.data.end!){
+                    const baseBarHeight = y(0) - y(d.data.value)
+                    return baseBarHeight < 0?barHeight:baseBarHeight
+                }else{
+                    return y(0) - y(-d.data.value)
+                }
+            }
+        }
         const closeBars = canvas.selectAll<SVGRectElement, openCloseData>(`rect.close`)
             .data(closeData,
                 (d) => d?.label || "" + " - close"
@@ -377,7 +498,7 @@ export function DeltaWaterfall({
                         .attr("fill", colors.close)
                         .attr("y", y(0))
                         .attr("height", 0)
-                        .attr("x", d => xPosOpenClose(d, selected === "close"?"open":"close"))
+                        .attr("x", closeX)
                         .attr("width", barWidthOpenClose),
                 undefined,
                 exit => exit.remove()
@@ -385,32 +506,20 @@ export function DeltaWaterfall({
 
         closeBars
                 .transition().duration(animDuration)                        
-            .attr("x", d => xPosOpenClose(d, selected === "close"?"open":"close"))
+            .attr("x", closeX)
             .attr("width", barWidthOpenClose)
-            .attr("y", d =>
-                effectiveTimeframe === -1?
-                (d.data.value >= 0
-                    ? y(d.data.value)
-                    : y(0)):
-                    d.data.start! <= d.data.end!?
-                        y(d.data.value):y(0)
-            )
-            .attr("height", d =>{
-                if(effectiveTimeframe === -1){
-                    return Math.abs(y(d.data.value) - y(0))
-                }else{
-                    const barHeight = Math.abs( y(d.data.start!) - y(d.data.end!) )
-                    if(d.data.start! <= d.data.end!){
-                        const baseBarHeight = y(0) - y(d.data.value)
-                        return baseBarHeight < 0?barHeight:baseBarHeight
-                    }else{
-                        return y(0) - y(-d.data.value)
-                    }
-                }
-            })
+            .attr("y", closeY)
+            .attr("height", closeHeight)
             .attr("fill", "orange")
             .style("opacity", selected !== "open"?1:0)
             .style("pointer-events", selected !== "open"?"auto":"none");
+
+        const closeLabels = drawLabels({
+            labelData: closeData,
+            xPos: closeX, barWidth:barWidthOpenClose,
+            yPos: closeY, barHeight: closeHeight,
+            labelFor: "close"
+        })
                         
         function xPos(d: waterfallDatum){
             const xPosition = x0(d.label as string) ?? 0        
@@ -446,9 +555,7 @@ export function DeltaWaterfall({
                 }            
                 return barHeight;
             }
-
-            return y(0) - y(Math.abs(d.value))
-                        
+            return y(0) - y(Math.abs(d.value))                        
         }
 
         function rectFill(d: waterfallDatum){
@@ -505,9 +612,16 @@ export function DeltaWaterfall({
                 },
                 exit=>exit.transition().duration(animDuration).style("opacity", 0).remove()
             )
+        
+        const barLabels = drawLabels({
+            labelData: waterfallData,
+            xPos: xPos, barWidth:x0.bandwidth(),
+            yPos: yPos, barHeight: rectHeight,            
+        })
 
         const openLineData = ((selected === "" || selected === "open") && effectiveTimeframe === -1)?
             baseOpenData.map(d => ({label: d.label, value:d.data.value})):[]
+
         renderLineChart(
             canvas, 
             {

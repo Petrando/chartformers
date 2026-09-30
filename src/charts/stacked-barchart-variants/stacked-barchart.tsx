@@ -288,7 +288,8 @@ export function StackedBarChart({ data, focusOnPlot = false, colorIdx = 0, orien
             .paddingOuter(0.2)            
             .align(0.2)
 
-        const baseValueMax = focusOnPlot?(plotted[0] === "all"?
+        const baseValueMax = focusOnPlot?(
+            plotted[0] === "all"?
                 max(chartData, (d: LayeredData) => d.totalPos):
                     max(chartData, (d: LayeredData) => (d[plotted[0]] as number))):
                 max(chartData, (d: LayeredData) => d.totalPos);                        

@@ -199,7 +199,6 @@ export function PercentageBarChart({ data, colorIdx = 0, orientation = 'vertical
                 })
             })
 
-
         const tooltip = getTooltip(container as any)
             .style("opacity", 0);        
 

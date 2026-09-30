@@ -14,7 +14,7 @@ import { renderHistogramLine } from './utils'
 import { inactiveColor } from '../../../dev/data/constants';
 import styles from '../global.module.css';
 import histogramStyles from './histogram.module.css'
-import { tooltipFormat } from '../../types';
+import { lineDecor, tooltipFormat } from '../../types';
 import { histogramDatum, histogramChartData, binnedData } from './types'
 
 type sortOption = {
@@ -33,6 +33,7 @@ type HistogramProps = {
     sortOption?: sortOption;    
     orientation?: 'horizontal' | 'vertical';
     tooltipFormat?: tooltipFormat;
+    lineProps?: lineDecor;
 }
 
 type legendRange = "positive" | "negative"
@@ -52,7 +53,12 @@ export function Histogram({
         orientation = 'vertical',
         tooltipFormat: {
             prefix = "", suffix = "", formatType = "long"
-        } = { prefix: "", suffix: "", formatType: "long"}
+        } = { prefix: "", suffix: "", formatType: "long"},
+        lineProps: {
+            showLine = false, showDots = true, curve = "linear"
+        } = {
+            showLine: false, showDots: true, curve: "linear"
+        }
     }:HistogramProps) {
     const [ref, parentSize] = useParentSize<HTMLDivElement>();    
     const { width: parentWidth, height: parentHeight } = parentSize;
@@ -624,7 +630,7 @@ export function Histogram({
                         .remove()
                 ) 
                 .on("mouseover", function(e, d){
-                    //console.log(d)
+                    console.log(d)
                 })
                 .transition().duration(animDuration)
                 //.style("fill", barFill)         
@@ -711,7 +717,7 @@ export function Histogram({
                 width,
                 orientation,
                 {
-                    showLine: true, showDots: true,
+                    showLine, showDots,
                     lineStroke: String(color(lineColor)?.darker()), dotFill: lineColor
                 }
             )
@@ -722,7 +728,10 @@ export function Histogram({
         renderLayer(dataToRender[1], 2)
             
         
-    }, [data, compareMode, binOption, filterEmptyBin, width, height, isSorted, orientation, {prefix, suffix, formatType}]);
+    }, [
+        data, compareMode, binOption, filterEmptyBin, width, height, isSorted, orientation, 
+        { showLine, showDots, curve},
+        {prefix, suffix, formatType}]);
         
     return (
         <div 

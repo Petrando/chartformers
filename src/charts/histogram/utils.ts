@@ -45,7 +45,7 @@ export function renderHistogramLine(
     const radius = isMediumScreen?3:2
     const dots =  canvas
             .selectAll<SVGCircleElement, binnedData>(".dot")
-            .data(renderData, 
+            .data(dotsData, 
                 (d) => d.x0 + "-" + d.x1)
             .join(
                 enter=>enter.append("circle")
@@ -86,10 +86,10 @@ export function renderHistogramLine(
         lineFn.curve(curveNatural)
     }
     
-    const lineData = showLine?[renderData]:[]
+    const lineData = showLine?[renderData]:[]    
     const lines = canvas
         .selectAll<SVGPathElement, binnedData[]>("path.chartline")
-        .data([renderData])
+        .data(lineData)
         .join(
             enter=>enter.append("path")
                 .attr("class", "chartline")

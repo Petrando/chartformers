@@ -1,4 +1,4 @@
-import React, {useEffect, useState} from 'react';
+import React, {useEffect, useRef, useState} from 'react';
 import {select, scaleBand, scaleLinear, axisLeft, axisBottom, axisTop, axisRight,
     max, format, Bin, bin, Selection, 
     thresholdFreedmanDiaconis, thresholdScott, thresholdSturges,
@@ -9,7 +9,7 @@ import { useD3 } from '../../hooks/useD3';
 import { useParentSize } from '../../hooks/useParentSize';
 import { useContainerSize } from '../../hooks/useContainerSize';
 import { Tooltip, getTooltip, moveTooltip } from '../../components/tooltip';
-import { cloneObj, indexSelectedColor, renderLineChart } from '../../utils';
+import { cloneObj, formatTooltipNum, indexSelectedColor, renderLineChart } from '../../utils';
 import { renderHistogramLine } from './utils'
 import { inactiveColor } from '../../../dev/data/constants';
 import styles from '../global.module.css';
@@ -35,6 +35,8 @@ type HistogramProps = {
     tooltipFormat?: tooltipFormat;
     lineProps?: lineDecor;
 }
+
+type tableData = {valueKey:string, data: histogramDatum[]}
 
 type legendRange = "positive" | "negative"
 type HistogramLegend = legendRange[] & { title: string; };
@@ -66,6 +68,8 @@ export function Histogram({
     const { height: controlsHeight } = controlsSize;
     const [chartContainerRef, chartSize] = useContainerSize<HTMLDivElement>()
     const { width, height } = chartSize
+    const [tableData, setTableData] = useState<tableData>({valueKey:"", data:[]})
+    const lastTouchRef = useRef(Date.now())
 
     const [ isSorted, setIsSorted ] = useState(false)
                 
@@ -74,6 +78,7 @@ export function Histogram({
 
     useEffect(()=>{
         setIsSorted(false)
+        setTableData({valueKey:"", data:[]})
     }, [data, compareMode])
 
     useEffect(() => { if(!sortable){ setIsSorted(false) } }, [sortable])
@@ -81,6 +86,7 @@ export function Histogram({
     const isSingleData = data.valueKey !== undefined
     
     const animDuration = 750;
+    
     const chartRef = useD3<HTMLDivElement>((container) => {
         if (width === 0 || height === 0) return;
         
@@ -97,16 +103,15 @@ export function Histogram({
         const canvasSvg = container.select<SVGSVGElement>("svg")
         const svgNode = canvasSvg.node()
         const canvas = canvasSvg.select<SVGGElement>('.plot-area')
-            .attr("transform", "translate(" + margin.left + "," + margin.top + ")");        
-
-        const tooltip = getTooltip(container as any)
-            .style("opacity", 0);                    
+            .attr("transform", "translate(" + margin.left + "," + margin.top + ")");                                
                 
         /*
             NOTE:
-            data can be single or double. For single data, the main data will has a 'valueKey' property.
-            For double data, the main data does not have this, instead it will be embeded in each member of
-            the main data's data property e.g each data.data will has a 'valueKey' property
+            data can be single or double: see isSingleData  
+            For single data, the main data will has a 'valueKey' property.
+            For double data, the main data does not have this, instead it will be embeded in 
+            each member of the main data's data property e.g each data.data will has a 
+            'valueKey' property
         */
         const validateData = (rawData: histogramChartData<histogramDatum>) => {
             const validatedData = (rawData.data as histogramDatum[]).filter((d) => {
@@ -414,8 +419,13 @@ export function Histogram({
             .sort((a: binnedData, b: binnedData) => b.length - a.length)
             .map(d => d.x0 + "-" + d.x1):[]
         
-        function renderLayer(layerBin:binnedData[], layerIdx: number){                        
-            const dualView = !isSingleData && compareMode === "compare"            
+        const tooltip = container.select(`#tooltip`).style("opacity", 0)
+        const tooltipFormat = {prefix, suffix, formatType}
+        function renderLayer(layerBin:binnedData[], layerIdx: number){             
+            const dualView = !isSingleData && compareMode === "compare"
+            const valueKey = isSingleData?
+                (data as histogramChartData<histogramDatum>).valueKey ?? 0:
+                (data as histogramChartData<histogramDatum>).data[layerIdx - 1].valueKey ?? 0            
             
             const layerCanvas = layerIdx === 1?
                 canvas.select<SVGGElement>('.layer-1'):
@@ -571,13 +581,21 @@ export function Histogram({
                 layerCanvas.select<SVGGElement>(".y-axis")
                     .transition().duration(animDuration)                    
                     .call(yAxis)
-            }                                    
+            }
+            
+            const barFill = (d: binnedData) => {
+                const xPos = binRanges(d.x0 as number) || 0
+                return xPos < binRanges(0)?layerIdx === 1?
+                        colors.layer1.negative:colors.layer2.negative:
+                    isSingleData?colors.base:layerIdx === 1?
+                        colors.layer1.positive:colors.layer2.positive
+            }
             
             const bars = layerCanvas.selectAll<SVGRectElement, binnedData>("rect.bar")
                 .data(layerBin, (d)=> d.x0 + "-" + d.x1)
                 .join(
                     enter=>enter.append("rect")
-                        .attr("class", "bar")
+                        .attr("class", `bar ${styles.bar}`)
                         .attr("x", function(d){
                             if(orientation === "vertical"){
                                 return (!isSorted?binRanges(d.x0 as number) || 0:
@@ -629,18 +647,51 @@ export function Histogram({
                         .style("opacity", 0)
                         .remove()
                 ) 
-                .on("mouseover", function(e, d){
-                    console.log(d)
+                .on("pointerenter", function(e, d){                    
+                    tooltip.select("p.range span.badge")
+                        .style("background", barFill(d))
+                    tooltip.select("p.range span.label")
+                        .text(`
+                            ${formatTooltipNum(d.x0 ?? 0, tooltipFormat)}
+                            <= ${valueKey} < 
+                            ${formatTooltipNum(d.x1 ?? 0, tooltipFormat)}
+                        `)
+                    const count = d.length
+                    tooltip.select("p.amount")
+                            .text(`
+                                ${count} 
+                                member${count > 1?"s":""}
+                            `)
+                    tooltip.style("opacity", 1)
+                })
+                .on("pointermove", function(e, d){
+                    moveTooltip(tooltip, {e, svg:svgNode as SVGSVGElement, yScale: valueScale})
+                })
+                .on("pointerleave", function(e, d){
+                    tooltip.style("opacity", 0)
+                })
+                .on("dblclick", function(e, d){
+                    const mainData = data as histogramChartData<histogramDatum>
+                    const valueKey = isSingleData?(mainData.valueKey ?? ""):
+                        ((mainData.data[layerIdx - 1] as histogramChartData<histogramDatum>).valueKey ?? "")
+
+                    setTableData({valueKey, data:d})
+
+                })
+                .on("touchend", function(e, d){                    
+                    const currentTime = Date.now()
+                    const timeDiff = currentTime - lastTouchRef.current                    
+                    if(timeDiff <= 300){                        
+                        const mainData = data as histogramChartData<histogramDatum>
+                        const valueKey = isSingleData?(mainData.valueKey ?? ""):
+                            ((mainData.data[layerIdx - 1] as histogramChartData<histogramDatum>).valueKey ?? "")
+                        setTableData({valueKey, data:d})
+                    }
+                    lastTouchRef.current = currentTime
                 })
                 .transition().duration(animDuration)
                 //.style("fill", barFill)         
-                .style("fill", function(d){
-                    const xPos = binRanges(d.x0 as number) || 0
-                    return xPos < binRanges(0)?layerIdx === 1?
-                            colors.layer1.negative:colors.layer2.negative:
-                        isSingleData?colors.base:layerIdx === 1?
-                            colors.layer1.positive:colors.layer2.positive
-                })           
+                .style("fill", barFill)           
                 .attr("x", function(d){
                     if(orientation === "vertical"){
                         return (!isSorted?binRanges(d.x0 as number) || 0:
@@ -725,14 +776,12 @@ export function Histogram({
         }
 
         renderLayer(dataToRender[0], 1)
-        renderLayer(dataToRender[1], 2)
-            
-        
+        renderLayer(dataToRender[1], 2)                    
     }, [
         data, compareMode, binOption, filterEmptyBin, width, height, isSorted, orientation, 
         { showLine, showDots, curve},
-        {prefix, suffix, formatType}]);
-        
+        {prefix, suffix, formatType}]);    
+                    
     return (
         <div 
             ref={ref} 
@@ -746,14 +795,16 @@ export function Histogram({
             <div
                 ref={chartRef} 
                 className={`${styles["fill-container"]}`}
-                style={{ display:"flex", flexDirection:"column" }}>
+                style={{ display:"flex", flexDirection:"column" }}>                
                 <div 
                     ref={controlsRef}
                     className={`controls ${styles[isMediumScreen?"controls-container":"controls-container-sm"]}`}
                 >
                     {
                         sortable &&
-                        <label className={styles["controls-label"]} style={{paddingRight: '12px'}}>
+                        <label 
+                            className={styles["controls-label"]} 
+                            style={{paddingRight: '12px'}}>
                             <input 
                                 type="checkbox" 
                                 className={styles["controls-checkbox"]}
@@ -789,9 +840,169 @@ export function Histogram({
                             </g>
                         </g>                        
                     </svg>                            
-                    <Tooltip />
+                    <Tooltip>
+                        <p 
+                            className='range'
+                            style={{
+                                fontWeight: 600, margin: "3px", marginBottom: 0, fontSize: "14px", color: "wheat",                                 
+                                display: "flex", alignItems:"center"
+                            }}
+                        >
+                            <span className='badge' 
+                                style={{width: 8, height: 8, borderRadius: 2, border: "1px solid #a3a3a3"}} />
+                            <span className='label' style={{paddingLeft: 4}} />
+                        </p>
+                        <p 
+                            className='amount'
+                            style={{
+                                fontWeight: 700, margin: "3px", marginBottom: 0, fontSize: "15px", color: "wheat",                                 
+                                textAlign: "center"
+                            }}
+                        />
+                        <p 
+                            className='detailTip'
+                            style={{
+                                fontWeight: 600, margin: "3px", fontSize: "10px", color: "wheat", fontStyle:"italic",                                
+                                textAlign: "center"
+                            }}
+                        >
+                            (dbl click bar for detail)
+                        </p>
+                    </Tooltip>
                 </div> 
+                <Table 
+                    data={tableData} width={parentWidth} height={parentHeight}
+                    valueKey={data.valueKey ?? ""} 
+                    close={()=>{setTableData({valueKey:"", data:[]})}}
+                    tooltipFormat={{prefix, suffix, formatType}}
+                />
             </div>
         </div>
     );
+}
+
+type tableProps = {
+    data: tableData;
+    width: number;
+    height: number;
+    pageRows?: number;
+    valueKey: string;
+    tooltipFormat: tooltipFormat;
+    close: ()=>void;
+}
+
+const Table = ({data, width, height, pageRows = 10, tooltipFormat, close}:tableProps) => {
+    const [currentPage, setCurrentPage] = useState(1)
+    const rawTableData = data.data
+    const pageCount = Math.ceil(rawTableData.length / pageRows)
+        
+    useEffect(()=>{setCurrentPage(1)}, [ data ])
+
+    useEffect(() => {
+        if (rawTableData.length > 0) {
+            window.getSelection()?.removeAllRanges();
+        }
+    }, [rawTableData.length]);
+        
+    const headers = rawTableData.length > 0 ? Object.keys(rawTableData[0]) : [];
+    const minItemIdx = (currentPage - 1) * pageRows
+    const maxItemIdx = (currentPage * pageRows) - 1
+    const displayData = rawTableData.filter(dt => typeof dt === "object")        
+    const tableRows = displayData.filter((_, i) => i >= minItemIdx && i <= maxItemIdx)
+    return (
+        <div 
+            className={`
+                ${histogramStyles["table-container"]}
+                ${rawTableData.length === 0?histogramStyles["hide-table"]:histogramStyles["show-table"]}
+            `}
+            style={{width, height}}
+        >
+            <div style={{width: "100%", display:"flex", padding: 5, justifyContent:"space-between"}}>
+                <div style={{display:"flex"}}>
+                <div className={histogramStyles["pagination-controls"]}>
+                    {/* First Page */}
+                    <button className={histogramStyles["pagination-btn"]} title="First Page"
+                        disabled={currentPage === 1}
+                        onClick={()=>{setCurrentPage(1)}}
+                    >
+                        &#171;
+                    </button>
+                    
+                    {/* Previous Page */}
+                    <button className={histogramStyles["pagination-btn"]} title="Previous Page"
+                        disabled={currentPage === 1}
+                        onClick={()=>{setCurrentPage(currentPage - 1)}}
+                    >
+                        &#8249;
+                    </button>
+                    
+                    {/* Current Page Indicator / Selection */}
+                    <span className={histogramStyles["pagination-info"]}>
+                        Page 
+                        <span className={histogramStyles["pagination-page-number"]}>{currentPage}</span> 
+                        of {pageCount}
+                    </span>
+                    
+                    {/* Next Page */}
+                    <button className={histogramStyles["pagination-btn"]} title="Next Page"
+                        disabled={currentPage === pageCount}
+                        onClick={()=>{setCurrentPage(currentPage + 1)}}
+                    >
+                        &#8250;
+                    </button>
+                    
+                    {/* Last Page */}
+                    <button className={histogramStyles["pagination-btn"]} title="Last Page"
+                        disabled={currentPage === pageCount}
+                        onClick={()=>{setCurrentPage(pageCount)}}
+                    >
+                        &#187;
+                    </button>
+                </div>
+                <p style={{fontWeight: 600, textAlign: "left", paddingLeft: 4}}>
+                    
+                    {formatTooltipNum((rawTableData as any).x0, tooltipFormat)} 
+                    {` <= ${data.valueKey} < `} 
+                    {formatTooltipNum((rawTableData as any).x1, tooltipFormat)}
+                </p>
+                </div>
+                <button 
+                    className={`${styles.button}`}                
+                    onClick={close}
+                >
+                    Ok
+                </button>
+            </div>
+        <div 
+            className={histogramStyles["table-scroll-container"]}            
+        >                        
+            <table className={histogramStyles["responsive-table"]}>
+                <thead>
+                    <tr>
+                        {headers.map((header) => (
+                        <th key={header}>{
+                            header === data.valueKey?
+                            header.toUpperCase():header
+                        }</th>
+                        ))}
+                    </tr>
+                </thead>
+                <tbody>
+                    {tableRows.map((row, rowIndex) => (
+                        <tr key={rowIndex}>
+                        {headers.map((header) => (
+                            <td key={header}>{
+                                header === data.valueKey?
+                                formatTooltipNum(row[header] as number, tooltipFormat):
+                                String(row[header] ?? "")
+                            }</td>
+                        ))}
+                        </tr>
+                    ))}
+                </tbody>
+            </table>
+            
+        </div>
+        </div>
+    )
 }

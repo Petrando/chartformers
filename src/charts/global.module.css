@@ -5,7 +5,7 @@
     justify-content: flex-start;    
     background: rgba(255, 255, 255, 0.8);
     border-bottom: 1px solid #ddd;
-    z-index: 10;  
+    /*z-index: 10;  */
     overflow: hidden;              
 }
 
@@ -65,6 +65,20 @@
 .controls-container-sm .controls-checkbox {
     width: 12px;
     height: 12px;
+}
+
+.button {
+  background-color: #04AA6D;
+  max-height: 30px;
+  border: none;
+  color: white;
+  padding: auto 14x;
+  text-align: center;
+  text-decoration: none;
+  display: inline-block;
+  font-size: 16px;  
+  cursor: pointer;
+  border-radius: 4px;
 }
 
 .chart-svg {                    

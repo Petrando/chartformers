@@ -132,3 +132,127 @@
     width: 12px;
     height: 12px;
 }
+
+.table-container {
+    max-width: 100vw;
+    max-height: 100vh;    
+    position: absolute;
+    left: 0;
+    opacity: 0;    
+    background-color: aliceblue;
+}
+
+.show-table {
+    animation: slide-down 0.25s ease-out forwards;
+    pointer-events: all;
+}
+
+.hide-table {
+    animation: slide-up 0.25s ease-in forwards;
+    pointer-events: none;
+}
+
+@keyframes slide-down {
+    0% {
+        top: -250px;
+        opacity: 0;
+    }  
+    100% {
+        top: 0px;
+        opacity: 1;
+    }
+}
+
+@keyframes slide-up {
+    0% {
+        top: 0px;
+        opacity: 1;    
+    }  
+    100% {
+        top: -250px;
+        opacity: 0;
+    }
+}
+
+/* Wrapper handling both vertical and horizontal scroll */
+.table-scroll-container {
+    width: 100%;    
+    /*height: 100%;*/
+    overflow: auto; /* Enables horizontal & vertical scrolling when content overflows */    
+}
+
+/* Table layout styling */
+.responsive-table {
+    width: 100%;
+    /*min-height: 100%; /* Ensures table fills full height even with few rows */
+    border-collapse: collapse;
+    table-layout: auto;
+}
+
+/* Styling headers and cells */
+.responsive-table th,
+.responsive-table td {
+    padding: 8px 12px;
+    border: 1px solid #ddd;
+    text-align: left;
+    white-space: nowrap; /* Prevents text wrap so columns scroll horizontally on overflow */
+}
+
+/* Sticky Header (Optional but recommended for tall/scrollable tables) */
+.responsive-table th {
+    position: sticky;
+    top: 0;
+    background-color: #f4f4f4;
+    z-index: 1;
+}
+
+/* Container holding all pagination elements */
+.pagination-controls {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-family: inherit;
+  font-size: 0.875rem;
+  color: #333;
+}
+
+/* Individual chevron navigation buttons */
+.pagination-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 28px;
+  height: 28px;
+  padding: 0 4px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  background-color: #fff;
+  color: #333;
+  font-size: 1rem;
+  font-weight: bold;
+  cursor: pointer;
+  user-select: none;
+  transition: background-color 0.15s ease, border-color 0.15s ease;
+}
+
+.pagination-btn:hover {
+  background-color: #f0f0f0;
+  border-color: #bbb;
+}
+
+.pagination-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  background-color: #fafafa;
+}
+
+/* Text area displaying active/total pages */
+.pagination-info {
+  margin: 0 6px;
+  white-space: nowrap;
+  font-size: 0.85rem;
+}
+
+.pagination-page-number {
+  font-weight: 600;
+}

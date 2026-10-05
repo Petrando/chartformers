@@ -795,7 +795,7 @@ export function Histogram({
             <div
                 ref={chartRef} 
                 className={`${styles["fill-container"]}`}
-                style={{ display:"flex", flexDirection:"column" }}>                
+                style={{ display:"flex", flexDirection:"column", position: "relative" }}>                
                 <div 
                     ref={controlsRef}
                     className={`controls ${styles[isMediumScreen?"controls-container":"controls-container-sm"]}`}
@@ -967,7 +967,8 @@ const Table = ({data, width, height, pageRows = 10, tooltipFormat, close}:tableP
                 </p>
                 </div>
                 <button 
-                    className={`${styles.button}`}                
+                    className={`${styles.button}`}
+                    style={{marginRight: 6}}                
                     onClick={close}
                 >
                     Ok

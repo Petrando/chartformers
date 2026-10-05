@@ -188,6 +188,7 @@ export function DumbbellChart<T extends { label: string }>({
         const xPosEnd = (d: dumbbellDatum) => orientation === 'horizontal'?valuePosEnd(d):labelPos(d)
         const yPosEnd = (d: dumbbellDatum) => orientation === 'horizontal'?labelPos(d):valuePosEnd(d)
 
+        console.log(data)
         const links = canvas.selectAll<SVGLineElement, dumbbellDatum>("line.link")
             .data(data, (d) => d.label)
             .join(
@@ -216,6 +217,9 @@ export function DumbbellChart<T extends { label: string }>({
                     .style("opacity", 0)
                         .remove()
             )
+        .on("pointerenter", function(e, d){
+            console.log(d)
+        })
                         
 
         const r = isMediumScreen?7:10
@@ -242,6 +246,9 @@ export function DumbbellChart<T extends { label: string }>({
                     .style("opacity", 0)
                     .remove()
             )
+        .on("pointerenter", function(e, d){
+            console.log(d)
+        })
 
         const endCircles = canvas.selectAll<SVGCircleElement, dumbbellDatum>("circle.end")
             .data(data, (d) => d.label + "-end")
@@ -265,6 +272,9 @@ export function DumbbellChart<T extends { label: string }>({
                     .style("opacity", 0)
                     .remove()
             )
+        .on("pointerenter", function(e, d){
+            console.log(d)
+        })
             
         canvas.select<SVGGElement>(".x-axis").raise()
         canvas.select<SVGGElement>(".y-axis").raise()

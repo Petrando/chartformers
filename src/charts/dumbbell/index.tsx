@@ -1,21 +1,24 @@
-import React, {useState} from 'react';
+import React from 'react';
 import {scaleBand, scaleLinear, axisLeft, axisBottom, min, max, format} from 'd3';
 import { useD3 } from '../../hooks/useD3';
 import { useParentSize } from '../../hooks/useParentSize';
 import { useContainerSize } from '../../hooks/useContainerSize';
-import { Tooltip, getTooltip, moveTooltip } from '../../components/tooltip';
+import { Tooltip, moveTooltip } from '../../components/tooltip';
 import styles from '../global.module.css';
 import { tooltipFormat } from '../../types';
-import { dumbbellDatum, numericKeys } from './types'
+import { dumbbellDatum } from './types'
+import { formatTooltipNum } from '../../utils';
 
 type DumbbellProps<T> = {
-    data: dumbbellDatum[];    
+    data: dumbbellDatum[];
+    title?: string;    
     tooltipFormat?: tooltipFormat;
     orientation?: 'vertical' | 'horizontal';
 }
 
 export function DumbbellChart<T extends { label: string }>({
-        data,         
+        data,
+        title = "",         
         orientation= 'horizontal',
         tooltipFormat: {
             prefix = "", suffix = "", formatType = "long"
@@ -30,22 +33,22 @@ export function DumbbellChart<T extends { label: string }>({
     // Define the controls element (checkbox)    
         
     const animDuration = 750;
+
+    const colors = {
+            startColor: "#22c55e", endColor: "#6366f1" 
+        }
     const chartRef = useD3<HTMLDivElement>((container) => {
         if (width === 0 || height === 0) return;
 
         const margin = { 
             top: 20, 
             right: 25, 
-            bottom: 30, 
+            bottom: 25, 
             left: 70
         };
 
         const graphWidth = width - margin.left - margin.right
-        const graphHeight = height - margin.top - margin.bottom
-
-        const colors = {
-            startColor: "#22c55e", endColor: "#6366f1" 
-        }
+        const graphHeight = height - margin.top - margin.bottom        
               
         const numKeys = Object.keys(data[0]).filter(key => key !== "label")
 
@@ -122,8 +125,8 @@ export function DumbbellChart<T extends { label: string }>({
                     .remove()
             )
 
-        const tooltip = getTooltip(container as any)
-            .style("opacity", 0); 
+        const tooltip = container.select("div#tooltip")
+            .style("opacity", 0);                     
                             
         const labelScale = scaleBand()
             .domain(data.map(d => d.label))
@@ -144,16 +147,14 @@ export function DumbbellChart<T extends { label: string }>({
             .nice()
 
         const yAxis = orientation === 'horizontal'?axisLeft(labelScale).tickSizeOuter(0):
-            axisLeft(valueScale)            
-                .tickValues(valueScale.domain())
+            axisLeft(valueScale)                        
                 .scale(valueScale)
-                .ticks(5, "s").tickSize(-graphWidth)
+                .ticks(10, "s").tickSize(-graphWidth)
 
         const xAxis = orientation === 'horizontal'?
-            axisBottom(valueScale)            
-                .tickValues(valueScale.domain())
+            axisBottom(valueScale)                        
                 .scale(valueScale)
-                .ticks(5, "s").tickSize(-graphHeight):
+                .ticks(10, "s").tickSize(-graphHeight):
             axisBottom(labelScale).tickSizeOuter(0)
 
         const fromNegativeToPositive = valueMin < 0 && valueMax > 0
@@ -162,20 +163,35 @@ export function DumbbellChart<T extends { label: string }>({
             .transition().duration(animDuration).call(xAxis)            
             .attr(
                     "transform", 
-                    `translate(0, ${(orientation === 'vertical' && fromNegativeToPositive)?
-                        valueScale(0):graphHeight})`
+                    `translate(0, ${graphHeight})`
             )
             //.selectAll("text")
             //.attr("class", `${xAxisTextClass}`)
+        /*
+        ${(orientation === 'vertical' && fromNegativeToPositive)?
+                        valueScale(0):
+        */ 
         
         canvas.select<SVGGElement>(".y-axis")            
             .transition().duration(animDuration).call(yAxis)
-            .attr(
+            /*.attr(
                 "transform", 
                 `translate(${(orientation === 'horizontal' && fromNegativeToPositive)?
                     valueScale(0):"0"}, 0)`
+            )*/
+
+        const zeroLine = canvas.select("line.zero-line")
+            .attr("x1", 0).attr("y1", 0)
+            .attr("x2", orientation === "vertical"?graphWidth:0)
+            .attr("y2", orientation === "vertical"?0:graphHeight)            
+
+        zeroLine.transition().duration(animDuration)
+            .attr("transform", 
+                orientation === "vertical"?
+                `translate(0, ${valueScale(0) || 0})`:
+                `translate(${valueScale(0) || 0}, 0)`
             )
-        
+           
         const valuePosStart = (d: dumbbellDatum) => valueScale(d[numKeys[0]] as number)        
 
         const valuePosEnd = (d: dumbbellDatum) => valueScale(d[numKeys[1]] as number)
@@ -187,15 +203,14 @@ export function DumbbellChart<T extends { label: string }>({
 
         const xPosEnd = (d: dumbbellDatum) => orientation === 'horizontal'?valuePosEnd(d):labelPos(d)
         const yPosEnd = (d: dumbbellDatum) => orientation === 'horizontal'?labelPos(d):valuePosEnd(d)
-
-        console.log(data)
+        
         const links = canvas.selectAll<SVGLineElement, dumbbellDatum>("line.link")
             .data(data, (d) => d.label)
             .join(
                 enter=>enter.append("line")
                     .attr("class", "link")
                     .attr("stroke", "#9ca3af")
-                    .attr("stroke-width", 4)
+                    .attr("stroke-width", 2.5)
                     .attr("x1", xPosStart)
                     .attr("y1", yPosStart)
                     .attr("x2", xPosStart)
@@ -217,11 +232,10 @@ export function DumbbellChart<T extends { label: string }>({
                     .style("opacity", 0)
                         .remove()
             )
-        .on("pointerenter", function(e, d){
-            console.log(d)
-        })
+        .on("pointerenter", pointerEnter)
+        .on("pointermove", pointerMove)
+        .on("pointerleave", pointerLeave)
                         
-
         const r = isMediumScreen?7:10
 
         const startCircles = canvas.selectAll<SVGCircleElement, dumbbellDatum>("circle.start")
@@ -246,9 +260,9 @@ export function DumbbellChart<T extends { label: string }>({
                     .style("opacity", 0)
                     .remove()
             )
-        .on("pointerenter", function(e, d){
-            console.log(d)
-        })
+        .on("pointerenter", pointerEnter)
+        .on("pointermove", pointerMove)
+        .on("pointerleave", pointerLeave)
 
         const endCircles = canvas.selectAll<SVGCircleElement, dumbbellDatum>("circle.end")
             .data(data, (d) => d.label + "-end")
@@ -272,12 +286,30 @@ export function DumbbellChart<T extends { label: string }>({
                     .style("opacity", 0)
                     .remove()
             )
-        .on("pointerenter", function(e, d){
-            console.log(d)
-        })
+        .on("pointerenter", pointerEnter)
+        .on("pointermove", pointerMove)
+        .on("pointerleave", pointerLeave)
             
-        canvas.select<SVGGElement>(".x-axis").raise()
-        canvas.select<SVGGElement>(".y-axis").raise()
+        const tooltipFormat = { prefix, suffix, formatType }
+        function pointerEnter(e: MouseEvent, d: dumbbellDatum){            
+            tooltip.style("opacity", 1)
+            tooltip.select("p.label").text(d.label)
+            tooltip.select("p.change span.from span.value")
+                .text(formatTooltipNum(d[numKeys[0]] as number, tooltipFormat))            
+            tooltip.select("p.change span.to span.value")
+                .text(formatTooltipNum(d[numKeys[1]] as number, tooltipFormat))
+        }
+
+        function pointerMove(e: MouseEvent, d: dumbbellDatum){
+            moveTooltip(tooltip, {e, svg:svgNode as SVGSVGElement, yScale: valueScale})
+        }
+
+        function pointerLeave(e: MouseEvent, d: dumbbellDatum){
+            tooltip.style("opacity", 0)
+        }     
+        
+       //canvas.select<SVGGElement>(".x-axis").raise()
+       //canvas.select<SVGGElement>(".y-axis").raise()
         /*
         const numericKeys = Object.keys(data[0]).filter(
             k => typeof data[0][k as keyof T] === "number"
@@ -293,7 +325,7 @@ export function DumbbellChart<T extends { label: string }>({
             console.log(label, a, b)
         })*/
         
-    }, [data, width, height, orientation,  {prefix, suffix, formatType}]);
+    }, [data, title, width, height, orientation,  {prefix, suffix, formatType}]);
     
     return (
         <div 
@@ -306,7 +338,13 @@ export function DumbbellChart<T extends { label: string }>({
                 style={{ display:"flex", flexDirection:"column", position: "relative",}}>
                 <div                     
                     className={`controls ${styles[isMediumScreen?"controls-container":"controls-container-sm"]}`}
-                >                    
+                >     
+                    <p 
+                        className='title'
+                        style={{whiteSpace: "nowrap", paddingBottom: 22, color: "#333"}}
+                    >
+                        {title}
+                    </p>               
                     <div                         
                         className={`legends-container ${styles["legends-container"]}`}
                     />
@@ -322,10 +360,64 @@ export function DumbbellChart<T extends { label: string }>({
                         <g className="plot-area">
                             <g className={`${orientation === "vertical"?styles["value-axis"]:''} y-axis`} />
                             <g className={`${orientation === "horizontal"?styles["value-axis"]:''} x-axis`} />    
+                            <line className='zero-line' stroke="currentColor" strokeWidth={1} />
                         </g>                        
                     </svg>                                
-                    <Tooltip />
-                </div>         
+                    <Tooltip>
+                        <p className='label' 
+                            style={{
+                                margin: "3px", marginBottom: 0, fontSize: "11px", color: "wheat", textAlign: "center"                                
+                            }}
+                        />
+                        <p className='title' 
+                            style={{
+                                fontWeight: 600, margin: "3px", marginBottom: 0,  fontSize: "12px", 
+                                color: "wheat", 
+                            }}
+                        >
+                            {title}{" "}change:
+                        </p>
+                        <p className='change' 
+                            style={{
+                                fontWeight: 700, margin: "3px",  fontSize: "13px", 
+                                color: "wheat", display: "flex", alignItems: "center", justifyContent: "center"
+                            }}
+                        >
+                            <span 
+                                className="from"
+                                style={{display: "flex", alignItems: "center"}}>
+                                <span 
+                                    className='marker' 
+                                    style={{
+                                        width: 10, height: 10, borderRadius: 5, 
+                                        backgroundColor: colors.startColor
+                                    }}
+                                />
+                                <span 
+                                    className='value' 
+                                    style={{margin:"auto 2px"}}
+                                />
+                            </span>
+                            {" "}to{" "}
+                            <span 
+                                className="to"
+                                style={{display: "flex", alignItems: "center"}}>
+                                <span 
+                                    className='marker' 
+                                    style={{
+                                        width: 10, height: 10, borderRadius: 5,
+                                        backgroundColor: colors.endColor,
+                                        marginLeft: 2
+                                    }}
+                                />
+                                <span 
+                                    className='value' 
+                                    style={{margin:"auto 2px"}}
+                                />
+                            </span>
+                        </p>
+                    </Tooltip>
+                </div>                        
             </div> 
         </div>
     );

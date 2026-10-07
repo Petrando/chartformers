@@ -286,8 +286,8 @@ export function PopulationPyramid({
                 .call(xAxisMale)
                     .selectAll("text")                  
                     .style("text-anchor", !isMediumScreen?"end":"center")
-                    .attr("dx", function(d){                                            
-                        return !isMediumScreen?"-.8em":0
+                    .attr("dx", function(d){                                                                  
+                        return !isMediumScreen?-12.8:0
                     })
                     //.attr("dy", !isMediumScreen?".15em":".75em")
                     //.attr("transform", !isMediumScreen?"rotate(-45)":"rotate(0)");
@@ -302,7 +302,8 @@ export function PopulationPyramid({
                     .selectAll("text")                      
                     .style("text-anchor", !isMediumScreen?"end":"center")
                     .attr("dx", function(d){                                                
-                        return !isMediumScreen?"-.8em":0
+                        return !isMediumScreen?-12.8//"-.8em"
+                            :0
                     })
                     //.attr("dy", !isMediumScreen?".15em":".75em")
                     //.attr("transform", !isMediumScreen?"rotate(-45)":"rotate(0)");

@@ -96,7 +96,7 @@ export function ChordDiagram({
         const freshRender = prevData === null
         const withExit = !prevNames.every(d=>names.includes(d))
 
-        const radius = Math.min(width, height)
+        const radius = Math.max(Math.min(width, height), 1)
         const r = radius * 0.4
 
         canvas.selectAll("linearGradient").remove();
@@ -186,7 +186,7 @@ export function ChordDiagram({
             )
                     
         const arcGen = arc<ChordGroup>()
-            .innerRadius(r - 10)
+            .innerRadius(r > 10? r - 10:0)
             .outerRadius(r)
 
         const angleInterpolation = (d: ChordGroup, direction: string) => {                        

@@ -62,8 +62,8 @@ export function StockPriceChart({ data, timeframe = "daily", mode = "linechart",
         svg.append("defs").append("clipPath")
             .attr("id", "clip")
         .append("rect")
-            .attr("width", chartWidth)
-            .attr("height", visualHeight);
+            .attr("width", chartWidth > 0?chartWidth:0)
+            .attr("height", visualHeight > 0?visualHeight:0);
 
         const volumeCanvas = svg.select(".volume-area")
             .attr("transform", "translate(" + margin.left + "," + (chartHeight + margin.top + margin.bottom) + ")");
@@ -182,7 +182,7 @@ export function StockPriceChart({ data, timeframe = "daily", mode = "linechart",
         const volumeTooltip = volumeCanvas.select("g.tooltip").style("pointer-events", "none")
 
         canvas.select("rect.overlay")
-            .attr("width", chartWidth).attr("height", chartHeight)
+            .attr("width", chartWidth > 0?chartWidth:0).attr("height", chartHeight > 0?chartHeight:0)
             .style("fill", "none")
             .style("pointer-events", mode === "linechart"?"all":"none")            
             .on("pointerenter pointermove", pointermoved)

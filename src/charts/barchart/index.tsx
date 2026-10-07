@@ -177,7 +177,7 @@ export function BarChart({
                     })
                     .attr("width", function(d){
                         if(orientation === 'vertical'){
-                            return labelScale.bandwidth()
+                            return labelScale.bandwidth() > 0?0:labelScale.bandwidth()
                         }else{
                             return 0
                         }
@@ -193,7 +193,7 @@ export function BarChart({
                         if(orientation === "vertical"){
                             return 0
                         }else{
-                            return labelScale.bandwidth()
+                            return labelScale.bandwidth() > 0?0:labelScale.bandwidth()
                         }
                     })
                     .attr("fill", barColor)
@@ -208,7 +208,7 @@ export function BarChart({
                     })
                     .attr("width", function(d){
                         if(orientation === 'vertical'){
-                            return labelScale.bandwidth()
+                            return labelScale.bandwidth() > 0?0:labelScale.bandwidth()
                         }else{
                             return valueScaleDimension(d.value)
                         }
@@ -217,7 +217,7 @@ export function BarChart({
                         if(orientation === 'vertical'){
                             return valueScaleDimension(d.value);
                         }else{
-                            return labelScale.bandwidth()
+                            return labelScale.bandwidth() > 0?0:labelScale.bandwidth()
                         }                                                                                                              
                     }),
                 undefined,
@@ -227,7 +227,7 @@ export function BarChart({
                 .attr("height", 0).attr("y", height).style("opacity", 0)            
                     .remove()
             )
-            .on("mouseover", (e, d)=>{                
+            .on("pointerenter", (e, d)=>{                
                 
                 tooltip.style("opacity", 1)
                     .select("p").text(String(d.label) + ` : 
@@ -239,10 +239,10 @@ export function BarChart({
                     .filter(dText=>dText === String(d.label)).style("font-weight", "bold")
                 }
             )      
-            .on("mousemove", (e, d)=>{
+            .on("pointermove", (e, d)=>{
                 moveTooltip(tooltip, {e, svg:svgNode as SVGSVGElement, yScale: valueScale})
             })
-            .on("mouseout", (e, d)=>{                
+            .on("pointerleave", (e, d)=>{                
                 tooltip.style("opacity", 0);
 
                 select(".x-axis").selectAll("text")

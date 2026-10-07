@@ -87,7 +87,7 @@ export function LineChart({
         
         const clipPathRect = defs.select("clipPath").select("rect")
         clipPathRect
-            .attr("width", chartWidth)
+            .attr("width", chartWidth < 0?0:chartWidth)
             .attr("height", visualHeight);                    
         
         const firstXValue = data[0].datum[0][xKey];        
@@ -324,7 +324,7 @@ export function LineChart({
         const tooltip = canvas.select("g.tooltip").style("pointer-events", "none")
         tooltip.raise()
         canvas.select("rect.overlay")
-            .attr("width", chartWidth).attr("height", chartHeight)
+            .attr("width", chartWidth < 0?0:chartWidth).attr("height", chartHeight)
             .style("fill", "red")
             .style("opacity", 0)                                
             .on("pointerenter pointermove", pointermoved)

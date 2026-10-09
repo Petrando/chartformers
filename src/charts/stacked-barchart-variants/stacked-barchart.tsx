@@ -211,7 +211,7 @@ export function StackedBarChart({ data, focusOnPlot = false, colorIdx = 0, orien
                     .style("top", "53px")
                     .remove()
             )
-            .on("mouseover", function(e, d){                
+            .on("pointerenter", function(e, d){                
                 if(plotted[0] === "all"){
                     const serie = canvas.selectAll<SVGGElement, ExtendedSeries>(".serie")
                     if(focusOnPlot){
@@ -232,7 +232,7 @@ export function StackedBarChart({ data, focusOnPlot = false, colorIdx = 0, orien
                     }   
                 }                       
             })
-            .on("mouseout", function(e, d){
+            .on("pointerleave", function(e, d){
                 const serie = canvas.selectAll<SVGGElement, ExtendedSeries>(".serie")
                 if(plotted[0] === "all"){
                     serie
@@ -695,7 +695,7 @@ export function StackedBarChart({ data, focusOnPlot = false, colorIdx = 0, orien
 
         serie
             .selectAll<SVGRectElement, ExtendedSeriesPoint>("rect")
-                .on("mouseover", function(e, d){                                        
+                .on("pointerenter", function(e, d){                                        
                     
                     select(orientation === "vertical"?".x-axis":".y-axis").selectAll("text")
                         .filter(dText=>dText === d.data.label)
@@ -711,6 +711,8 @@ export function StackedBarChart({ data, focusOnPlot = false, colorIdx = 0, orien
                     tooltip.select("p.top-label").text(d.barKey + " : " + basicFormat(value, tooltipFormat))
                     tooltip.select("p.bottom-label").text(plotted[0] === "all"?
                         `Total : ${basicFormat(total as number, tooltipFormat)}`:"~")
+
+                    moveTooltip(tooltip, {e, svg:svgNode as SVGSVGElement, yScale: valueScale})
                 })
                 .on("touch", function(e, d){
                     //unhoverLegend()
@@ -718,10 +720,10 @@ export function StackedBarChart({ data, focusOnPlot = false, colorIdx = 0, orien
                         .filter(dText=>dText === d.data.label)
                         //.attr("class", xAxisTextClass)
                 })
-                .on("mousemove", (e, d)=>{                                                                               
+                .on("pointermove", (e, d)=>{                                                                               
                     moveTooltip(tooltip, {e, svg:svgNode as SVGSVGElement, yScale: valueScale})
                 })
-                .on("mouseout", function(e, d){
+                .on("pointerleave", function(e, d){
                     select(orientation === 'vertical'?".x-axis":".y-axis").selectAll("text")
                         .filter(dText=>dText === d.data.label)
                         .attr("class", orientation==='vertical'?xAxisTextClass:"")

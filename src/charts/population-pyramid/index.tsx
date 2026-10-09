@@ -365,7 +365,7 @@ export function PopulationPyramid({
                 undefined,
                 exit=>exit.remove()
             )
-            .on('mouseover', function(d,i){                                      
+            .on('pointerenter', function(d,i){                                      
                 if(isTotal && !isPercentage){
                     canvas.selectAll<SVGGElement, SeriesPoint<ageRangeGroup>>(".femaleBars")
                         .filter(d => d.data.ageRange === i.data.ageRange)                      
@@ -377,11 +377,12 @@ export function PopulationPyramid({
                 .style('font-weight', 'bold');                       
                                 
                 showTooltip("male", i)
+                tooltipMove(d, tooltip)
             })
-            .on("mousemove", function(e){
+            .on("pointermove", function(e){
                 tooltipMove(e, tooltip)                    
             })
-            .on('mouseout', function(d, i){      
+            .on('pointerleave', function(d, i){      
                 
                 canvas.select('g.yMale.axis')
                     .selectAll('text')

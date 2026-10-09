@@ -663,6 +663,8 @@ export function Histogram({
                                 member${count > 1?"s":""}
                             `)
                     tooltip.style("opacity", 1)
+
+                    moveTooltip(tooltip, {e, svg:svgNode as SVGSVGElement, yScale: valueScale})
                 })
                 .on("pointermove", function(e, d){
                     moveTooltip(tooltip, {e, svg:svgNode as SVGSVGElement, yScale: valueScale})

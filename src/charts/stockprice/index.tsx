@@ -170,7 +170,7 @@ export function StockPriceChart({ data, timeframe = "daily", mode = "linechart",
                     setTooltip({ date, open, hi, low, close, volume })
                     setTooltipPosition({ xPos:x(date) + (candleWidth / 2), low, volume })            
                 })
-                .on("pointerout", pointerleft)
+                .on("pointerleave", pointerleft)
                 .attr("d", function(d){
                     return drawCandle(d, y);
                 })		

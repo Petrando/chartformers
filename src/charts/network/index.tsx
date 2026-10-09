@@ -1439,6 +1439,8 @@ export function NetworkGraph({
                     const baseValueText = (d as networkResolvedLink).value
                     const valueText = typeof baseValueText === "number"?basicFormat(baseValueText):"---"
                     select(valueTooltip).text(`${valueText}`)                    
+
+                    moveTooltip(tooltip, {e, svg:svgNode as SVGSVGElement })
                 }
 
             })

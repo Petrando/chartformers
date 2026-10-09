@@ -235,6 +235,7 @@ export function BarChart({
                         ${format(formatType === "long"?",":"~s")(d.value)}
                         ${suffix}`);              
                 
+                moveTooltip(tooltip, {e, svg:svgNode as SVGSVGElement, yScale: valueScale})
                 select(".x-axis").selectAll("text")
                     .filter(dText=>dText === String(d.label)).style("font-weight", "bold")
                 }

@@ -412,6 +412,8 @@ export function ChordDiagram({
                     .text('internal: ')
                 tooltip.select('p.selfValue span.value')
                     .text(`${prefix}${formatNum(selfValues)}${suffix}`)                                                
+
+                moveTooltip(tooltip, {e, svg:svgNode as SVGSVGElement })
                 
             })
             .on("pointermove", (e, d)=>{                

@@ -92,7 +92,8 @@ export function MorphStackedBarChart({
     const isMediumScreen = width > 576;
         
     const chartRef = useD3<HTMLDivElement>((container) => {
-        if (width === 0 || height === 0) return;        
+        if (width === 0) return;        
+        if(height === 0) return;
         
         const margin = { top: 20, right: 30, bottom: 30, left: 40 };          
 
@@ -232,7 +233,7 @@ export function MorphStackedBarChart({
                     .style("top", "53px")
                     .remove().remove()
             )
-            .on("mouseover", function(e, d){
+            .on("pointerenter", function(e, d){
                 if(mode === "percentage" && focusOnPlot) return;
 
                 const serie = canvas.selectAll<SVGGElement, ExtendedSeriesWithSorted>(".serie")
@@ -258,7 +259,7 @@ export function MorphStackedBarChart({
                 }                             
 
             })
-            .on("mouseout", function(e, d){
+            .on("pointermove", function(e, d){
                 if(mode === "percentage" && focusOnPlot) return;
                 const serie = canvas.selectAll<SVGGElement, ExtendedSeriesWithSorted>(".serie")
                 if(plotted[0] === "all"){
@@ -272,7 +273,7 @@ export function MorphStackedBarChart({
                     .attr("stroke-dasharray", strokeDasharray)
                 
             })
-            .on("click", (e, d)=>{
+            .on("pointerleave", (e, d)=>{
                 if(mode === "percentage" && focusOnPlot) return;
                 setPlotted(prev=>{
                     let newPlot:string[] = []
@@ -786,7 +787,7 @@ export function MorphStackedBarChart({
                 undefined,
                 exit=>exit.attr("opacity", 0).style("fill", "grey").remove()
             )
-            .on("mouseover", function(e, d){                
+            .on("pointerenter", function(e, d){                
                 if(mode === "grouped" && isSorted){
                     serie.selectAll<SVGRectElement, ExtendedSeriesPointWithSorted>("rect")
                         .filter(dRect => dRect.barKey !== d.barKey)
@@ -807,11 +808,13 @@ export function MorphStackedBarChart({
                 tooltip.select("p.top-label").text(d.barKey + " : " + basicFormat(value, tooltipFormat))
                 tooltip.select("p.bottom-label").text(plotted[0] === "all"?
                     `Total : ${basicFormat(total as number, tooltipFormat)}`:"~")
-            })
-            .on("mousemove", (e, d)=>{                                                                               
+
                 moveTooltip(tooltip, {e, svg:svgNode as SVGSVGElement, yScale: valueScale})
             })
-            .on("mouseout", function(e, d){
+            .on("pointermove", (e, d)=>{                                                                               
+                moveTooltip(tooltip, {e, svg:svgNode as SVGSVGElement, yScale: valueScale})
+            })
+            .on("pointerleave", function(e, d){
                 if(mode === "grouped" && isSorted){
                     serie.selectAll<SVGRectElement, ExtendedSeriesPointWithSorted>("rect")
                         .filter(dRect => dRect.barKey !== d.barKey)

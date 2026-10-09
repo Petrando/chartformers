@@ -174,14 +174,14 @@ export function PercentageBarChart({ data, colorIdx = 0, orientation = 'vertical
             )        
 
         legends
-            .on("mouseover", (e, d)=>{
+            .on("pointerenter", (e, d)=>{
                 canvas.selectAll<SVGGElement, ExtendedSeries>(".serie")
                     .attr("fill", layerFill)
                     .filter(dSerie => dSerie.key === d)                                                            
                     .style("opacity", 0.25)
                 
             })
-            .on("mouseout", function(e, d){                
+            .on("pointerleave", function(e, d){                
                 canvas.selectAll<SVGGElement, ExtendedSeries>(".serie")
                     .attr("fill", layerFill)
                     .filter(dSerie => dSerie.key === d)                                                            
@@ -471,7 +471,7 @@ export function PercentageBarChart({ data, colorIdx = 0, orientation = 'vertical
                 
         serie
             .selectAll<SVGRectElement, ExtendedSeriesPoint>("rect")
-                .on("mouseover", function(e, d){
+                .on("pointerenter", function(e, d){
                     //unhoverLegend()
                     
                     select(".x-axis").selectAll("text")
@@ -489,16 +489,18 @@ export function PercentageBarChart({ data, colorIdx = 0, orientation = 'vertical
                     tooltip.select("p.bottom-label").text(isPercentage?`(${basicFormat(value, tooltipFormat)} of ${basicFormat(total, tooltipFormat)})`:
                         `Total : ${basicFormat(total, tooltipFormat)}`
                     )
+
+                    moveTooltip(tooltip, {e, svg:svgNode as SVGSVGElement, yScale: y})
                 })
                 .on("touch", function(e, d){
                     //unhoverLegend()
                     select(".x-axis").selectAll("text")
                         .filter(dText=>dText === d.data.label).attr("class", xAxisTextClass)
                 })
-                .on("mousemove", (e, d)=>{
+                .on("pointermove", (e, d)=>{
                     moveTooltip(tooltip, {e, svg:svgNode as SVGSVGElement, yScale: y})
                 })
-                .on("mouseout", function(e, d){
+                .on("pointerleave", function(e, d){
                     select(".x-axis").selectAll("text")
                         .filter(dText=>dText === d.data.name).attr("class", xAxisTextClass)
 

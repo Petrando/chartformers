@@ -306,7 +306,7 @@ export function Sankey({data, tooltipFormat}: SankeyProps) {
                         return exit.transition().duration(animDuration/4).style("opacity", 0).remove()
                     }
                 )
-                .on("mouseover", (e, d)=>{                         
+                .on("pointerenter", (e, d)=>{                         
                     canvas.selectAll("path.link").filter(dPath => {
                         const pathData = dPath as SankeyLink<sankeyNode, sankeyLink>
                         return pathData.id !== d.id
@@ -335,12 +335,14 @@ export function Sankey({data, tooltipFormat}: SankeyProps) {
                     tooltip.select("p.title").text(d.id + basicFormat(d.value, tooltipFormat))                    
                     tooltip.select("p.top-label").style("display", "none")
                     tooltip.select("p.bottom-label").style("display", "none")
+
+                    tooltipMove(e, tooltip)
                         
                 })
-                .on("mousemove", (e, d) => {                     
+                .on("pointermove", (e, d) => {                     
                     tooltipMove(e, tooltip)                    
                 })
-                .on("mouseout", (e, d)=>{                    
+                .on("pointerleave", (e, d)=>{                    
                     tooltip.style("opacity", 0);                    
 
                     canvas.selectAll("path.link")  
@@ -439,7 +441,7 @@ export function Sankey({data, tooltipFormat}: SankeyProps) {
                         return exit.transition().duration(animDuration/4).style("opacity", 0).remove()
                     }
                 )
-                .on("mouseover", (e,d)=>{                          
+                .on("pointerenter", (e,d)=>{                          
 
                     canvas.selectAll("path.link").filter(dPath => {
                         const pathData = dPath as SankeyLink<sankeyNode, sankeyLink>
@@ -477,11 +479,13 @@ export function Sankey({data, tooltipFormat}: SankeyProps) {
                         .style("display", "block")
                         .text(`${nodeState}`)
                         .style("color", `${stateColor}`)
-                })
-                .on("mousemove", (e, d) => {                    
+
                     tooltipMove(e, tooltip)
                 })
-                .on("mouseout", (e, d)=>{                                    
+                .on("pointermove", (e, d) => {                    
+                    tooltipMove(e, tooltip)
+                })
+                .on("pointerleave", (e, d)=>{                                    
                     tooltip.style("opacity", 0);                         
                     tooltip.select("p.small-text")
                         .style("display", "none")                   

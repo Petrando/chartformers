@@ -417,6 +417,7 @@ export function WaterfallChart({
                     }                    
                 }
                 tooltip.style("opacity", 1)
+                moveTooltip(tooltip, {e, svg:svgNode as SVGSVGElement })
             })
             .on("pointermove", function(e, d){
                 moveTooltip(tooltip, {e, svg:svgNode as SVGSVGElement })

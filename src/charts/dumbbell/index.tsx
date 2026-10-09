@@ -298,6 +298,8 @@ export function DumbbellChart<T extends { label: string }>({
                 .text(formatTooltipNum(d[numKeys[0]] as number, tooltipFormat))            
             tooltip.select("p.change span.to span.value")
                 .text(formatTooltipNum(d[numKeys[1]] as number, tooltipFormat))
+
+            moveTooltip(tooltip, {e, svg:svgNode as SVGSVGElement, yScale: valueScale})
         }
 
         function pointerMove(e: MouseEvent, d: dumbbellDatum){

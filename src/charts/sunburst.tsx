@@ -309,6 +309,8 @@ export function Sunburst({data, tooltipFormat}: sunburstProps) {
                 const value = d.value ?? 0
                 tooltip.select("p.value").text(basicFormat(value, tooltipFormat).toLocaleString())
                 tooltip.transition().duration(250).style("opacity", 1)
+
+                moveTooltip(tooltip, {e, svg:svgNode as SVGSVGElement })
             })
             .on("pointermove", function(e, d){
                 moveTooltip(tooltip, {e, svg:svgNode as SVGSVGElement })

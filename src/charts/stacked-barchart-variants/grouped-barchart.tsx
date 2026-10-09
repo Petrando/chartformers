@@ -214,7 +214,7 @@ export function GroupedBarChart({
                 })
                 setJustPlotted(true)
             })
-            .on("mouseover", (e, d)=>{
+            .on("pointerenter", (e, d)=>{
                 const serie = canvas.selectAll<SVGGElement, ExtendedSeriesWithSorted>(".serie")
                 if(plotted[0] === "all"){
                     if(focusOnPlot){
@@ -233,7 +233,7 @@ export function GroupedBarChart({
                     }   
                 }
             })
-            .on("mouseout", (e, d)=>{
+            .on("pointerleave", (e, d)=>{
                 const serie = canvas.selectAll<SVGGElement, ExtendedSeriesWithSorted>(".serie")
                 if(plotted[0] === "all"){
                     canvas.selectAll<SVGGElement, ExtendedSeriesWithSorted>(".serie")
@@ -568,7 +568,7 @@ export function GroupedBarChart({
 
         serie
             .selectAll<SVGRectElement, ExtendedSeriesPointWithSorted>("rect")
-                .on("mouseover", function(e, d){
+                .on("pointerenter", function(e, d){
                     if(isSorted){
                         serie.selectAll<SVGRectElement, ExtendedSeriesPointWithSorted>("rect")
                             .filter(dRect => dRect.barKey !== d.barKey)
@@ -589,16 +589,18 @@ export function GroupedBarChart({
                     tooltip.select("p.bottom-label").text(
                         plotted[0] === "all"?`Total : ${basicFormat(total!, tooltipFormat)}`:"~"
                     )
+
+                    moveTooltip(tooltip, {e, svg:svgNode as SVGSVGElement, yScale: valueScale})
                 })
                 .on("touch", function(e, d){
                     //unhoverLegend()
                     select(".x-axis").selectAll("text")
                         .filter(dText=>dText === d.data.label).attr("class", xAxisTextClass)
                 })
-                .on("mousemove", (e, d)=>{
+                .on("pointermove", (e, d)=>{
                     moveTooltip(tooltip, {e, svg:svgNode as SVGSVGElement, yScale: valueScale})
                 })
-                .on("mouseout", function(e, d){
+                .on("pointerleave", function(e, d){
                     if(isSorted){
                         serie.selectAll<SVGRectElement, ExtendedSeriesPointWithSorted>("rect")
                             .filter(dRect => dRect.barKey !== d.barKey)

@@ -130,7 +130,7 @@ export function moveTooltip(tooltip:any, positionProps:PositioningProps){
     const tooltipClass = position === "top"?styles["tooltip--arrow-down"]:styles["tooltip--arrow-up"]
     tooltip
         .attr("class", `${styles.tooltip} ${tooltipClass}`)
-        .style("left", xPos + "px")
+        .style("left", baseXPos + "px")
         .style("top", 
             position === "top"?
                 (e.y - (offsetHeight + 20))  + "px":

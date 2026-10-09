@@ -1,4 +1,4 @@
-import { waterfallDatum } from "../../types";
+import { waterfallDatum } from "./types";
 
 export const colors = { inflows:"#22c55e", outflows: "#ef4444", open:"steelblue", close:"orange" }
 

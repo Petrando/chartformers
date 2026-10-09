@@ -236,7 +236,7 @@ export function DumbbellChart<T extends { label: string }>({
         .on("pointermove", pointerMove)
         .on("pointerleave", pointerLeave)
                         
-        const r = isMediumScreen?7:10
+        const r = isMediumScreen?7:4
 
         const startCircles = canvas.selectAll<SVGCircleElement, dumbbellDatum>("circle.start")
             .data(data, (d) => d.label + "-start")
@@ -292,12 +292,25 @@ export function DumbbellChart<T extends { label: string }>({
             
         const tooltipFormat = { prefix, suffix, formatType }
         function pointerEnter(e: MouseEvent, d: dumbbellDatum){            
+            const startValue = d[numKeys[0]] as number
+            const endValue = d[numKeys[1]] as number
             tooltip.style("opacity", 1)
             tooltip.select("p.label").text(d.label)
             tooltip.select("p.change span.from span.value")
-                .text(formatTooltipNum(d[numKeys[0]] as number, tooltipFormat))            
+                .text(formatTooltipNum(startValue, tooltipFormat))            
             tooltip.select("p.change span.to span.value")
-                .text(formatTooltipNum(d[numKeys[1]] as number, tooltipFormat))
+                .text(formatTooltipNum(endValue, tooltipFormat))
+
+            const finalValue = endValue - startValue
+            tooltip.select("p.total span.label span.text")
+                .text(formatTooltipNum(finalValue, tooltipFormat))
+            tooltip.select("p.total span.label span.chev")
+                .style("color", finalValue >= 0?"#22c55e":"#ef4444")
+                .text(
+                    finalValue > 0?"▲":
+                    finalValue < 0?"▼":
+                    ""
+                )
 
             moveTooltip(tooltip, {e, svg:svgNode as SVGSVGElement, yScale: valueScale})
         }
@@ -382,12 +395,13 @@ export function DumbbellChart<T extends { label: string }>({
                         <p className='change' 
                             style={{
                                 fontWeight: 700, margin: "3px",  fontSize: "13px", 
-                                color: "wheat", display: "flex", alignItems: "center", justifyContent: "center"
+                                color: "wheat", display: "flex", alignItems: "center", justifyContent: "center",
+                                gap: 2.5
                             }}
                         >
                             <span 
                                 className="from"
-                                style={{display: "flex", alignItems: "center"}}>
+                                style={{display: "flex", alignItems: "center", gap: 2}}>
                                 <span 
                                     className='marker' 
                                     style={{
@@ -397,25 +411,38 @@ export function DumbbellChart<T extends { label: string }>({
                                 />
                                 <span 
                                     className='value' 
-                                    style={{margin:"auto 2px"}}
                                 />
                             </span>
                             {" "}to{" "}
                             <span 
                                 className="to"
-                                style={{display: "flex", alignItems: "center"}}>
+                                style={{display: "flex", alignItems: "center", gap: 2}}>
+                                <span 
+                                    className='value' 
+                                />
                                 <span 
                                     className='marker' 
                                     style={{
                                         width: 10, height: 10, borderRadius: 5,
-                                        backgroundColor: colors.endColor,
-                                        marginLeft: 2
+                                        backgroundColor: colors.endColor,                                        
                                     }}
                                 />
-                                <span 
-                                    className='value' 
-                                    style={{margin:"auto 2px"}}
-                                />
+                                
+                            </span>
+                        </p>
+                        <p className='total' 
+                            style={{
+                                fontWeight: 600, margin: "3px",  fontSize: "12px", 
+                                color: "wheat", display: "flex", alignItems: "center", justifyContent: "center",
+                                gap: 2, textAlign:"center"
+                            }}
+                        >
+                            <span style={{flex: 1, textAlign: "right"}}>
+                            Total:
+                            </span>
+                            <span className='label' style={{ flex: 1, textAlign:"left", whiteSpace: 'nowrap' }}>                                
+                                <span className='text' />
+                                <span className='chev' />
                             </span>
                         </p>
                     </Tooltip>

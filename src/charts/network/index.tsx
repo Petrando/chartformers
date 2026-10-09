@@ -1233,7 +1233,9 @@ export function NetworkGraph({
             mode === "hierarchy"?
                 hierarchyNodeRadius(d as networkHierarchyNode):
                 mode === "network"?(d as networkNode).radius ?? baseRadius:
-                    (d as processedBubbleDataset).r
+                    ((d as processedBubbleDataset).r > 0?
+                        (d as processedBubbleDataset).r:0
+                    )
 
         function nodeId(d: chartNode, i: number){
             if(mode === "hierarchy"){                

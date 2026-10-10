@@ -6,7 +6,7 @@ import { useD3 } from '../../hooks/useD3';
 import { useParentSize } from '../../hooks/useParentSize';
 import { useUIControls } from '../../hooks/useUIControls';
 import { Tooltip, moveTooltip } from '../../components/tooltip';
-import { cloneObj, indexSelectedColor, renderLineChart } from '../../utils';
+import { cloneObj, formatTooltipNum, indexSelectedColor, renderLineChart } from '../../utils';
 import { inactiveColor } from '../../../dev/data/constants';
 import styles from '../global.module.css';
 import barchartStyles from './barchart.module.css';
@@ -162,6 +162,7 @@ export function BarChart({
             return isNaN(rectDimension)?0:rectDimension<0?0:rectDimension;
         }
 
+        const tooltipFormat = {prefix, suffix, formatType}
         const bars =  canvas
             .selectAll<SVGRectElement, pointData>(".bar")
             .data(barchartData, (d) => String(d.label))
@@ -177,7 +178,7 @@ export function BarChart({
                     })
                     .attr("width", function(d){
                         if(orientation === 'vertical'){
-                            return labelScale.bandwidth() > 0?0:labelScale.bandwidth()
+                            return labelScale.bandwidth() > 0?labelScale.bandwidth():0
                         }else{
                             return 0
                         }
@@ -193,7 +194,7 @@ export function BarChart({
                         if(orientation === "vertical"){
                             return 0
                         }else{
-                            return labelScale.bandwidth() > 0?0:labelScale.bandwidth()
+                            return Math.max(labelScale.bandwidth(), 0)
                         }
                     })
                     .attr("fill", barColor)
@@ -208,7 +209,7 @@ export function BarChart({
                     })
                     .attr("width", function(d){
                         if(orientation === 'vertical'){
-                            return labelScale.bandwidth() > 0?0:labelScale.bandwidth()
+                            return Math.max(labelScale.bandwidth(), 0)
                         }else{
                             return valueScaleDimension(d.value)
                         }
@@ -230,13 +231,18 @@ export function BarChart({
             .on("pointerenter", (e, d)=>{                
                 
                 tooltip.style("opacity", 1)
-                    .select("p").text(String(d.label) + ` : 
-                        ${prefix}
-                        ${format(formatType === "long"?",":"~s")(d.value)}
-                        ${suffix}`);              
+                    
+                tooltip.select("p.label span.chev").style("background", barColor(d))
+                tooltip.select("p.label span.value").text(String(d.label) + ``); 
+                
+                tooltip.select("p.value").text(formatTooltipNum(d.value, tooltipFormat))
                 
                 moveTooltip(tooltip, {e, svg:svgNode as SVGSVGElement, yScale: valueScale})
-                select(".x-axis").selectAll("text")
+
+                const labelAxis = orientation === "vertical"?
+                    container.select(".x-axis"):container.select(".y-axis")
+
+                labelAxis.selectAll("text")
                     .filter(dText=>dText === String(d.label)).style("font-weight", "bold")
                 }
             )      
@@ -246,8 +252,12 @@ export function BarChart({
             .on("pointerleave", (e, d)=>{                
                 tooltip.style("opacity", 0);
 
-                select(".x-axis").selectAll("text")
+                const labelAxis = orientation === "vertical"?
+                    container.select(".x-axis"):container.select(".y-axis")
+                    
+                labelAxis.selectAll("text")
                     .filter(dText=>dText === String(d.label)).style("font-weight", "normal")
+                
             })
             .transition().duration(animDuration)
                 .attr("fill", barColor)
@@ -323,7 +333,26 @@ export function BarChart({
                             Sort
                     </label>
                 }
-                <Tooltip />
+                <Tooltip>
+                    <p className='label' 
+                        style={{
+                            fontWeight: 600, margin: "3px", fontSize: "12px", color: "wheat", 
+                            display:"flex", justifyContent: "center", alignItems:"center", gap: 2
+                        }}
+                    >
+                        <span className='chev' style={{width:10, height: 10, borderRadius: 2}}/>
+                        <span 
+                            className='value'                             
+                        />
+                    </p>
+                    <p 
+                        className='value' 
+                        style={{
+                            fontWeight: 700, margin: "3px", fontSize: "13px", color: "wheat", 
+                            textAlign: "center"
+                        }}
+                    />
+                </Tooltip>
             </div> 
         </div>
     );

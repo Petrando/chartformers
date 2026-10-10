@@ -7,8 +7,9 @@ import { useD3 } from '../../hooks/useD3';
 import { useParentSize } from '../../hooks/useParentSize';
 import { useContainerSize } from '../../hooks/useContainerSize';
 import { useLayerIndex } from '../../hooks/useLayerIndex';
-import { Tooltip, getTooltip, moveTooltip } from '../../components/tooltip';
-import { cloneObj, indexColor, basicFormat } from '../../utils';
+import { Tooltip } from './tooltip';
+import { moveTooltip } from '../../components/tooltip';
+import { cloneObj, indexColor, basicFormat, formatTooltipNum } from '../../utils';
 import { inactiveColor } from '../../../dev/data/constants';
 import styles from '../global.module.css';
 import stackedBarStyles from './stacked-barchart.module.css';
@@ -20,7 +21,14 @@ type StackedBarChartPropsExtended =
         focusOnPlot?: boolean;
 };
 
-export function StackedBarChart({ data, focusOnPlot = false, colorIdx = 0, orientation = 'vertical', tooltipFormat }: StackedBarChartPropsExtended) {
+export function StackedBarChart({ 
+    data, focusOnPlot = false, colorIdx = 0, orientation = 'vertical', 
+        tooltipFormat: {
+            prefix = "", suffix = "", formatType = "long"
+        } = { prefix: "", suffix: "", formatType: "long"},
+    }
+    : StackedBarChartPropsExtended
+) {
     const [ref, parentSize] = useParentSize<HTMLDivElement>();
     const { width: parentWidth, height: parentHeight } = parentSize;
     const [controlsRef, controlsSize] = useContainerSize<HTMLDivElement>();        
@@ -133,11 +141,14 @@ export function StackedBarChart({ data, focusOnPlot = false, colorIdx = 0, orien
             `            
         }
 
-        function layerFill(d:ExtendedSeries){
-            const layerIndex = layersRef.current.findIndex(l => l === d.key) + colorIdx
+        const fillByKey = (key: string) => {
+            const layerIndex = layersRef.current.findIndex(l => l === key) + colorIdx
             const color = indexColor(layerIndex)
             
             return color
+        }
+        function layerFill(d:ExtendedSeries){                        
+            return fillByKey(d.key)
         }
 
         const legends = legendsContainer.selectAll<HTMLDivElement, string>(".legend-item")
@@ -271,7 +282,7 @@ export function StackedBarChart({ data, focusOnPlot = false, colorIdx = 0, orien
                 setJustPlotted(true)
             })         
 
-        const tooltip = getTooltip(container as any)
+        const tooltip = container.select("div#tooltip")
             .style("opacity", 0);
 
         let isFirstRender = false;
@@ -419,7 +430,7 @@ export function StackedBarChart({ data, focusOnPlot = false, colorIdx = 0, orien
                     positiveLayers[positiveLayers.length - 1]?.key
             };
 
-        });
+        });        
                            
         const serie = canvas
             .selectAll<SVGGElement, ExtendedSeries>(".serie")
@@ -429,12 +440,7 @@ export function StackedBarChart({ data, focusOnPlot = false, colorIdx = 0, orien
                     const g = enter
                         .append("g")
                         .attr("class", "serie")
-                        .attr("fill", (d) => {
-                            const layerIndex = layersRef.current.findIndex(l => l === d.key) + colorIdx
-                            const color = indexColor(layerIndex)
-                            
-                            return color
-                        })                        
+                        .attr("fill", layerFill)                        
                         .style("opacity", (d) => {
                             if(focusOnPlot){
                                 if (plotted[0] === "all") return 1;
@@ -693,24 +699,27 @@ export function StackedBarChart({ data, focusOnPlot = false, colorIdx = 0, orien
                 .attr("height", rectHeight)
                 .attr("y", rectYPos);
 
+        const tooltipFormat = {prefix, suffix, formatType}        
         serie
             .selectAll<SVGRectElement, ExtendedSeriesPoint>("rect")
                 .on("pointerenter", function(e, d){                                        
                     
-                    select(orientation === "vertical"?".x-axis":".y-axis").selectAll("text")
+                    canvas.select(orientation === "vertical"?".x-axis":".y-axis").selectAll("text")
                         .filter(dText=>dText === d.data.label)
                         .attr("class", (orientation === "vertical"?xAxisTextClass:"") + " " + stackedBarStyles.hoveredAxisText)
 
                     tooltip.style("opacity", 1)
-                        .select("p.title").text(d.data.label)
-                    
+                                                                                    
                     const value = d.data[d.barKey] as number
                     const {total} = d.data
                     const percentage = (value/total!) * 100
-                    
-                    tooltip.select("p.top-label").text(d.barKey + " : " + basicFormat(value, tooltipFormat))
-                    tooltip.select("p.bottom-label").text(plotted[0] === "all"?
-                        `Total : ${basicFormat(total as number, tooltipFormat)}`:"~")
+                                        
+                    tooltip.select("p.label").text(d.data.label)
+                    tooltip.select("p.layer span.label span.chev").style("background", fillByKey(d.barKey))
+                    tooltip.select("p.layer span.label span.label").text(d.barKey)
+                    tooltip.select("p.layer span.value").text(formatTooltipNum(value, tooltipFormat))                    
+
+                    tooltip.select("p.total span.value").text(formatTooltipNum(total ?? 0, tooltipFormat))
 
                     moveTooltip(tooltip, {e, svg:svgNode as SVGSVGElement, yScale: valueScale})
                 })
@@ -724,14 +733,15 @@ export function StackedBarChart({ data, focusOnPlot = false, colorIdx = 0, orien
                     moveTooltip(tooltip, {e, svg:svgNode as SVGSVGElement, yScale: valueScale})
                 })
                 .on("pointerleave", function(e, d){
-                    select(orientation === 'vertical'?".x-axis":".y-axis").selectAll("text")
+                    canvas.select(orientation === 'vertical'?".x-axis":".y-axis").selectAll("text")
                         .filter(dText=>dText === d.data.label)
                         .attr("class", orientation==='vertical'?xAxisTextClass:"")
 
                     tooltip.style("opacity", 0);
                 })
 
-    }, [ ...renderDeps, isSorted, chartData, keys, justPlotted, dataJustChanged, orientation, tooltipFormat ]);
+    }, [ ...renderDeps, isSorted, chartData, keys, justPlotted, dataJustChanged, orientation, 
+        {prefix, suffix, formatType} ]);
             
     return (
         <div 
@@ -785,8 +795,8 @@ export function StackedBarChart({ data, focusOnPlot = false, colorIdx = 0, orien
                                 <line className='zero-line' stroke="currentColor" strokeWidth={1} />
                             </g>
                         }                                                        
-                    </svg>
-                    <Tooltip pCount={3} />
+                    </svg>                    
+                    <Tooltip />                    
                 </div>
             </div>
             

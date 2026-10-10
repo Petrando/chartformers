@@ -5,8 +5,10 @@ import { useD3 } from '../../hooks/useD3';
 import { useParentSize } from '../../hooks/useParentSize';
 import { useContainerSize } from '../../hooks/useContainerSize';
 import { useLayerIndex } from '../../hooks/useLayerIndex';
-import { Tooltip, getTooltip, moveTooltip } from '../../components/tooltip';
-import { cloneObj, indexColor, basicFormat, rotateLabels } from '../../utils';
+import { Tooltip } from './tooltip';
+import { moveTooltip } from '../../components/tooltip';
+import { formatTooltipNum } from '../../utils';
+import { cloneObj, indexColor, rotateLabels } from '../../utils';
 import { inactiveColor } from '../../../dev/data/constants';
 import styles from '../global.module.css';
 import stackedBarStyles from './stacked-barchart.module.css';
@@ -19,7 +21,9 @@ type GroupedBarChartProps =  StackedBarChartProps & {
 
 export function GroupedBarChart({ 
     data, colorIdx = 0, orientation = 'vertical', focusOnPlot = true, 
-    tooltipFormat 
+    tooltipFormat: {
+        prefix = "", suffix = "", formatType = "long"
+    } = { prefix: "", suffix: "", formatType: "long"} 
 }: GroupedBarChartProps) {
     const [ref, parentSize] = useParentSize<HTMLDivElement>();
     const { width: parentWidth, height: parentHeight } = parentSize;
@@ -63,6 +67,7 @@ export function GroupedBarChart({
     const layers = useLayerIndex(keys)
     const isMediumScreen = width > 576;   
 
+    const tooltipFormat = { prefix, suffix, formatType}
     const chartRef = useD3<HTMLDivElement>((container) => {
         if (width === 0 || height === 0) return;
         
@@ -128,9 +133,14 @@ export function GroupedBarChart({
             `            
         }
 
-        function layerFill(d:ExtendedSeriesWithSorted){            
-            const layerIndex = layers.current.findIndex(l => l === d.key) + colorIdx
-            return indexColor(layerIndex); 
+        const fillByKey = (key: string) => {
+            const layerIndex = layers.current.findIndex(l => l === key) + colorIdx
+            const color = indexColor(layerIndex)
+            
+            return color
+        }
+        function layerFill(d:ExtendedSeriesWithSorted){                        
+            return fillByKey(d.key)
         }
 
         const legends = legendsContainer.selectAll<HTMLDivElement, string>(".legend-item")
@@ -243,7 +253,7 @@ export function GroupedBarChart({
                 }                
             })
 
-        const tooltip = getTooltip(container as any)
+        const tooltip = container.select("div#tooltip")
             .style("opacity", 0);
 
         let isFirstRender = false;
@@ -575,20 +585,21 @@ export function GroupedBarChart({
                             .style("opacity", 0.25)    
                     }
                     
-                    select(orientation === "vertical"?".x-axis":".y-axis").selectAll("text")
+                    canvas.select(orientation === "vertical"?".x-axis":".y-axis").selectAll("text")
                         .filter(dText=>dText === d.data.label).attr("class", (orientation === "vertical"?xAxisTextClass:"") + " " + stackedBarStyles.hoveredAxisText)
 
-                    tooltip.style("opacity", 1)
-                        .select("p.title").text(d.data.label)
+                    tooltip.style("opacity", 1)                        
                     
-                    const value = d.data[d.barKey]
+                    const value = d.data[d.barKey] as number
                     const {total} = d.data
                     const percentage = (value as number/total!) * 100
                     const percentText = format(".1f")(percentage) + "%"
-                    tooltip.select("p.top-label").text(d.barKey + " : " + basicFormat(value as number, tooltipFormat))
-                    tooltip.select("p.bottom-label").text(
-                        plotted[0] === "all"?`Total : ${basicFormat(total!, tooltipFormat)}`:"~"
-                    )
+                    tooltip.select("p.label").text(d.data.label)
+                    tooltip.select("p.layer span.label span.chev").style("background", fillByKey(d.barKey))
+                    tooltip.select("p.layer span.label span.label").text(d.barKey)
+                    tooltip.select("p.layer span.value").text(formatTooltipNum(value, tooltipFormat))                    
+                    
+                    tooltip.select("p.total span.value").text(formatTooltipNum(total ?? 0, tooltipFormat))
 
                     moveTooltip(tooltip, {e, svg:svgNode as SVGSVGElement, yScale: valueScale})
                 })
@@ -606,7 +617,7 @@ export function GroupedBarChart({
                             .filter(dRect => dRect.barKey !== d.barKey)
                             .style("opacity", 1)    
                     }
-                    select(orientation === "vertical"?".x-axis":".y-axis").selectAll("text")
+                    canvas.select(orientation === "vertical"?".x-axis":".y-axis").selectAll("text")
                         .filter(dText=>dText === d.data.label)
                         .attr("class", orientation === "vertical"?xAxisTextClass:"")
 
@@ -661,7 +672,7 @@ export function GroupedBarChart({
                             </g>        
                         }                                        
                     </svg>
-                    <Tooltip pCount={3} />
+                    <Tooltip />
                 </div>
             </div>
         </div>

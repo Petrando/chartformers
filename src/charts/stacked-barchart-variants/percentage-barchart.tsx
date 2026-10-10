@@ -5,15 +5,22 @@ import { useD3 } from '../../hooks/useD3';
 import { useParentSize } from '../../hooks/useParentSize';
 import { useContainerSize } from '../../hooks/useContainerSize';
 import { useLayerIndex } from '../../hooks/useLayerIndex';
-import { Tooltip, getTooltip, moveTooltip } from '../../components/tooltip';
-import { cloneObj, indexColor, basicFormat } from '../../utils';
+import { Tooltip } from './tooltip';
+import { moveTooltip } from '../../components/tooltip';
+import { cloneObj, indexColor, basicFormat, formatTooltipNum } from '../../utils';
 import { inactiveColor } from '../../../dev/data/constants';
 import styles from '../global.module.css';
 import stackedBarStyles from './stacked-barchart.module.css';
 import { LayeredData, ExtendedSeries, ExtendedSeriesPoint, StackedBarChartProps } from './types';
 import { useUIControls } from '../../hooks/useUIControls';
 
-export function PercentageBarChart({ data, colorIdx = 0, orientation = 'vertical', tooltipFormat }: StackedBarChartProps) {
+export function PercentageBarChart({ 
+    data, colorIdx = 0, orientation = 'vertical', 
+    tooltipFormat: {
+            prefix = "", suffix = "", formatType = "long"
+        } = { prefix: "", suffix: "", formatType: "long"}
+}: StackedBarChartProps
+) {
     const [ref, parentSize] = useParentSize<HTMLDivElement>();
     const { width: parentWidth, height: parentHeight } = parentSize;    
     
@@ -56,6 +63,7 @@ export function PercentageBarChart({ data, colorIdx = 0, orientation = 'vertical
     const layers = useLayerIndex(keys)
     const isMediumScreen = width > 576;        
     
+    const tooltipFormat = { prefix, suffix, formatType }
     const chartRef = useD3<HTMLDivElement>((container) => {
         if (width === 0 || height === 0) return;        
         
@@ -97,9 +105,12 @@ export function PercentageBarChart({ data, colorIdx = 0, orientation = 'vertical
 
         const legendWidth = isMediumScreen?80:50
 
-        function layerFill(d: ExtendedSeries) {
-            const layerIndex = layers.current.findIndex(l => l === d.key) + colorIdx
-            return indexColor(layerIndex); 
+        const fillByKey = (key: string) => {
+            const layerIndex = layers.current.findIndex(l => l === key) + colorIdx
+            return indexColor(layerIndex);
+        }
+        function layerFill(d: ExtendedSeries) {            
+            return fillByKey(d.key); 
         }
 
         const legendClass = function(d:string){
@@ -199,7 +210,7 @@ export function PercentageBarChart({ data, colorIdx = 0, orientation = 'vertical
                 })
             })
 
-        const tooltip = getTooltip(container as any)
+        const tooltip = container.select("div#tooltip")
             .style("opacity", 0);        
 
         const xAxisTextClass = (!isMediumScreen && orientation === 'vertical')?stackedBarStyles.rotatedAxisText:
@@ -474,21 +485,30 @@ export function PercentageBarChart({ data, colorIdx = 0, orientation = 'vertical
                 .on("pointerenter", function(e, d){
                     //unhoverLegend()
                     
-                    select(".x-axis").selectAll("text")
+                    canvas.select(".x-axis").selectAll("text")
                         .filter(dText=>dText === d.data.name).attr("class", xAxisTextClass + " " + styles.hoveredAxisText)
 
                     tooltip.style("opacity", 1)
-                        .select("p.title").text(d.data.label)
+                        
                     
                     const value:number = d.data[d.barKey] as number || 0
                     const total = d.data.total || 0
                     const percentage = (value/total) * 100
                     const percentText = format(".1f")(percentage) + "%"
+                    tooltip.select("p.title").text(d.data.label)
                     tooltip.select("p.top-label").text(d.barKey + " : " + (!isPercentage?
                         basicFormat(value, tooltipFormat):percentText))
-                    tooltip.select("p.bottom-label").text(isPercentage?`(${basicFormat(value, tooltipFormat)} of ${basicFormat(total, tooltipFormat)})`:
+                    tooltip.select("p.bottom-label").text(isPercentage?
+                        `(${basicFormat(value, tooltipFormat)} of ${basicFormat(total, tooltipFormat)})`:
                         `Total : ${basicFormat(total, tooltipFormat)}`
                     )
+
+                    tooltip.select("p.label").text(d.data.label)
+                    tooltip.select("p.layer span.label span.chev").style("background", fillByKey(d.barKey))
+                    tooltip.select("p.layer span.label span.label").text(d.barKey)
+                    tooltip.select("p.layer span.value").text(percentText)                    
+                    tooltip.select("p.total span.value")
+                        .text(`(${basicFormat(value, tooltipFormat)} of ${basicFormat(total, tooltipFormat)})`)
 
                     moveTooltip(tooltip, {e, svg:svgNode as SVGSVGElement, yScale: y})
                 })
@@ -501,7 +521,7 @@ export function PercentageBarChart({ data, colorIdx = 0, orientation = 'vertical
                     moveTooltip(tooltip, {e, svg:svgNode as SVGSVGElement, yScale: y})
                 })
                 .on("pointerleave", function(e, d){
-                    select(".x-axis").selectAll("text")
+                    canvas.select(".x-axis").selectAll("text")
                         .filter(dText=>dText === d.data.name).attr("class", xAxisTextClass)
 
                     tooltip.style("opacity", 0);
@@ -550,7 +570,7 @@ export function PercentageBarChart({ data, colorIdx = 0, orientation = 'vertical
                             <g className={`${orientation === 'horizontal'?stackedBarStyles["value-axis"]:""} x-axis`} />    
                         </g>                        
                     </svg>
-                    <Tooltip pCount={3} />
+                    <Tooltip totalLabel='' />
                 </div>
             </div>
         </div>

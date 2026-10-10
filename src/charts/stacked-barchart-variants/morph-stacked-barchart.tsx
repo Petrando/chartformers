@@ -1,12 +1,14 @@
 import React, {useState, useEffect, useDeferredValue, useRef} from 'react';
 import { axisBottom, axisLeft, min, max, ScaleBand, scaleBand, ScaleLinear, scaleLinear, 
-    select, Series, stack,  stackOffsetDiverging, stackOffsetExpand } from 'd3';
+    select, Series, stack,  stackOffsetDiverging, stackOffsetExpand, 
+    format} from 'd3';
 import { useD3 } from '../../hooks/useD3';
 import { useParentSize } from '../../hooks/useParentSize';
 import { useContainerSize } from '../../hooks/useContainerSize';
 import { useLayerIndex } from '../../hooks/useLayerIndex';
-import { Tooltip, getTooltip, moveTooltip } from '../../components/tooltip';
-import { cloneObj, indexColor, basicFormat } from '../../utils';
+import { Tooltip } from './tooltip';
+import { moveTooltip } from '../../components/tooltip';
+import { cloneObj, indexColor, basicFormat, formatTooltipNum } from '../../utils';
 import { inactiveColor } from '../../../dev/data/constants';
 import styles from '../global.module.css';
 import stackedBarStyles from './stacked-barchart.module.css';
@@ -23,7 +25,10 @@ type MorphStackedBarChartProps =
 };
 
 export function MorphStackedBarChart({ 
-    data, colorIdx = 0, mode = 'stacked', orientation = 'vertical', focusOnPlot = false, tooltipFormat 
+    data, colorIdx = 0, mode = 'stacked', orientation = 'vertical', focusOnPlot = false, 
+    tooltipFormat: {
+        prefix = "", suffix = "", formatType = "long"
+    } = { prefix: "", suffix: "", formatType: "long"}
 }: MorphStackedBarChartProps) {
     const [ref, parentSize] = useParentSize<HTMLDivElement>();
     const prevModeRef = useRef<modeType>(mode);
@@ -83,7 +88,8 @@ export function MorphStackedBarChart({
         
     const renderDeps = [ width, height, plotted, colorIdx ]
 
-    const chartData:LayeredData[] = cloneObj(stackData);                        
+    const chartData:LayeredData[] = cloneObj(stackData);
+    const tooltipFormat = { prefix, suffix, formatType }                        
     const keys = chartData.length === 0 ? [] :
         (Object.keys(chartData[0]) as (keyof LayeredData)[])
             .filter((key) => key !== "label" && key !== "total") as string[];
@@ -95,7 +101,7 @@ export function MorphStackedBarChart({
         if (width === 0) return;        
         if(height === 0) return;
         
-        const margin = { top: 20, right: 30, bottom: 30, left: 40 };          
+        const margin = { top: 20, right: 30, bottom: 30, left: 40 };                  
 
         const prevMode = prevModeRef.current
 
@@ -165,11 +171,14 @@ export function MorphStackedBarChart({
             `            
         }
 
-        function layerFill(d:ExtendedSeriesWithSorted){
-            const layerIndex = layers.current.findIndex(l => l === d.key) + colorIdx
+        const fillByKey = (key: string) => {
+            const layerIndex = layers.current.findIndex(l => l === key) + colorIdx
             const color = indexColor(layerIndex)
             
             return color
+        }
+        function layerFill(d:ExtendedSeriesWithSorted){                        
+            return fillByKey(d.key)
         }
 
         const legendWidth = isMediumScreen?80:50        
@@ -259,7 +268,7 @@ export function MorphStackedBarChart({
                 }                             
 
             })
-            .on("pointermove", function(e, d){
+            .on("pointerleave", function(e, d){
                 if(mode === "percentage" && focusOnPlot) return;
                 const serie = canvas.selectAll<SVGGElement, ExtendedSeriesWithSorted>(".serie")
                 if(plotted[0] === "all"){
@@ -273,7 +282,7 @@ export function MorphStackedBarChart({
                     .attr("stroke-dasharray", strokeDasharray)
                 
             })
-            .on("pointerleave", (e, d)=>{
+            .on("click", (e, d)=>{
                 if(mode === "percentage" && focusOnPlot) return;
                 setPlotted(prev=>{
                     let newPlot:string[] = []
@@ -415,7 +424,7 @@ export function MorphStackedBarChart({
                 `translate(${valueScale(0) || 0}, 0)`
             )
 
-        const tooltip = getTooltip(container as any)
+        const tooltip = container.select("div#tooltip")
             .style("opacity", 0);        
         
         const dataLayers: Series<LayeredData, string | string[]>[] =
@@ -794,20 +803,28 @@ export function MorphStackedBarChart({
                         .style("opacity", 0.25)    
                 }
 
-                select(orientation === "vertical"?".x-axis":".y-axis").selectAll("text")
+                canvas.select(orientation === "vertical"?".x-axis":".y-axis").selectAll("text")
                     .filter(dText=>dText === d.data.label)
                     .attr("class", (orientation === "vertical"?xAxisTextClass:"") + " " + stackedBarStyles.hoveredAxisText)
                 
-                tooltip.style("opacity", 1)
-                    .select("p.title").text(d.data.label)
+                tooltip.style("opacity", 1)                    
                 
                 const value = d.data[d.barKey] as number
-                const {total} = d.data
+                const total = d.data.total ?? 0
                 const percentage = (value/total!) * 100
+                const percentText = format(".1f")(percentage) + "%"
                 
-                tooltip.select("p.top-label").text(d.barKey + " : " + basicFormat(value, tooltipFormat))
-                tooltip.select("p.bottom-label").text(plotted[0] === "all"?
-                    `Total : ${basicFormat(total as number, tooltipFormat)}`:"~")
+                tooltip.select("p.label").text(d.data.label)
+                tooltip.select("p.layer span.label span.chev").style("background", fillByKey(d.barKey))
+                tooltip.select("p.layer span.label span.label").text(d.barKey)
+                tooltip.select("p.layer span.value")
+                    .text(mode === "percentage"?percentText:formatTooltipNum(value, tooltipFormat))
+                tooltip.select("p.total span.value")
+                    .text(
+                        mode === "percentage"?
+                        `(${basicFormat(value, tooltipFormat)} of ${basicFormat(total, tooltipFormat)})`:
+                        formatTooltipNum(total, tooltipFormat)
+                    )
 
                 moveTooltip(tooltip, {e, svg:svgNode as SVGSVGElement, yScale: valueScale})
             })
@@ -821,7 +838,7 @@ export function MorphStackedBarChart({
                         .style("opacity", 1)    
                 }
 
-                select(orientation === 'vertical'?".x-axis":".y-axis").selectAll("text")
+                canvas.select(orientation === 'vertical'?".x-axis":".y-axis").selectAll("text")
                     .filter(dText=>dText === d.data.label)
                     .attr("class", orientation==='vertical'?xAxisTextClass:"")
 
@@ -936,7 +953,9 @@ export function MorphStackedBarChart({
                             </g>        
                         }                                        
                     </svg>
-                    <Tooltip pCount={3} />
+                    <Tooltip  
+                        totalLabel={mode === "percentage"?"":"of total"}
+                    />
                 </div>
             </div>            
         </div>

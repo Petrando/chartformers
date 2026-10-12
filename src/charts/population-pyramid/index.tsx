@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { scaleBand, scaleLinear, axisBottom, format, axisLeft, axisRight, stack, stackOrderNone, stackOffsetNone, max, sum, Selection, ScaleLinear, Axis, NumberValue, SeriesPoint } from "d3"
-import { Tooltip, getTooltip, tooltipMove, hideTooltip  } from "../../components/tooltip";
+import { Tooltip, tooltipMove, moveTooltip } from "../../components/tooltip";
 import { ManIcon, WomanIcon } from "../../components/icons";
 import { useD3 } from "../../hooks/useD3";
 import { useParentSize } from "../../hooks/useParentSize";
@@ -140,27 +140,27 @@ export function PopulationPyramid({
         const svgNode = canvasSvg.node()
         const canvas = canvasSvg.select<SVGGElement>('.plot-area')
             .attr("fill", "steelblue")
-            .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
-        
+            .attr("transform", "translate(" + margin.left + "," + margin.top + ")");        
 
-        const tooltip = getTooltip(container as any);            
+        const tooltip = container.select("div#tooltip")
+            .style("opacity", 0)
 
         function hideTheTooltip(){              
-            hideTooltip(tooltip)
+            tooltip.style("opacity", 0)
         }
 
-        canvas  
+        /*canvas  
             .on("mouseout", function(){                    
                 hideTheTooltip()
-            })
+            })*/
 
-        canvasSvg.select("rect.bgRect")
+        /*canvasSvg.select("rect.bgRect")
             .on("mouseover", function(){                    
                 hideTheTooltip()
             })
             .on("mousemove", function(){                    
                 hideTheTooltip()
-            })
+            })*/
 
         if(canvas.select('g.yMale.axis').node() === null){
             canvas.append("g")	
@@ -365,36 +365,39 @@ export function PopulationPyramid({
                 undefined,
                 exit=>exit.remove()
             )
-            .on('pointerenter', function(d,i){                                      
+            .on('pointerenter', function(e,d){                                      
+                                
                 if(isTotal && !isPercentage){
                     canvas.selectAll<SVGGElement, SeriesPoint<ageRangeGroup>>(".femaleBars")
-                        .filter(d => d.data.ageRange === i.data.ageRange)                      
+                        .filter(dFemale => dFemale.data.ageRange === d.data.ageRange)                      
                         .attr("class", "femaleBars" + " " + pyramidStyles.totalFemale)
                 }                
             
                 canvas.select('g.yMale.axis').selectAll('text')
-                    .filter(function(dText){return i.data.ageRange===dText})
+                    .filter(function(dText){return d.data.ageRange===dText})
                 .style('font-weight', 'bold');                       
-                                
-                showTooltip("male", i)
-                tooltipMove(d, tooltip)
+
+                e.stopPropagation()                               
+                showTooltip("male", d)                
+                tooltipMove(d, tooltip)                                
+                
             })
             .on("pointermove", function(e){
-                tooltipMove(e, tooltip)                    
+                e.stopPropagation()
+                tooltipMove(e, tooltip)                                    
             })
-            .on('pointerleave', function(d, i){      
-                
+            .on('pointerleave', function(e, d){                      
                 canvas.select('g.yMale.axis')
                     .selectAll('text')
-                    .filter(function(dText){return i.data.ageRange === dText})
+                    .filter(function(dText){return d.data.ageRange === dText})
                     .style('font-weight', 'normal');                       
                 
                 if(isTotal && !isPercentage){
                     canvas.selectAll<SVGGElement, SeriesPoint<ageRangeGroup>>(".femaleBars")
-                        .filter(d => d.data.ageRange === i.data.ageRange)                    
+                        .filter(dFemale => dFemale.data.ageRange === d.data.ageRange)                    
                         .attr("class", "femaleBars" + " " + pyramidStyles.femaleTotal)
                 }                    
-                hideTheTooltip()
+                tooltip.style("opacity", 0)
             })
             .attr("class", "maleBars" + " " + maleStyles)
                 .transition().duration(animDuration)
@@ -470,36 +473,38 @@ export function PopulationPyramid({
                     undefined,
                     exit=>exit.remove()
                 )
-                .on('mouseover', function(d,i){                               
-
+                .on('pointerenter', function(e,d){                               
+                    e.stopPropagation()
                     canvas.select('g.yFemale.axis')
-                        .selectAll('text').filter(function(dText){return i.data.ageRange===dText})
+                        .selectAll('text').filter(function(dText){return d.data.ageRange===dText})
                         .style('font-weight', 'bold');  
 
                     if(isTotal && !isPercentage){                  
                         canvas.selectAll<SVGGElement, SeriesPoint<ageRangeGroup>>(".maleBars")
-                            .filter(d => d.data.ageRange === i.data.ageRange)                                      
+                            .filter(dMale => dMale.data.ageRange === d.data.ageRange)                                      
                             .attr("class", "maleBars" + " " + pyramidStyles.totalMale)
                     }
 
-                    showTooltip("female", i)
+                    showTooltip("female", d)
+                    tooltipMove(d, tooltip)                    
                 })
-                .on("mousemove", function(e){
-                    tooltipMove(e, tooltip)
+                .on("pointermove", function(e){
+                    e.stopPropagation()
+                    tooltipMove(e, tooltip)                    
                 })
-                .on('mouseout', function(d,i){
+                .on('pointerleave', function(e, d){
                     canvas.select('g.yFemale.axis')
                         .selectAll('text')
-                        .filter(function(dText){return i.data.ageRange===dText})
+                        .filter(function(dText){return d.data.ageRange===dText})
                         .style('font-weight', 'normal');                                  
 
                     if(isTotal && !isPercentage){
                         canvas.selectAll<SVGGElement, SeriesPoint<ageRangeGroup>>(".maleBars")
-                            .filter(d => d.data.ageRange === i.data.ageRange)                    
+                            .filter(dMale => dMale.data.ageRange === d.data.ageRange)                    
                             .attr("class", "maleBars" + " " + pyramidStyles.maleTotal)
                     }
                     
-                    hideTheTooltip()
+                    tooltip.style("opacity", 0)
                 })
                 .attr("class", "femaleBars" + " " + femaleStyles)                
                     .transition().duration(animDuration)
@@ -528,8 +533,9 @@ export function PopulationPyramid({
                 })
 
             function showTooltip(gender: "male" | "female", d: SeriesPoint<ageRangeGroup>){
-                tooltip.style("opacity", 1)
-                    .select("p").text(function(){
+                tooltip.style("opacity", 1)                
+                    
+                tooltip.select("p").text(function(){
                         if(isTotal && !isPercentage){
                             return `${d.data.ageRange} y.o: ${format(",d")(d.data.Total!)} people`
                         }

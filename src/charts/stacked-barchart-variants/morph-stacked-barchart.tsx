@@ -330,9 +330,11 @@ export function MorphStackedBarChart({
         const isStacked = mode === "stacked" || mode === "percentage"
 
         const baseValueMax = mode === "stacked"?
-                    singleLayerActive?
-                        max(chartData, (d: LayeredData) => (d[plotted[0]] as number)):
-                        max(chartData, (d: LayeredData) => d.total):
+                    focusOnPlot?(
+                        plotted[0] === "all"?
+                            max(chartData, (d: LayeredData) => d.totalPos):
+                                max(chartData, (d: LayeredData) => (d[plotted[0]] as number))):
+                            max(chartData, (d: LayeredData) => d.totalPos):
                     mode === "grouped"?(plotted[0] === "all"
                         ? max(chartData, d =>
                             max(
@@ -343,12 +345,14 @@ export function MorphStackedBarChart({
                         )
                         : max(chartData, d => d[plotted[0]] as number)):
                         1
+        
         const valueMax = Math.max(0, baseValueMax ?? 0)
 
         const baseValueMin = mode === "stacked"?
-                    singleLayerActive?
-                        min(chartData, (d: LayeredData) => (d[plotted[0]] as number)):
-                        min(chartData, (d: LayeredData) => d.total):
+                    focusOnPlot?(plotted[0] === "all"?
+                        min(chartData, (d: LayeredData) => d.totalMin):
+                            min(chartData, (d: LayeredData) => (d[plotted[0]] as number))):
+                        min(chartData, (d: LayeredData) => d.totalMin):
                     mode === "grouped"?(plotted[0] === "all"
                         ? min(chartData, d =>
                             min(
@@ -362,9 +366,9 @@ export function MorphStackedBarChart({
         const valueMin = Math.min(0, baseValueMin ?? 0)
 
         const valueScale: ScaleLinear<number, number> = scaleLinear()
-            .domain([valueMin, valueMax ?? 0])
+            .domain([valueMin, valueMax])
             .range(orientation === 'vertical'?[graphHeight, 0]:[0, graphWidth])
-            .nice();
+            .nice();        
 
         const xAxisTextClass = (!isMediumScreen && orientation === 'vertical')?stackedBarStyles.rotatedAxisText:
             stackedBarStyles.axisText;
@@ -601,7 +605,7 @@ export function MorphStackedBarChart({
                     const dimension = orientation === 'vertical'?
                     valueScale(d[0]) - valueScale(d[1]):
                     valueScale(d[1]) - valueScale(d[0])
-                
+                                    
                     return isNaN(dimension) ? 0 : dimension < 0?0:dimension;
                 }else {
                     const value = Number(d.data[d.barKey])
@@ -883,7 +887,7 @@ export function MorphStackedBarChart({
                 .attr("width", rectWidth)
         }
 
-        if(mode === prevMode){
+        if(mode === prevMode){            
             transitionNormal()
         }else{
             if(isStacked){

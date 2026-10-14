@@ -425,7 +425,7 @@ export function PercentageBarChart({
                          })
                         .attr("width", function(d){
                             if(orientation === 'vertical'){
-                                return rectWidth(d)//labelScale.bandwidth()
+                                return labelScale.bandwidth()
                             }else{
                                 return 0
                             }
@@ -475,11 +475,11 @@ export function PercentageBarChart({
             .attr("class", updateRectClass)
             .attr("stroke-dasharray", strokeDasharray)
             .attr("stroke-dashoffset", strokeDashoffset)
-            .transition().duration(animDuration)//.delay(animDelay) 
-                .attr("x", rectXPos)                    
-                .attr("width", rectWidth)
-                .attr("height", rectHeight)
-                .attr("y", rectYPos); 
+                .transition().duration(animDuration)//.delay(animDelay) 
+            .attr("x", rectXPos)                    
+            .attr("width", rectWidth)
+            .attr("height", rectHeight)
+            .attr("y", rectYPos); 
                 
         serie
             .selectAll<SVGRectElement, ExtendedSeriesPoint>("rect")

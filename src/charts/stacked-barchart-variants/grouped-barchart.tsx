@@ -71,7 +71,7 @@ export function GroupedBarChart({
     const chartRef = useD3<HTMLDivElement>((container) => {
         if (width === 0 || height === 0) return;
         
-        const margin = { top: 20, right: 30, bottom: 30, left: 40 };          
+        const margin = { top: 20, right: 30, bottom: 30, left: 30 };          
 
         const keys = chartData.length === 0 ? [] :
             (Object.keys(chartData[0]) as (keyof LayeredData)[])

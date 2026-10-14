@@ -67,7 +67,7 @@ export function PercentageBarChart({
     const chartRef = useD3<HTMLDivElement>((container) => {
         if (width === 0 || height === 0) return;        
         
-        const margin = { top: 20, right: 30, bottom: 30, left: 40 };         
+        const margin = { top: 20, right: 30, bottom: 30, left: 30 };         
         
         const keys = chartData.length === 0 ? [] :
         (Object.keys(chartData[0]) as (keyof LayeredData)[])
@@ -244,7 +244,7 @@ export function PercentageBarChart({
                 .tickValues(labelScale.domain())
                 .tickSizeOuter(0):
             axisBottom(valueScale)                
-                .ticks(4, isPercentage?".0%":"s")
+                .ticks(10, isPercentage?".0%":"s")
                 .tickSizeOuter(0)
                 .tickSize(-graphHeight);
 
@@ -269,7 +269,7 @@ export function PercentageBarChart({
             .range([graphHeight, 0]);                                        
             
         const yAxis = orientation === 'vertical'
-            ? axisLeft(valueScale).ticks(4, isPercentage?".0%":"s").tickSize(-graphWidth)
+            ? axisLeft(valueScale).ticks(10, isPercentage?".0%":"s").tickSize(-graphWidth)
             : axisLeft(labelScale).tickSizeOuter(0);            
                                 
         canvas.select<SVGGElement>(".y-axis")  
@@ -347,7 +347,8 @@ export function PercentageBarChart({
         }
 
         const valueScaleDimension = (d: ExtendedSeriesPoint) => {
-            const dimension = orientation === 'vertical'?valueScale(d[0]) - valueScale(d[1]):
+            const dimension = orientation === 'vertical'?
+                valueScale(d[0]) - valueScale(d[1]):
                 valueScale(d[1]) - valueScale(d[0]);
             return isNaN(dimension)?0:dimension<0?0:dimension;
         }
@@ -424,7 +425,7 @@ export function PercentageBarChart({
                          })
                         .attr("width", function(d){
                             if(orientation === 'vertical'){
-                                return labelScale.bandwidth()
+                                return rectWidth(d)//labelScale.bandwidth()
                             }else{
                                 return 0
                             }
@@ -494,14 +495,7 @@ export function PercentageBarChart({
                     const value:number = d.data[d.barKey] as number || 0
                     const total = d.data.total || 0
                     const percentage = (value/total) * 100
-                    const percentText = format(".1f")(percentage) + "%"
-                    tooltip.select("p.title").text(d.data.label)
-                    tooltip.select("p.top-label").text(d.barKey + " : " + (!isPercentage?
-                        basicFormat(value, tooltipFormat):percentText))
-                    tooltip.select("p.bottom-label").text(isPercentage?
-                        `(${basicFormat(value, tooltipFormat)} of ${basicFormat(total, tooltipFormat)})`:
-                        `Total : ${basicFormat(total, tooltipFormat)}`
-                    )
+                    const percentText = format(".1f")(percentage) + "%"                    
 
                     tooltip.select("p.label").text(d.data.label)
                     tooltip.select("p.layer span.label span.chev").style("background", fillByKey(d.barKey))

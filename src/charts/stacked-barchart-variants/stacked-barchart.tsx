@@ -1,7 +1,7 @@
 import React, {useState, useEffect} from 'react';
 import { 
     axisBottom, axisLeft, min, max, ScaleBand, scaleBand, scaleLinear, ScaleLinear, select, Series, 
-    SeriesPoint, stack, stackOffsetDiverging 
+    SeriesPoint, stack, stackOffsetDiverging, stackOffsetNone 
 } from 'd3';
 import { useD3 } from '../../hooks/useD3';
 import { useParentSize } from '../../hooks/useParentSize';
@@ -13,7 +13,9 @@ import { cloneObj, indexColor, basicFormat, formatTooltipNum } from '../../utils
 import { inactiveColor } from '../../../dev/data/constants';
 import styles from '../global.module.css';
 import stackedBarStyles from './stacked-barchart.module.css';
-import { LayeredData, ExtendedSeries, ExtendedSeriesPoint, StackedBarChartProps, stackOrderByCategory } from './types';
+import { 
+    LayeredData, ExtendedSeries, ExtendedSeriesPoint, StackedBarChartProps, 
+    stackOrderByCategory } from './types';
 import { useUIControls } from '../../hooks/useUIControls';
 
 type StackedBarChartPropsExtended =
@@ -74,7 +76,7 @@ export function StackedBarChart({
     const chartRef = useD3<HTMLDivElement>((container) => {
         if (width === 0 || height === 0) return;        
         
-        const margin = { top: 20, right: 20, bottom: 30, left: 40 };         
+        const margin = { top: 20, right: 30, bottom: 30, left: 30 };         
         
         const keys = chartData.length === 0 ? [] :
         (Object.keys(chartData[0]) as (keyof LayeredData)[])
@@ -314,7 +316,7 @@ export function StackedBarChart({
         const valueMin = Math.min(0, baseValueMin ?? 0)        
         
         const valueScale: ScaleLinear<number, number> = scaleLinear()
-            .domain([valueMin, valueMax ?? 0])
+            .domain([valueMin, valueMax])
             .range(orientation === 'vertical'?[graphHeight, 0]:[0, graphWidth])
             .nice();
             
@@ -328,7 +330,7 @@ export function StackedBarChart({
                 .tickValues(labelScale.domain())
                 .tickSizeOuter(0):
              axisBottom(valueScale)                
-                .ticks(4, "s")
+                .ticks(10, "s")
                 .tickSizeOuter(0)
                 .tickSize(-graphHeight);
             
@@ -351,12 +353,12 @@ export function StackedBarChart({
             .style("display", "none")
             
         const yAxis = orientation === 'vertical'
-            ? axisLeft(valueScale).ticks(4, "s").tickSize(-graphWidth)
+            ? axisLeft(valueScale).ticks(10, "s").tickSize(-graphWidth)
             : axisLeft(labelScale).tickSizeOuter(0);                    
                                         
         canvas.select<SVGGElement>(".y-axis")            
             .attr("transform", `translate(0,0)`)               
-                .transition().duration(isFirstRender?0:animDuration)
+                .transition().duration(animDuration)
             .call(yAxis)
             .selectAll(".tick")
             .filter(d => d === 0)
@@ -400,38 +402,7 @@ export function StackedBarChart({
             newSeries.key = seriesKey;
             return newSeries;
         });
-        
-        const stackOrderByCategory:stackOrderByCategory[] = sortedData.map((row: LayeredData, index: number) => {
-
-            const layers = extendedDataLayers.map(layer => ({
-                key: layer.key,
-                start: layer[index][0],
-                end: layer[index][1],
-                value: row[layer.key]
-            }));
-
-            const positiveLayers = layers
-                .filter(d => d.value ?? 0 > 0)
-                .sort((a,b) => b.end - a.end);
-
-            const negativeLayers = layers
-                .filter(d => d.value ?? 0 < 0)
-                .sort((a,b) => a.start - b.start);
-
-            return {
-                label: row.label,
-
-                top: positiveLayers.length > 0?
-                    positiveLayers[0]?.key:
-                    negativeLayers[negativeLayers.length - 1]?.key,
-
-                bottom: negativeLayers.length > 0?
-                    negativeLayers[0]?.key:
-                    positiveLayers[positiveLayers.length - 1]?.key
-            };
-
-        });        
-                           
+                                   
         const serie = canvas
             .selectAll<SVGGElement, ExtendedSeries>(".serie")
             .data(extendedDataLayers, (d: ExtendedSeries) => d.key)
@@ -511,7 +482,7 @@ export function StackedBarChart({
         const valueScalePos = (d: ExtendedSeriesPoint) => {
             if(!singleLayerActive){
                 const orientationDimension = orientation === 'vertical'?graphHeight:graphWidth
-                if(isFirstRender) return 0
+                //if(isFirstRender) return 0
                 
                 return plotted[0] === "all"
                     ? valueScale(orientation === 'vertical'?d[1]:d[0])
@@ -530,8 +501,8 @@ export function StackedBarChart({
         const valueScaleDimension = (d: ExtendedSeriesPoint) => {
             if(!singleLayerActive){
                 const dimension = orientation === 'vertical'?
-                valueScale(d[0]) - valueScale(d[1]):
-                valueScale(d[1]) - valueScale(d[0])
+                    valueScale(d[0]) - valueScale(d[1]):
+                    valueScale(d[1]) - valueScale(d[0])
             
                 return isNaN(dimension) ? 0 : dimension < 0?0:dimension;
             }else {
@@ -558,6 +529,37 @@ export function StackedBarChart({
         const rectHeight = (d: ExtendedSeriesPoint):number => {            
             return orientation === 'vertical' ? valueScaleDimension(d) : labelScaleBandWidth
         }
+
+        const stackOrderByCategory:stackOrderByCategory[] = sortedData.map((row: LayeredData, index: number) => {
+
+            const layers = extendedDataLayers.map(layer => ({
+                key: layer.key,
+                start: layer[index][0],
+                end: layer[index][1],
+                value: row[layer.key]
+            }));
+
+            const positiveLayers = layers
+                .filter(d => d.value ?? 0 > 0)
+                .sort((a,b) => b.end - a.end);
+
+            const negativeLayers = layers
+                .filter(d => d.value ?? 0 < 0)
+                .sort((a,b) => a.start - b.start);
+
+            return {
+                label: row.label,
+
+                top: positiveLayers.length > 0?
+                    positiveLayers[0]?.key:
+                    negativeLayers[negativeLayers.length - 1]?.key,
+
+                bottom: negativeLayers.length > 0?
+                    negativeLayers[0]?.key:
+                    positiveLayers[positiveLayers.length - 1]?.key
+            };
+
+        });
         
         const strokeDasharray = (d: ExtendedSeriesPoint, i: number): string => {
             /*if(d.barKey === hovered){
@@ -642,7 +644,10 @@ export function StackedBarChart({
                         })
                         .attr("y", (d) => {
                             if(orientation === 'vertical'){
-                                if (!prevXLabels.includes(d.data.label)) return valueScale(0);
+                                return valueScale(0)
+                                /*if (!prevXLabels.includes(d.data.label)) {                                    
+                                    return graphHeight//valueScale(0)
+                                };
 
                                 const yFinal =
                                     plotted[0] === "all"
@@ -655,8 +660,8 @@ export function StackedBarChart({
                                 const height = isNaN(rectHeight) ? 0 : rectHeight < 0 ? 0 : rectHeight;
                                 const yPos = yFinal + height;
 
-                                if(isFirstRender) return  graphHeight - (margin.bottom + margin.top);
-                                return yPos;
+                                if(isFirstRender) return  graphHeight// - (margin.bottom + margin.top);
+                                return yPos;*/
 
                             }
                             else{
@@ -672,7 +677,8 @@ export function StackedBarChart({
                         })
                         .attr("stroke-dasharray", strokeDasharray)
                         .attr("stroke-dashoffset", strokeDashoffset)
-                            .transition()
+                            
+                    theBars.transition()
                             .duration(animDuration)
                         .attr("x", rectXPos)
                         .attr("width", rectWidth)
@@ -718,7 +724,6 @@ export function StackedBarChart({
                     tooltip.select("p.layer span.label span.chev").style("background", fillByKey(d.barKey))
                     tooltip.select("p.layer span.label span.label").text(d.barKey)
                     tooltip.select("p.layer span.value").text(formatTooltipNum(value, tooltipFormat))                    
-
                     tooltip.select("p.total span.value").text(formatTooltipNum(total ?? 0, tooltipFormat))
 
                     moveTooltip(tooltip, {e, svg:svgNode as SVGSVGElement, yScale: valueScale})

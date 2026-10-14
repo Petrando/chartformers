@@ -101,7 +101,7 @@ export function MorphStackedBarChart({
         if (width === 0) return;        
         if(height === 0) return;
         
-        const margin = { top: 20, right: 30, bottom: 30, left: 40 };                  
+        const margin = { top: 20, right: 30, bottom: 30, left: 30 };                  
 
         const prevMode = prevModeRef.current
 
@@ -568,7 +568,7 @@ export function MorphStackedBarChart({
             if(isStacked){
                 if(!singleLayerActive){
                     const orientationDimension = orientation === 'vertical'?graphHeight:graphWidth
-                    if(isFirstRender) return 0
+                    //if(isFirstRender) return 0
                     
                     return plotted[0] === "all"
                         ? valueScale(orientation === 'vertical'?d[1]:d[0])

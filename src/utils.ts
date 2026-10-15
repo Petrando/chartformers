@@ -160,7 +160,7 @@ export function renderLineChart(
 
     const isMediumScreen = width > 576;
     const radius = isMediumScreen?3:2
-    const lineColor = lineStroke ?? "#2b2b22"
+    const lineColor = lineStroke ?? "#594c5b"
 
     const animDuration = 500
     const lineData = showLine?[data]:[]

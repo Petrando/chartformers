@@ -687,7 +687,7 @@ export function DeltaWaterfall({
             width, "vertical", 
             { 
                 showLine, showDots, curve,
-                lineStroke: String(color(waterfallLineColor)?.darker()), 
+                //lineStroke: String(color(waterfallLineColor)?.darker()), 
                 dotFill: waterfallLineColor
              }
         )
@@ -760,9 +760,6 @@ export function DeltaWaterfall({
             })
             .on("pointermove", pointerMove)
             .on("pointerleave", pointerLeave)
-
-        
-        
         
     }, [effectiveTimeframe, data, width, height, selected, isSorted,  
         { showLine, showDots, curve},

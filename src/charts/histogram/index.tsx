@@ -759,7 +759,7 @@ export function Histogram({
                 })
                        
             const lineColor = layerIdx === 1?
-                isSingleData?"#2b2b22":(!withNegativeData?colors.base:colors.layer1.positive):
+                isSingleData?"#394447":(!withNegativeData?colors.base:colors.layer1.positive):
                 colors.layer2.positive
 
             renderHistogramLine(

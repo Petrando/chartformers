@@ -507,7 +507,7 @@ export function WaterfallChart({
             canvas, {scale:xScale, offset:xScale.bandwidth()/2}, yScale, {data:baseLineData}, width, orientation, 
             { 
                 showLine, showDots, curve,
-                lineStroke: String(color(waterfallLineColor)?.darker()), 
+                //lineStroke: String(color(waterfallLineColor)?.darker()), 
                 dotFill: waterfallLineColor
             })        
         

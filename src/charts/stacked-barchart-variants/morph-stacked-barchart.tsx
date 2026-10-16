@@ -98,8 +98,7 @@ export function MorphStackedBarChart({
     const isMediumScreen = width > 576;
         
     const chartRef = useD3<HTMLDivElement>((container) => {
-        if (width === 0) return;        
-        if(height === 0) return;
+        if (width === 0 || height === 0 ) return;                
         
         const margin = { top: 20, right: 30, bottom: 30, left: 30 };                  
 
@@ -694,47 +693,8 @@ export function MorphStackedBarChart({
         serie.selectAll<SVGRectElement, ExtendedSeriesPointWithSorted>("rect")
             .data((d) => d, (d) => d.data.label)
             .join(
-                enter=>{                        
-                    if((isStacked && prevIsStacked) || (!isStacked && !prevIsStacked)){                        
-                        const theBars = enter
-                            .append("rect")
-                            .attr("class", styles.rect)
-                            .attr("x", function(d) {
-                                if(orientation === "vertical"){
-                                    return labelScale(d.data.label) ?? 0; 
-                                }else{
-                                    if(!prevXLabels.includes(d.data.label)){
-                                        return valueScale(0)
-                                    }else{
-                                        return valueScalePos(d) + valueScaleDimension(d)
-                                    }                                    
-                                }                                
-                            })
-                            .attr("width", orientation === "vertical"?labelScale.bandwidth():0)
-                            .attr("y", function(d){
-                                if(orientation === "vertical"){
-                                    if(!prevXLabels.includes(d.data.label)){                                        
-                                        return valueScale(0)
-                                    }
-                                    else{
-                                        return valueScalePos(d) + valueScaleDimension(d)
-                                    }                                                                                                            
-                                }else{
-                                    return labelScale(d.data.label) ?? 0;
-                                }                                
-                            })
-                            .attr("height", orientation === "vertical"?0:labelScale.bandwidth())
-                            .attr("stroke-dasharray", strokeDasharray)
-                            .attr("stroke-dashoffset", strokeDashoffset)
-                                .transition().duration(animDuration)                                
-                            .attr("x", rectXPos)
-                            .attr("width", rectWidth)                        
-                            .attr("height", rectHeight)
-                            .attr("y", rectYPos)
-
-                        return theBars
-                    }
-                    else if(prevIsStacked && !isStacked){
+                enter=>{                                                                                    
+                    if(prevIsStacked && !isStacked){
                         const theBars = enter
                             .append("rect")
                             .attr("class", styles.rect)
@@ -749,7 +709,7 @@ export function MorphStackedBarChart({
                                 labelScale.bandwidth():0)
                             .attr("y", function(d){
                                 return orientation === "vertical"?
-                                    graphHeight:labelScale(d.data.label) ?? 0
+                                    valueScale(0):labelScale(d.data.label) ?? 0
                             })
                             .attr("height", orientation === "vertical"?0:labelScale.bandwidth())                      
                             .attr("stroke-dasharray", strokeDasharray)
@@ -794,8 +754,45 @@ export function MorphStackedBarChart({
 
                         return theBars                                
                     }
-                    
-                    return enter
+                    else {//if((isStacked && prevIsStacked) || (!isStacked && !prevIsStacked)){                        
+                        const theBars = enter
+                            .append("rect")
+                            .attr("class", styles.rect)
+                            .attr("x", function(d) {
+                                if(orientation === "vertical"){
+                                    return labelScale(d.data.label) ?? 0; 
+                                }else{
+                                    if(!prevXLabels.includes(d.data.label)){
+                                        return valueScale(0)
+                                    }else{
+                                        return valueScalePos(d) + valueScaleDimension(d)
+                                    }                                    
+                                }                                
+                            })
+                            .attr("width", orientation === "vertical"?labelScale.bandwidth():0)
+                            .attr("y", function(d){
+                                if(orientation === "vertical"){
+                                    if(!prevXLabels.includes(d.data.label)){                                        
+                                        return valueScale(0)
+                                    }
+                                    else{
+                                        return valueScalePos(d) + valueScaleDimension(d)
+                                    }                                                                                                            
+                                }else{
+                                    return labelScale(d.data.label) ?? 0;
+                                }                                
+                            })
+                            .attr("height", orientation === "vertical"?0:labelScale.bandwidth())
+                            .attr("stroke-dasharray", strokeDasharray)
+                            .attr("stroke-dashoffset", strokeDashoffset)
+                                .transition().duration(animDuration)                                
+                            .attr("x", rectXPos)
+                            .attr("width", rectWidth)                        
+                            .attr("height", rectHeight)
+                            .attr("y", rectYPos)
+
+                        return theBars
+                    }
                 },
                 undefined,
                 exit=>exit.attr("opacity", 0).style("fill", "grey").remove()

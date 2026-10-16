@@ -227,15 +227,7 @@ export function PercentageBarChart({
         const valueMax = max(chartData, (d: LayeredData) => d.total)                                                                   
         const valueScale = scaleLinear()
             .domain([0, isPercentage?1:valueMax || 0]).nice()
-            .range(orientation === 'vertical'?[graphHeight, 0]:[0, graphWidth]);
-
-        const x: ScaleBand<string | number> = scaleBand<string | number>()
-            .rangeRound([0, graphWidth])
-            .paddingInner(0.1)
-            .align(0.2)
-            
-        const xLabels = sortedData.map(function(d: LayeredData) { return d.label; });
-        x.domain(xLabels);
+            .range(orientation === 'vertical'?[graphHeight, 0]:[0, graphWidth]);            
 
         const prevXLabels: string[] = [];
         
@@ -418,7 +410,7 @@ export function PercentageBarChart({
                         .attr("class", updateRectClass)
                         .attr("x", function(d) {
                             if(orientation === "vertical"){
-                                return x(d.data.label + "") ?? 0;
+                                return labelScale(d.data.label) ?? 0;
                             }else{
                                 return valueScale(0)
                             }

@@ -41,6 +41,7 @@ export function MorphStackedBarChart({
     const [prevData, setPrevData] = useState<LayeredData[] | null>(null);
         
     const [plotted, setPlotted] = useState<string[]>(["all"]);
+    const previousPlotted = useDeferredValue(plotted)
     const [justPlotted, setJustPlotted] = useState<boolean>(false)    
     const [isSorted, setIsSorted] = useState<boolean>(false);        
     
@@ -76,6 +77,19 @@ export function MorphStackedBarChart({
             prevModeRef.current = mode
         }
     }, [ isSorted ])
+
+    useEffect(() => {
+        if(mode === "grouped")
+        {
+            if(focusOnPlot){
+                if(plotted !== previousPlotted){
+                    if(plotted[0] === "all" || previousPlotted[0] === "all"){
+                        setIsSorted(false)
+                    }
+                }
+            }
+        }
+    }, [mode, plotted, previousPlotted, focusOnPlot])
     
     const animDuration = 750;     
 

@@ -689,11 +689,7 @@ export function MorphStackedBarChart({
             }
             return 0
         }
-
-        console.log('width: ', width)
-        console.log('height: ', height)
-        console.log('isStacked: ', isStacked)
-        console.log('prevIsStacked: ', prevIsStacked)
+        
         serie.selectAll<SVGRectElement, ExtendedSeriesPointWithSorted>("rect")
             .data((d) => d, (d) => d.data.label)
             .join(

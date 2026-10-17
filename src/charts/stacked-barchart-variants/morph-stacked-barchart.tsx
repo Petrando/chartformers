@@ -690,6 +690,10 @@ export function MorphStackedBarChart({
             return 0
         }
 
+        console.log('width: ', width)
+        console.log('height: ', height)
+        console.log('isStacked: ', isStacked)
+        console.log('prevIsStacked: ', prevIsStacked)
         serie.selectAll<SVGRectElement, ExtendedSeriesPointWithSorted>("rect")
             .data((d) => d, (d) => d.data.label)
             .join(
@@ -714,12 +718,12 @@ export function MorphStackedBarChart({
                             .attr("height", orientation === "vertical"?0:labelScale.bandwidth())                      
                             .attr("stroke-dasharray", strokeDasharray)
                             .attr("stroke-dashoffset", strokeDashoffset)          
-                                .transition().duration(animDuration)                                
+                                /*.transition().duration(animDuration)                                
                             .attr("x", rectXPos)
                             .attr("width", rectWidth)                        
                             .attr("height", rectHeight)
                                 .transition().duration(animDuration)
-                            .attr("y", rectYPos)
+                            .attr("y", rectYPos)*/
 
                         return theBars
                         
@@ -745,12 +749,12 @@ export function MorphStackedBarChart({
                             .attr("height", orientation === "vertical"?0:labelScale.bandwidth())
                             .attr("stroke-dasharray", strokeDasharray)
                             .attr("stroke-dashoffset", strokeDashoffset)
-                                .transition().duration(animDuration)
+                                /*.transition().duration(animDuration)
                             .attr("y", rectYPos)
                                 .transition().duration(animDuration)                                
                             .attr("x", rectXPos)
                             .attr("width", rectWidth)                        
-                            .attr("height", rectHeight)
+                            .attr("height", rectHeight)*/
 
                         return theBars                                
                     }
@@ -785,11 +789,11 @@ export function MorphStackedBarChart({
                             .attr("height", orientation === "vertical"?0:labelScale.bandwidth())
                             .attr("stroke-dasharray", strokeDasharray)
                             .attr("stroke-dashoffset", strokeDashoffset)
-                                .transition().duration(animDuration)                                
+                                /*.transition().duration(animDuration)                                
                             .attr("x", rectXPos)
                             .attr("width", rectWidth)                        
                             .attr("height", rectHeight)
-                            .attr("y", rectYPos)
+                            .attr("y", rectYPos)*/
 
                         return theBars
                     }

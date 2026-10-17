@@ -1,4 +1,4 @@
-import React, {useState, useEffect} from 'react';
+import React, {useState, useEffect, useDeferredValue, useRef } from 'react';
 import { axisBottom, axisLeft, format, min, max, ScaleBand, scaleBand, scaleLinear, select, Series, 
     stack, stackOffsetDiverging } from 'd3';
 import { useD3 } from '../../hooks/useD3';
@@ -36,10 +36,21 @@ export function GroupedBarChart({
     
     const [dataJustChanged, setDataJustChanged] = useState(false)
     const [plotted, setPlotted] = useState<string[]>(["all"]);
+    const previousPlotted = useDeferredValue(plotted)    
     const [justPlotted, setJustPlotted] = useState<boolean>(false)    
-    const [isSorted, setIsSorted] = useState<boolean>(false);
+    const [isSorted, setIsSorted] = useState<boolean>(false);    
     
-    const uiControls = useUIControls();  
+    const uiControls = useUIControls();     
+
+    useEffect(() => {
+        if(focusOnPlot){
+            if(plotted !== previousPlotted){
+                if(plotted[0] === "all" || previousPlotted[0] === "all"){
+                    setIsSorted(false)
+                }
+            }
+        }
+    }, [plotted, previousPlotted, focusOnPlot])
     
     const stackData = data
     useEffect(() => {

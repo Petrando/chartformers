@@ -15,6 +15,7 @@ import stackedBarStyles from './stacked-barchart.module.css';
 import { LayeredData, ExtendedSeriesPointWithSorted, ExtendedSeriesWithSorted, StackedBarChartProps,
     stackOrderByCategory
  } from './types';
+import { WarningModal } from './negative-data-warning';
 
 type modeType =  'stacked' | 'grouped' | 'percentage';
 
@@ -949,7 +950,7 @@ export function MorphStackedBarChart({
                 <div
                     ref={chartContainerRef} 
                     className={`${styles["fill-container"]}`}
-                    style={{ display:"flex", flexDirection:"column", border: "1px solid green"}}>
+                    style={{ display:"flex", flexDirection:"column", position: "relative"}}>
                     <svg
                         className={`${styles["chart-svg"]} ${styles["fill-container"]}`}        
                         viewBox={`0 0 ${width} ${height}`}
@@ -971,6 +972,7 @@ export function MorphStackedBarChart({
                     <Tooltip  
                         totalLabel={mode === "percentage"?"":"of total"}
                     />
+                    <WarningModal data={data} canShow={mode === "percentage"} width={width} height={height} />
                 </div>
             </div>            
         </div>

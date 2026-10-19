@@ -9,6 +9,7 @@ import { Tooltip } from './tooltip';
 import { moveTooltip } from '../../components/tooltip';
 import { cloneObj, indexColor, basicFormat, formatTooltipNum } from '../../utils';
 import { inactiveColor } from '../../../dev/data/constants';
+import { WarningModal } from './negative-data-warning';
 import styles from '../global.module.css';
 import stackedBarStyles from './stacked-barchart.module.css';
 import { LayeredData, ExtendedSeries, ExtendedSeriesPoint, StackedBarChartProps } from './types';
@@ -32,8 +33,6 @@ export function PercentageBarChart({
     const [ isPercentage, setIsPercentage ] = useState<boolean>(true);
     const [dataJustChanged, setDataJustChanged] = useState<boolean>(false)
     const [plotted, setPlotted] = useState<string[]>(["all"]);
-
-    const [displayNegativeWarning, setDisplayNegativeWarning] = useState(false)
     
     const uiControls = useUIControls();
     
@@ -61,23 +60,6 @@ export function PercentageBarChart({
     const keys = chartData.length === 0 ? [] :
         (Object.keys(chartData[0]) as (keyof LayeredData)[])
             .filter((key) => key !== "label" && key !== "total") as string[];
-
-    const dataWithNegative = chartData.some(d => {
-        for (const [key, value] of Object.entries(d)) {
-            if(key !== "label" && key !== "total"){
-                if(typeof value === "number" && value < 0){
-                    return true
-                }
-            }
-        }
-        return false
-    })
-    const previousData = useDeferredValue(data)
-    useEffect(()=>{
-        if(data !== previousData && dataWithNegative){            
-            setDisplayNegativeWarning(true)
-        }
-    }, [data, previousData, dataWithNegative])
     
     const layers = useLayerIndex(keys)
     const isMediumScreen = width > 576;        
@@ -576,39 +558,7 @@ export function PercentageBarChart({
                         </g>                        
                     </svg>
                     <Tooltip totalLabel='' />
-                    <div 
-                        className={`
-                            ${stackedBarStyles["modal-container"]}
-                            ${stackedBarStyles[displayNegativeWarning?"show":"hide"]}
-                        `}
-                        style={{width, height}}
-                    >
-                        <div 
-                            className={`${stackedBarStyles["modal-warning"]}`}                            
-                        >
-                            <div className={`${stackedBarStyles["modal-header"]}`}>
-                                <div className="modal-icon" aria-hidden="true">
-                                    ⚠️
-                                </div>
-                                <h2 className={`${stackedBarStyles["modal-title"]}`}>Warning</h2>
-                            </div>
-                            
-                            <div className={`${stackedBarStyles["modal-body"]}`}>
-                                <p className={`${stackedBarStyles["modal-text"]}`}>
-                                    Data with negative value will not be properly rendered as percentage bar chart
-                                </p>
-                            </div>
-
-                            <div className={`${stackedBarStyles["modal-footer"]}`}>
-                                <button 
-                                    className={`${stackedBarStyles["modal-btn"]} ${stackedBarStyles["modal-btn-ok"]}`}
-                                    onClick={()=>{setDisplayNegativeWarning(false)}}
-                                >
-                                    OK
-                                </button>
-                            </div>
-                        </div>
-                    </div>
+                    <WarningModal data={data} canShow={isPercentage} width={width} height={height} />
                 </div>
             </div>
         </div>

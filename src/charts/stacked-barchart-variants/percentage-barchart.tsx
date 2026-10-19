@@ -1,4 +1,4 @@
-import React, {useState, useEffect} from 'react';
+import React, {useState, useEffect, useDeferredValue} from 'react';
 import { axisBottom, axisLeft, format, max, ScaleBand, scaleBand, scaleLinear, select, Series, 
     stack, stackOffsetExpand, stackOffsetNone, stackOrderNone } from 'd3';
 import { useD3 } from '../../hooks/useD3';
@@ -32,6 +32,8 @@ export function PercentageBarChart({
     const [ isPercentage, setIsPercentage ] = useState<boolean>(true);
     const [dataJustChanged, setDataJustChanged] = useState<boolean>(false)
     const [plotted, setPlotted] = useState<string[]>(["all"]);
+
+    const [displayNegativeWarning, setDisplayNegativeWarning] = useState(false)
     
     const uiControls = useUIControls();
     
@@ -60,6 +62,23 @@ export function PercentageBarChart({
         (Object.keys(chartData[0]) as (keyof LayeredData)[])
             .filter((key) => key !== "label" && key !== "total") as string[];
 
+    const dataWithNegative = chartData.some(d => {
+        for (const [key, value] of Object.entries(d)) {
+            if(key !== "label" && key !== "total"){
+                if(typeof value === "number" && value < 0){
+                    return true
+                }
+            }
+        }
+        return false
+    })
+    const previousData = useDeferredValue(data)
+    useEffect(()=>{
+        if(data !== previousData && dataWithNegative){            
+            setDisplayNegativeWarning(true)
+        }
+    }, [data, previousData, dataWithNegative])
+    
     const layers = useLayerIndex(keys)
     const isMediumScreen = width > 576;        
     
@@ -545,7 +564,7 @@ export function PercentageBarChart({
                 <div
                     ref={chartContainerRef} 
                     className={`${styles["fill-container"]}`}
-                    style={{ display:"flex", flexDirection:"column"}}>
+                    style={{ display:"flex", flexDirection:"column", position: "relative"  }}>
                     <svg
                         className={`${styles["chart-svg"]} ${styles["fill-container"]}`}        
                         viewBox={`0 0 ${width} ${height}`}
@@ -557,6 +576,39 @@ export function PercentageBarChart({
                         </g>                        
                     </svg>
                     <Tooltip totalLabel='' />
+                    <div 
+                        className={`
+                            ${stackedBarStyles["modal-container"]}
+                            ${stackedBarStyles[displayNegativeWarning?"show":"hide"]}
+                        `}
+                        style={{width, height}}
+                    >
+                        <div 
+                            className={`${stackedBarStyles["modal-warning"]}`}                            
+                        >
+                            <div className={`${stackedBarStyles["modal-header"]}`}>
+                                <div className="modal-icon" aria-hidden="true">
+                                    ⚠️
+                                </div>
+                                <h2 className={`${stackedBarStyles["modal-title"]}`}>Warning</h2>
+                            </div>
+                            
+                            <div className={`${stackedBarStyles["modal-body"]}`}>
+                                <p className={`${stackedBarStyles["modal-text"]}`}>
+                                    Data with negative value will not be properly rendered as percentage bar chart
+                                </p>
+                            </div>
+
+                            <div className={`${stackedBarStyles["modal-footer"]}`}>
+                                <button 
+                                    className={`${stackedBarStyles["modal-btn"]} ${stackedBarStyles["modal-btn-ok"]}`}
+                                    onClick={()=>{setDisplayNegativeWarning(false)}}
+                                >
+                                    OK
+                                </button>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>

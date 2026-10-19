@@ -16,6 +16,7 @@ type PackProps = {
     data: hierarchyData;
     tooltipFormat?: tooltipFormat;
     colorScheme?: 'monochrome' | 'rainbow';
+    alwaysSort?: boolean;
 }
 
 type PackedNodeWithSorted<T> = HierarchyCircularNode<T> & {
@@ -59,7 +60,7 @@ function assignSortedGeometry<T extends { name: string }>(
     }
 }
 
-export function CirclePacks({data, tooltipFormat, colorScheme = 'monochrome'}: PackProps) {
+export function CirclePacks({data, tooltipFormat, colorScheme = 'monochrome', alwaysSort = false }: PackProps) {
     const [hierarchyData, setPackData] = useState<hierarchyData | null>(null);
     const [ isSorted, setIsSorted ] = useState(false)    
     const isFirstRender = useRef(true)
@@ -75,6 +76,8 @@ export function CirclePacks({data, tooltipFormat, colorScheme = 'monochrome'}: P
             return data
         })
     }, [data])
+
+    useEffect(() => { setIsSorted(alwaysSort) }, [ alwaysSort ])
     
     const layersRef = useLayerIndex(data.children?.map(d => d.name) as string[])
     const BASE_COLORS = quantize(interpolateRainbow, 12);    
@@ -420,7 +423,10 @@ export function CirclePacks({data, tooltipFormat, colorScheme = 'monochrome'}: P
                 </svg>                
                 <label 
                     className={styles["controls-label"]}
-                    style={{position: "absolute", right: "12px", top: "6px"}}
+                    style={{
+                        position: "absolute", right: "12px", top: "6px", 
+                        opacity: alwaysSort?0:1, pointerEvents: alwaysSort?"none":"auto"
+                    }}
                 >
                     <input 
                         type="checkbox" 

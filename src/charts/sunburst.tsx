@@ -35,16 +35,19 @@ type sunburstData = baseHierarchy & {
 
 type sunburstProps = {
     data: hierarchyData;
+    alwaysSort?: boolean;
     tooltipFormat?: tooltipFormat;
 }
 
-export function Sunburst({data, tooltipFormat}: sunburstProps) {
+export function Sunburst({data, alwaysSort=true,  tooltipFormat}: sunburstProps) {
     const [ref, parentSize] = useParentSize<HTMLDivElement>();    
     const { width: baseWidth, height: baseHeight } = parentSize;
 
     const [ prevSunData, setPrevSunData ] = useState<sunburstData | null>(null)
 
-    const [isSorted, setIsSorted] = useState<boolean>(false);            
+    const [isSorted, setIsSorted] = useState<boolean>(true);
+    
+    useEffect(()=> {setIsSorted(alwaysSort)}, [ alwaysSort ])
 
     const dimension = Math.min(baseWidth, baseHeight)
     const radius = dimension / 2;
@@ -52,7 +55,10 @@ export function Sunburst({data, tooltipFormat}: sunburstProps) {
     const partitionHierarchy = ( data: hierarchyData): sunburstData => {
         const hierarchy = d3.hierarchy<hierarchyData>(data)
                 .sum(d => d.value!)
-                .sort((a, b) => b.value! - a.value!)
+        if(isSorted){
+            hierarchy.sort((a, b) => b.value! - a.value!)
+        }
+
         const root = d3.partition<hierarchyData>()
             .size([2 * Math.PI, hierarchy.height + 1])
             (hierarchy) as sunburstData
@@ -471,7 +477,22 @@ export function Sunburst({data, tooltipFormat}: sunburstProps) {
                         <g className="plot-area" />                        
                         <g className="label-group" />
                     </svg>          
-                }        
+                }
+                <label 
+                    className={styles["controls-label"]}
+                    style={{
+                        position: "absolute", right: "12px", top: "6px", 
+                        opacity: alwaysSort?0:1, pointerEvents: alwaysSort?"none":"auto"
+                    }}
+                >
+                    <input 
+                        type="checkbox" 
+                        className={styles["controls-checkbox"]}                         
+                        checked={isSorted}
+                        onChange={(e) => setIsSorted(e.target.checked)}
+                    />
+                        Sort
+                </label>        
                 <Tooltip>
                     <p className='name' 
                         style={{fontWeight: "300px", margin: "3px",  fontSize: "12px", color: "wheat"}}>

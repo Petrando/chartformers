@@ -29,7 +29,7 @@ export function PercentageBarChart({
     const { height: controlsHeight } = controlsSize;        
     const [chartContainerRef, chartSize] = useContainerSize<HTMLDivElement>()
     const { width, height } = chartSize    
-    
+     
     const [ isPercentage, setIsPercentage ] = useState<boolean>(true);
     const [dataJustChanged, setDataJustChanged] = useState<boolean>(false)
     const [plotted, setPlotted] = useState<string[]>(["all"]);
@@ -519,7 +519,9 @@ export function PercentageBarChart({
     return (
         <div 
             ref={ref} 
-            style={{ width: parentWidth, height: parentHeight, display:'flex', flexDirection:'column' }}
+            style={{ width: parentWidth, height: parentHeight, display:'flex', flexDirection:'column',
+                position: "relative"
+             }}
         >            
             <div
                 ref={chartRef} 
@@ -546,7 +548,8 @@ export function PercentageBarChart({
                 <div
                     ref={chartContainerRef} 
                     className={`${styles["fill-container"]}`}
-                    style={{ display:"flex", flexDirection:"column", position: "relative"  }}>
+                    style={{flex: 1, position: "relative", border: "3px solid none"                         
+                    }}>
                     <svg
                         className={`${styles["chart-svg"]} ${styles["fill-container"]}`}        
                         viewBox={`0 0 ${width} ${height}`}
@@ -557,10 +560,11 @@ export function PercentageBarChart({
                             <g className={`${orientation === 'horizontal'?stackedBarStyles["value-axis"]:""} x-axis`} />    
                         </g>                        
                     </svg>
-                    <Tooltip totalLabel='' />
-                    <WarningModal data={data} canShow={isPercentage} width={width} height={height} />
+                    <Tooltip totalLabel='' />                    
                 </div>
             </div>
+            <WarningModal data={data} canShow={isPercentage} 
+                width={parentWidth} height={parentHeight - controlsHeight} top={controlsHeight}/>            
         </div>
     );
 }

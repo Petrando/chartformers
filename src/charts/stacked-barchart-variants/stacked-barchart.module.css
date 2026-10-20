@@ -252,18 +252,18 @@ Special classes for normalized stacked
     background-color: rgb(0 0 0 / 50%);
     backdrop-filter: blur(4px);
     display: flex;
-    justify-content: center;
-    align-items: center;
+    justify-content: center !important;
+    align-items: center!important;
     padding: 1rem;    
 }
 
 .show {
-    animation: slide-down 0.25s ease-out forwards;
+    animation: slide-down 0.5s ease-out forwards;
     pointer-events: all;
 }
 
 .hide {
-    animation: slide-up 0.25s ease-in forwards;
+    animation: slide-up 0.5s ease-in forwards;
     pointer-events: none;
 }
 
@@ -297,32 +297,39 @@ Special classes for normalized stacked
     overflow-y: auto;
     border-radius: 12px;
     display: flex;
-    flex-direction: column;
+    flex-direction: column;    
     border-radius: 12px;
-    border-top: 6px solid #dd6b20; /* Visual indicator line */
-    padding: 2rem;
+    /* border-top: 6px solid #dd6b20; Visual indicator line */
+    padding: 0;
+    overflow: hidden; /* Clips top rounded corners of header automatically */
     box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.2), 
                 0 10px 10px -5px rgba(0, 0, 0, 0.08);
     text-align: left;
 
     /* Entrance animation */
+    opacity: 0;
     transform: scale(0.95) translateY(10px);
-    transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+    transition: transform 0.5s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .show .modal-warning {
     transform: scale(1) translateY(0);
+    opacity: 1;
 }
 
 /* 1. Modal Header (Icon + Title) */
-.modal-header {
+.modal-header {    
     display: flex;
+    justify-content: center;
     align-items: center;
-    gap: 0.75rem;
+    margin: 0;
+    flex: 1;
+    /*gap: 0.75rem;*/
     padding: 1.25rem 1.5rem;
     border-bottom: 1px solid #e2e8f0;
+    background-color: #b45309;
+    /*height: 20px;*/
 }
-
 
 /* Icon Styling */
 .modal-icon {
@@ -336,7 +343,7 @@ Special classes for normalized stacked
     margin: 0;
     font-size: 1.25rem;
     font-weight: 700;
-    color: #2d3748;    
+    color: #fefce8;    
 }
 /* 2. Modal Body (Content) */
 .modal-body {
@@ -351,7 +358,6 @@ Special classes for normalized stacked
     line-height: 1.6;
     color: #4a5568;
 }
-
 
 /* Action Controls & Button */
 .modal-actions {
@@ -402,19 +408,9 @@ Special classes for normalized stacked
 }
 
 /* Responsive Scaling for Larger Displays */
-@media (min-width: 640px) {
-    .modal-warning {
-        padding: 2.5rem;
-    }
-    
+@media (min-width: 640px) {        
     .modal-btn {
         width: auto;
         min-width: 140px;
   }
-}
-
-@media (max-width: 640px) {
-    .modal-warning {
-        width: 100vw;
-    }
 }

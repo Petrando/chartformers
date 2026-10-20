@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, RefObject } from "react";
+import { useState, useLayoutEffect, useRef, RefObject } from "react";
 
 type Size = {
   width: number;
@@ -9,25 +9,24 @@ export function useContainerSize<T extends HTMLElement>(): [RefObject<T | null>,
   const ref = useRef<T>(null);
   const [size, setSize] = useState<Size>({ width: 0, height: 0 });
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     const element = ref.current;
     if (!element) return;
 
-    const observer = new ResizeObserver(([entry]) => {
-      if (entry?.contentRect) {
-        setSize({
-          width: entry.contentRect.width,
-          height: entry.contentRect.height,
-        });
+    const observer = new ResizeObserver((entries) => {
+      for (let entry of entries) {
+        // use getBoundingClientRect() for precise fractional dimensions
+        const { width, height } = entry.target.getBoundingClientRect();
+        setSize({ width, height });
       }
     });
 
-    observer.observe(element, { box: "border-box" });
+    observer.observe(element/*, { box: "border-box" }*/);
 
     // Set initial size
     setSize({
-      width: element.offsetWidth,
-      height: element.offsetHeight,
+      width: element.clientWidth,
+      height: element.clientHeight,
     });
 
     return () => {

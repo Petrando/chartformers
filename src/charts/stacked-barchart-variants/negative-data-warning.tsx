@@ -6,9 +6,10 @@ type warningModalProps = {
     canShow?: boolean;
     data: LayeredData[];
     width: number;
-    height: number
+    height: number;
+    top?: number;
 }
-export const WarningModal = ({canShow = true, data, width, height}: warningModalProps) => {
+export const WarningModal = ({canShow = true, data, width, height, top = 0}: warningModalProps) => {
     const [displayNegativeWarning, setDisplayNegativeWarning] = useState(false)
 
     const dataWithNegative = data.some(d => {
@@ -24,8 +25,8 @@ export const WarningModal = ({canShow = true, data, width, height}: warningModal
     const previousData = useDeferredValue(data)
 
     useEffect(()=>{
-        if(data !== previousData && dataWithNegative){            
-            setDisplayNegativeWarning(true)
+        if(data !== previousData){            
+            setDisplayNegativeWarning(dataWithNegative)
         }
     }, [data, previousData, dataWithNegative])
 
@@ -35,16 +36,16 @@ export const WarningModal = ({canShow = true, data, width, height}: warningModal
                 ${stackedBarStyles["modal-container"]}
                 ${stackedBarStyles[canShow && displayNegativeWarning?"show":"hide"]}
             `}
-            style={{width, height}}
+            style={{width, height, top}}
         >
             <div 
                 className={`${stackedBarStyles["modal-warning"]}`}                            
             >
-                <div className={`${stackedBarStyles["modal-header"]}`}>
+                <div className={`${stackedBarStyles["modal-header"]}`}>                    
+                    <h2 className={`${stackedBarStyles["modal-title"]}`}>Warning</h2>
                     <div className="modal-icon" aria-hidden="true">
                         ⚠️
                     </div>
-                    <h2 className={`${stackedBarStyles["modal-title"]}`}>Warning</h2>
                 </div>
                 
                 <div className={`${stackedBarStyles["modal-body"]}`}>

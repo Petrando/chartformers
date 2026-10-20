@@ -35,7 +35,9 @@ export function MorphStackedBarChart({
     const prevModeRef = useRef<modeType>(mode);
     const defferedMode = useDeferredValue(mode)
   
-    const { width: parentWidth, height: parentHeight } = parentSize;    
+    const { width: parentWidth, height: parentHeight } = parentSize;
+    const [controlsRef, controlsSize] = useContainerSize<HTMLDivElement>();
+    const { height: controlsHeight } = controlsSize;    
     const [ chartContainerRef, chartSize] = useContainerSize<HTMLDivElement>()
     const { width, height } = chartSize
 
@@ -926,7 +928,10 @@ export function MorphStackedBarChart({
     return (
         <div 
             ref={ref} 
-            style={{ width: parentWidth, height: parentHeight, display:'flex', flexDirection:'column' }}
+            style={{ 
+                width: parentWidth, height: parentHeight, display:'flex', flexDirection:'column',
+                position: "relative"
+             }}
         >                        
             <div
                 ref={chartRef} 
@@ -934,6 +939,7 @@ export function MorphStackedBarChart({
                 style={{ display:"flex", flexDirection:"column"}}>
                 <div
                     className={`controls ${styles[isMediumScreen?"controls-container":"controls-container-sm"]}`}                    
+                    ref={controlsRef}
                 >
                     <label className={`${styles["controls-label"]} ${mode === "percentage"?styles.disabled:""}`} style={{paddingRight: '12px'}}>
                         <input 
@@ -971,10 +977,11 @@ export function MorphStackedBarChart({
                     </svg>
                     <Tooltip  
                         totalLabel={mode === "percentage"?"":"of total"}
-                    />
-                    <WarningModal data={data} canShow={mode === "percentage"} width={width} height={height} />
+                    />                
                 </div>
-            </div>            
+            </div>
+            <WarningModal data={data} canShow={mode === "percentage"} 
+                width={parentWidth} height={parentHeight - controlsHeight} top={controlsHeight} />            
         </div>
     );
 }

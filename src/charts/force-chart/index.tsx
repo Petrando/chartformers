@@ -93,7 +93,7 @@ type NetworkProps = {
     tooltipFormat?: tooltipFormat;
 }
 
-export function NetworkGraph({
+export function ForceLayoutGraph({
     data,
     noLabel, 
     sourceNode = "", targetNode = "",

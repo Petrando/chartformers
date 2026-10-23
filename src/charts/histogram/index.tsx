@@ -1,5 +1,5 @@
 import React, {useEffect, useRef, useState} from 'react';
-import {select, scaleBand, scaleLinear, axisLeft, axisBottom, axisTop, axisRight,
+import {scaleBand, scaleLinear, axisLeft, axisBottom, axisTop, axisRight,
     max, format, Bin, bin, Selection, 
     thresholdFreedmanDiaconis, thresholdScott, thresholdSturges,
     median, mean, range,

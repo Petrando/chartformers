@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { scaleBand, scaleLinear, axisBottom, format, axisLeft, axisRight, stack, stackOrderNone, stackOffsetNone, max, sum, Selection, ScaleLinear, Axis, NumberValue, SeriesPoint } from "d3"
-import { Tooltip, tooltipMove, moveTooltip } from "../../components/tooltip";
+import { Tooltip, tooltipMove, } from "../../components/tooltip";
 import { ManIcon, WomanIcon } from "../../components/icons";
 import { useD3 } from "../../hooks/useD3";
 import { useParentSize } from "../../hooks/useParentSize";
@@ -27,14 +27,7 @@ export function PopulationPyramid({
     const { width: legendWidth, height: legendHeight } = legendSize
 
     const animDuration = 500
-
-    useEffect(()=>{
-        if(isPercentage){ 
-            setIsSorted(false)
-        }
-        setIsTotal(isPercentage)        
-    }, [isPercentage])
-
+    
     useEffect(()=>{
         setIsPercentage(false)
         setIsSorted(false)
@@ -77,7 +70,14 @@ export function PopulationPyramid({
                     type="checkbox" 
                     className={styles["controls-checkbox"]} 
                     checked={isPercentage}
-                    onChange={(e) => setIsPercentage(e.target.checked)}
+                    onChange={(e) => {
+                        const newIsPercentage = e.target.checked
+                        if(newIsPercentage){ 
+                            setIsSorted(false)
+                        }
+                        setIsTotal(newIsPercentage)
+                        setIsPercentage(newIsPercentage)
+                    }}
                 />
                     By Percentage
             </label>            

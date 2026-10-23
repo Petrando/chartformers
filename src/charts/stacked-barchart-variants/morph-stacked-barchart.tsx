@@ -44,8 +44,7 @@ export function MorphStackedBarChart({
     const [prevData, setPrevData] = useState<LayeredData[] | null>(null);
         
     const [plotted, setPlotted] = useState<string[]>(["all"]);
-    const previousPlotted = useDeferredValue(plotted)
-    const [justPlotted, setJustPlotted] = useState<boolean>(false)    
+    const previousPlotted = useDeferredValue(plotted)        
     const [isSorted, setIsSorted] = useState<boolean>(false);        
     
     const stackData = data
@@ -60,7 +59,7 @@ export function MorphStackedBarChart({
         if(mode !== "stacked"){
             setIsSorted(false)        
         }
-    }, [stackData, mode])
+    }, [stackData])
 
     useEffect(()=>{        
         setIsSorted(false)
@@ -79,20 +78,7 @@ export function MorphStackedBarChart({
         if(isSorted && prevModeRef.current !== mode){
             prevModeRef.current = mode
         }
-    }, [ isSorted ])
-
-    useEffect(() => {
-        if(mode === "grouped")
-        {
-            if(focusOnPlot){
-                if(plotted !== previousPlotted){
-                    if(plotted[0] === "all" || previousPlotted[0] === "all"){
-                        setIsSorted(false)
-                    }
-                }
-            }
-        }
-    }, [mode, plotted, previousPlotted, focusOnPlot])
+    }, [ isSorted ])    
     
     const animDuration = 750;     
 
@@ -303,10 +289,22 @@ export function MorphStackedBarChart({
                 setPlotted(prev=>{
                     let newPlot:string[] = []
                     if(focusOnPlot){
+                        /*
+                        For grouped mode:
+                            If there is a previous plot and no current plot
+                            or vice versa, no current plot but there is previous plot
+                            then don't sort.
+                        */
                         if(prev[0] === d){
                             newPlot = ["all"]
+                            if(mode === "grouped"){
+                                setIsSorted(false)
+                            }
                         }else{
                             newPlot = [d]
+                            if(mode === "grouped" && previousPlotted[0] === "all"){
+                                setIsSorted(false)
+                            }
                         }
                     }else{
                         if(prev.includes(d)){
@@ -316,8 +314,7 @@ export function MorphStackedBarChart({
                         }
                     }
                     return newPlot
-                })
-                setJustPlotted(true)
+                })                
             })
 
         const xLabels = sortedData.map(function(d:LayeredData) { return d.label; });            
@@ -866,13 +863,14 @@ export function MorphStackedBarChart({
         function transitionNormal(){
             serie.selectAll<SVGRectElement, ExtendedSeriesPointWithSorted>("rect")
                 .attr("class", updateRectClass)                    
-                .transition().duration(animDuration)
+                    .transition().duration(animDuration)
                 .attr("stroke-dasharray", strokeDasharray)
                 .attr("stroke-dashoffset", strokeDashoffset)
                 .attr("x", rectXPos)                    
                 .attr("width", rectWidth)
                 .attr("height", rectHeight)
                 .attr("y", rectYPos)
+                .style("opacity", 1)
         }
 
         function transitionXWidth_then_YHeight(){
@@ -880,7 +878,8 @@ export function MorphStackedBarChart({
                 .attr("class", updateRectClass)                    
                     .transition().duration(animDuration)                    
                 .attr("x", rectXPos)                    
-                .attr("width", rectWidth)                    
+                .attr("width", rectWidth)
+                .style("opacity", 1)                    
                     .transition().duration(animDuration)
                 .attr("stroke-dasharray", strokeDasharray)
                 .attr("stroke-dashoffset", strokeDashoffset)
@@ -894,6 +893,7 @@ export function MorphStackedBarChart({
                     .transition().duration(animDuration)
                 .attr("y", rectYPos)
                 .attr("height", rectHeight)
+                .style("opacity", 1)
                     .transition().duration(animDuration)
                 .attr("stroke-dasharray", strokeDasharray)
                 .attr("stroke-dashoffset", strokeDashoffset)                    

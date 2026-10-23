@@ -33,40 +33,20 @@ export function GroupedBarChart({
     const { width, height } = chartSize
 
     const [prevData, setPrevData] = useState<LayeredData[] | null>(null);
-    
-    const [dataJustChanged, setDataJustChanged] = useState(false)
+        
     const [plotted, setPlotted] = useState<string[]>(["all"]);
-    const previousPlotted = useDeferredValue(plotted)    
-    const [justPlotted, setJustPlotted] = useState<boolean>(false)    
+    const previousPlotted = useDeferredValue(plotted)            
     const [isSorted, setIsSorted] = useState<boolean>(false);    
     
     const uiControls = useUIControls();     
-
-    useEffect(() => {
-        if(focusOnPlot){
-            if(plotted !== previousPlotted){
-                if(plotted[0] === "all" || previousPlotted[0] === "all"){
-                    setIsSorted(false)
-                }
-            }
-        }
-    }, [plotted, previousPlotted, focusOnPlot])
     
     const stackData = data
     useEffect(() => {
-        setPlotted(["all"])
-        setDataJustChanged(true)
+        setPlotted(["all"])        
         setIsSorted(false)
     }, [stackData])    
     
-    const animDuration = 750;
-    useEffect(()=>{
-        let timer: ReturnType<typeof setTimeout>;
-        if(dataJustChanged){
-            timer = setTimeout(()=>{setDataJustChanged(false)}, animDuration + 500)
-        }
-        return () => { clearTimeout(timer)}
-    }, [dataJustChanged]) 
+    const animDuration = 750;    
         
     const renderDeps = [ width, height, plotted, colorIdx ]
 
@@ -219,10 +199,19 @@ export function GroupedBarChart({
                 setPlotted(prev=>{
                     let newPlot:string[] = []
                     if(focusOnPlot){
+                        /*
+                        If there is a previous plot and no current plot
+                        or vice versa, no current plot but there is previous plot
+                        then don't sort.
+                        */
                         if(prev[0] === d){
                             newPlot = ["all"]
+                            setIsSorted(false)
                         }else{
                             newPlot = [d]
+                            if(previousPlotted[0] === "all"){
+                                setIsSorted(false)
+                            }
                         }
                     }else{
                         if(prev.includes(d)){
@@ -233,7 +222,6 @@ export function GroupedBarChart({
                     }
                     return newPlot
                 })
-                setJustPlotted(true)
             })
             .on("pointerenter", (e, d)=>{
                 const serie = canvas.selectAll<SVGGElement, ExtendedSeriesWithSorted>(".serie")
@@ -635,7 +623,7 @@ export function GroupedBarChart({
                     tooltip.style("opacity", 0);
                 })                                     
 
-    }, [ ...renderDeps, isSorted, chartData, justPlotted, orientation, dataJustChanged, tooltipFormat ]);
+    }, [ ...renderDeps, isSorted, chartData, orientation, tooltipFormat ]);
     
     return (
         <div 

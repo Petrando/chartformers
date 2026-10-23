@@ -30,8 +30,7 @@ export function PercentageBarChart({
     const [chartContainerRef, chartSize] = useContainerSize<HTMLDivElement>()
     const { width, height } = chartSize    
      
-    const [ isPercentage, setIsPercentage ] = useState<boolean>(true);
-    const [dataJustChanged, setDataJustChanged] = useState<boolean>(false)
+    const [ isPercentage, setIsPercentage ] = useState<boolean>(true);    
     const [plotted, setPlotted] = useState<string[]>(["all"]);
     
     const uiControls = useUIControls();
@@ -39,18 +38,10 @@ export function PercentageBarChart({
     const stackData = data
     useEffect(() => {
         setPlotted(["all"])
-        setIsPercentage(true)
-        setDataJustChanged(true)
+        setIsPercentage(true)        
     }, [stackData])
         
-    const animDuration = 750;
-    useEffect(()=>{
-        let timer: ReturnType<typeof setTimeout>;
-        if(dataJustChanged){
-            timer = setTimeout(()=>{setDataJustChanged(false)}, animDuration + 500)
-        }
-        return () => { clearTimeout(timer)}
-    }, [dataJustChanged])
+    const animDuration = 750;    
 
     const chartHeight = uiControls ? height : height  - controlsHeight;
     
@@ -514,7 +505,7 @@ export function PercentageBarChart({
                     tooltip.style("opacity", 0);
                 })
 
-    }, [ ...renderDeps, chartData, isPercentage, orientation, dataJustChanged, tooltipFormat ]);
+    }, [ ...renderDeps, chartData, isPercentage, orientation, tooltipFormat ]);
     
     return (
         <div 

@@ -126,10 +126,7 @@ export function ForceLayoutGraph({
         if(defferedSelectedGroup !== "" && selectedGroup === ""){
             setIsSorted(false)
         }
-    }, [ selectedGroup, defferedSelectedGroup])*/
-    useEffect(()=>{
-        setIsSorted(false)
-    }, [selectedGroup])
+    }, [ selectedGroup, defferedSelectedGroup])*/    
 
     const reRender = useRef(true)
     const reRenderJustChanged = useRef(true)    
@@ -165,7 +162,10 @@ export function ForceLayoutGraph({
         }        
     }, [ sourceNode, targetNode, selectedGroup, isSorted ])
 
-    useEffect(()=>{ setSelectedGroup("") }, [ width, height])
+    useEffect(()=>{ 
+        setSelectedGroup("") 
+        setIsSorted(false)
+    }, [ width, height])
 
     const chartRef = useD3<HTMLDivElement>((container) => {
         if (width === 0 || height === 0) return;
@@ -256,6 +256,7 @@ export function ForceLayoutGraph({
         legends
             .on("click", function(_, d){
                 setSelectedGroup(selectedGroup !== d?d:"")
+                setIsSorted(false)
             })
                                 
         function assignGroups(root: hierarchyData): hierarchyData {

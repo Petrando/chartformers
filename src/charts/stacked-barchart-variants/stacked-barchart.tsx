@@ -38,8 +38,7 @@ export function StackedBarChart({
     const [chartContainerRef, chartSize] = useContainerSize<HTMLDivElement>()
     const { width, height } = chartSize    
     const [prevData, setPrevData] = useState<LayeredData[] | null>(null);
-        
-    const [dataJustChanged, setDataJustChanged] = useState(false)
+            
     const [plotted, setPlotted] = useState<string[]>(["all"]);
     const [justPlotted, setJustPlotted] = useState<boolean>(false)    
     const [isSorted, setIsSorted] = useState<boolean>(false);
@@ -48,20 +47,12 @@ export function StackedBarChart({
     
     const stackData = data        
     useEffect(() => {
-        setPlotted(["all"])
-        setDataJustChanged(true)        
+        setPlotted(["all"])                
     }, [stackData])    
 
     useEffect(() => {setPlotted(["all"])}, [focusOnPlot])
 
-    const animDuration = 750;
-    useEffect(()=>{
-        let timer: ReturnType<typeof setTimeout>;
-        if(dataJustChanged){
-            timer = setTimeout(()=>{setDataJustChanged(false)}, animDuration + 500)
-        }
-        return () => { clearTimeout(timer)}
-    }, [dataJustChanged])        
+    const animDuration = 750;          
 
     const renderDeps = [ width, height, plotted, colorIdx, focusOnPlot ]
 
@@ -745,7 +736,7 @@ export function StackedBarChart({
                     tooltip.style("opacity", 0);
                 })
 
-    }, [ ...renderDeps, isSorted, chartData, keys, justPlotted, dataJustChanged, orientation, 
+    }, [ ...renderDeps, isSorted, chartData, keys, justPlotted, orientation, 
         {prefix, suffix, formatType} ]);
             
     return (

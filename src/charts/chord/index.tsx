@@ -1,4 +1,4 @@
-import React, { useState, useDeferredValue, useEffect, useRef } from 'react';
+import React, { useDeferredValue, useEffect, useRef } from 'react';
 import { 
     format, chord, descending, arc, ribbon, interpolate, Chord, ChordGroup, tickStep, sum, range, 
     select 

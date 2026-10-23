@@ -45,10 +45,7 @@ export function WaterfallChart({
     const isFirstRender = useRef(true);
     const canLegendHover = useRef(true)
 
-    useEffect(() => {
-        if(mode === "waterfall"){
-            setIsSorted(false)
-        }
+    useEffect(() => {        
         if(isFirstRender.current){
             isFirstRender.current = false
         }else{            
@@ -59,6 +56,7 @@ export function WaterfallChart({
 
     useEffect(()=>{
         setMode("waterfall")
+        setIsSorted(false)
         changeBy.current = "data"
         canLegendHover.current = false
     }, [ data ])    
@@ -195,6 +193,7 @@ export function WaterfallChart({
             .on("click", function(_, d){
                 if(mode === d){
                     setMode("waterfall")
+                    setIsSorted(false)
                 }
                 else{
                     setMode(d as modeType)

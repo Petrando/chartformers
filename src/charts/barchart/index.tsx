@@ -1,6 +1,6 @@
 import React, {useState} from 'react';
 import { createPortal } from "react-dom";
-import { select, scaleBand, scaleLinear, axisLeft, axisBottom, min, max, format,
+import { scaleBand, scaleLinear, axisLeft, axisBottom, min, max, format,
  } from 'd3';
 import { useD3 } from '../../hooks/useD3';
 import { useParentSize } from '../../hooks/useParentSize';

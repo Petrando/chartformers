@@ -46,6 +46,7 @@ export function Sunburst({data, alwaysSort=true,  tooltipFormat}: sunburstProps)
     const [ prevSunData, setPrevSunData ] = useState<sunburstData | null>(null)
 
     const [isSorted, setIsSorted] = useState<boolean>(true);
+    const lastTouchRef = useRef(Date.now())
     
     useEffect(()=> {setIsSorted(alwaysSort)}, [ alwaysSort ])
 
@@ -301,27 +302,15 @@ export function Sunburst({data, alwaysSort=true,  tooltipFormat}: sunburstProps)
                     .attr("fill", pathFill), 
                 exit=>exit.transition().duration(animDuration).style("opacity", 0).remove()
             )
-            .on("pointerenter", function(e, d){
-                /*if(focus !== root){
-                    return
-                }*/                
-                labelCanvas.selectAll<SVGTextElement, sunburstData>("text.suntext")
-                    .filter(dText => dText.data.name === d.data.name)
-                    .style("fill-opacity", 1)
-                    .style("text-shadow", labelShadow)                
-
-                const name = d.data.name === "branches"?"Total":d.data.name                
-                tooltip.select("p.name").text(name)
-                const value = d.value ?? 0
-                tooltip.select("p.value").text(basicFormat(value, tooltipFormat).toLocaleString())
-                tooltip.transition().duration(250).style("opacity", 1)
-
+            .on("mouseover", pointerenter)
+            .on("touchstart", function(e, d){
+                e.preventDefault()
+                pointerenter(e, d)
+            })
+            .on("mousemove", function(e, d){
                 moveTooltip(tooltip, {e, svg:svgNode as SVGSVGElement })
             })
-            .on("pointermove", function(e, d){
-                moveTooltip(tooltip, {e, svg:svgNode as SVGSVGElement })
-            })
-            .on("pointerleave", function(e, d){
+            .on("mouseleave", function(e, d){
                 /*if(focus !== root){
                     return
                 }*/
@@ -336,7 +325,34 @@ export function Sunburst({data, alwaysSort=true,  tooltipFormat}: sunburstProps)
                 if(d.children){
                     clicked(e, d)
                 }
-            })                                
+            })
+            .on("touchend", function(e, d){
+                const currentTime = Date.now()
+                if(currentTime - lastTouchRef.current <= 300){
+                    if(d.children){
+                        clicked(e, d)
+                    }    
+                }
+                lastTouchRef.current = currentTime
+            })
+            
+        function pointerenter(e: MouseEvent | TouchEvent, d: sunburstData){
+            /*if(focus !== root){
+                return
+            }*/                
+            labelCanvas.selectAll<SVGTextElement, sunburstData>("text.suntext")
+                .filter(dText => dText.data.name === d.data.name)
+                .style("fill-opacity", 1)
+                .style("text-shadow", labelShadow)                
+
+            const name = d.data.name === "branches"?"Total":d.data.name                
+            tooltip.select("p.name").text(name)
+            const value = d.value ?? 0
+            tooltip.select("p.value").text(basicFormat(value, tooltipFormat).toLocaleString())
+            tooltip.transition().duration(250).style("opacity", 1)
+
+            moveTooltip(tooltip, {e, svg:svgNode as SVGSVGElement })
+        }
 
         canvasSvg.select("circle.reset").remove()
         const parentCircle = canvasSvg.selectAll("circle")
@@ -374,7 +390,7 @@ export function Sunburst({data, alwaysSort=true,  tooltipFormat}: sunburstProps)
             .attr("dy", "0.35em")                
                     
         function clicked(
-            event: PointerEvent | undefined, 
+            event: MouseEvent | TouchEvent, 
             data: sunburstData | undefined, 
             initialCall: boolean = false
         ) {                

@@ -228,28 +228,12 @@ export function BarChart({
                 .attr("height", 0).attr("y", height).style("opacity", 0)            
                     .remove()
             )
-            .on("pointerenter", (e, d)=>{                
-                
-                tooltip.style("opacity", 1)
-                    
-                tooltip.select("p.label span.chev").style("background", barColor(d))
-                tooltip.select("p.label span.value").text(String(d.label) + ``); 
-                
-                tooltip.select("p.value").text(formatTooltipNum(d.value, tooltipFormat))
-                
-                moveTooltip(tooltip, {e, svg:svgNode as SVGSVGElement, yScale: valueScale})
-
-                const labelAxis = orientation === "vertical"?
-                    container.select(".x-axis"):container.select(".y-axis")
-
-                labelAxis.selectAll("text")
-                    .filter(dText=>dText === String(d.label)).style("font-weight", "bold")
-                }
-            )      
-            .on("pointermove", (e, d)=>{
+            .on("mouseover", pointerenter)
+            .on("touchstart", pointerenter)      
+            .on("mousemove", (e, d)=>{
                 moveTooltip(tooltip, {e, svg:svgNode as SVGSVGElement, yScale: valueScale})
             })
-            .on("pointerleave", (e, d)=>{                
+            .on("mouseleave", (e, d)=>{                
                 tooltip.style("opacity", 0);
 
                 const labelAxis = orientation === "vertical"?
@@ -290,6 +274,23 @@ export function BarChart({
                         return labelScale.bandwidth()
                     }                                                                                                              
                 });
+
+        function pointerenter(e: MouseEvent | TouchEvent, d: pointData){
+            tooltip.style("opacity", 1)
+                    
+            tooltip.select("p.label span.chev").style("background", barColor(d))
+            tooltip.select("p.label span.value").text(String(d.label) + ``); 
+            
+            tooltip.select("p.value").text(formatTooltipNum(d.value, tooltipFormat))
+            
+            moveTooltip(tooltip, {e, svg:svgNode as SVGSVGElement, yScale: valueScale})
+
+            const labelAxis = orientation === "vertical"?
+                container.select(".x-axis"):container.select(".y-axis")
+
+            labelAxis.selectAll("text")
+                .filter(dText=>dText === String(d.label)).style("font-weight", "bold")
+        }
 
         renderLineChart(
                     canvas, {scale:labelScale, offset:labelScale.bandwidth()/2}, valueScale, 

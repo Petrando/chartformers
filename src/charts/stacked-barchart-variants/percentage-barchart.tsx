@@ -467,43 +467,40 @@ export function PercentageBarChart({
                 
         serie
             .selectAll<SVGRectElement, ExtendedSeriesPoint>("rect")
-                .on("pointerenter", function(e, d){
-                    //unhoverLegend()
-                    
-                    canvas.select(".x-axis").selectAll("text")
-                        .filter(dText=>dText === d.data.name).attr("class", xAxisTextClass + " " + styles.hoveredAxisText)
-
-                    tooltip.style("opacity", 1)
-                        
-                    
-                    const value:number = d.data[d.barKey] as number || 0
-                    const total = d.data.total || 0
-                    const percentage = (value/total) * 100
-                    const percentText = format(".1f")(percentage) + "%"                    
-
-                    tooltip.select("p.label").text(d.data.label)
-                    tooltip.select("p.layer span.label span.chev").style("background", fillByKey(d.barKey))
-                    tooltip.select("p.layer span.label span.label").text(d.barKey)
-                    tooltip.select("p.layer span.value").text(percentText)                    
-                    tooltip.select("p.total span.value")
-                        .text(`(${basicFormat(value, tooltipFormat)} of ${basicFormat(total, tooltipFormat)})`)
-
+                .on("mouseover touchstart", pointerenter)
+                .on("mousemove", (e, d)=>{
                     moveTooltip(tooltip, {e, svg:svgNode as SVGSVGElement, yScale: y})
                 })
-                .on("touch", function(e, d){
-                    //unhoverLegend()
-                    select(".x-axis").selectAll("text")
-                        .filter(dText=>dText === d.data.label).attr("class", xAxisTextClass)
-                })
-                .on("pointermove", (e, d)=>{
-                    moveTooltip(tooltip, {e, svg:svgNode as SVGSVGElement, yScale: y})
-                })
-                .on("pointerleave", function(e, d){
+                .on("mouseleave", function(e, d){
                     canvas.select(".x-axis").selectAll("text")
                         .filter(dText=>dText === d.data.name).attr("class", xAxisTextClass)
 
                     tooltip.style("opacity", 0);
                 })
+
+        function pointerenter(e: MouseEvent | TouchEvent, d: ExtendedSeriesPoint){
+            //unhoverLegend()
+                    
+            canvas.select(".x-axis").selectAll("text")
+                .filter(dText=>dText === d.data.name).attr("class", xAxisTextClass + " " + styles.hoveredAxisText)
+
+            tooltip.style("opacity", 1)
+                
+            
+            const value:number = d.data[d.barKey] as number || 0
+            const total = d.data.total || 0
+            const percentage = (value/total) * 100
+            const percentText = format(".1f")(percentage) + "%"                    
+
+            tooltip.select("p.label").text(d.data.label)
+            tooltip.select("p.layer span.label span.chev").style("background", fillByKey(d.barKey))
+            tooltip.select("p.layer span.label span.label").text(d.barKey)
+            tooltip.select("p.layer span.value").text(percentText)                    
+            tooltip.select("p.total span.value")
+                .text(`(${basicFormat(value, tooltipFormat)} of ${basicFormat(total, tooltipFormat)})`)
+
+            moveTooltip(tooltip, {e, svg:svgNode as SVGSVGElement, yScale: y})
+        }
 
     }, [ ...renderDeps, chartData, isPercentage, orientation, tooltipFormat ]);
     

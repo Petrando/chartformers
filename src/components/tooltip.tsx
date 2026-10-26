@@ -65,18 +65,21 @@ export const getTooltip = (
 }
 
 type PositioningProps = {
-    e: MouseEvent;
+    e: MouseEvent | TouchEvent;
     svg: SVGSVGElement; 
     yScale?: d3.ScaleLinear<number, number>;
 }
 
 function getMouseYInData(
-    e: MouseEvent, 
+    e: MouseEvent | TouchEvent, 
     svg: SVGSVGElement, 
     yScale?: d3.ScaleLinear<number, number>
 ) {
     const { top, height } = svg.getBoundingClientRect();
-    const pixelY = e.clientY - top;
+    const clientY = 'touches' in e
+        ? e.touches[0]?.clientY ?? e.changedTouches[0]?.clientY ?? top
+        : e.clientY;
+    const pixelY = clientY - top;
     return {
         pixelY,
         dataY: yScale?.invert(pixelY) ?? 0,
@@ -112,8 +115,11 @@ export function moveTooltip(tooltip:any, positionProps:PositioningProps){
     
     const { offsetWidth, offsetHeight } = tooltip.node() || {};
                   
-    const clientWidth = typeof document !== 'undefined'?document.documentElement.clientWidth:0
-    const baseXPos =  e.x - (offsetWidth/2); 
+    const clientWidth = typeof document !== 'undefined'?document.documentElement.clientWidth:0    
+    const clientX = 'touches' in e
+        ? e.touches[0]?.clientX ?? e.changedTouches[0]?.clientX ?? 0
+        : e.clientX;
+    const baseXPos = clientX - (offsetWidth/2); 
 
     let xPos = 0;
     if(baseXPos < 0){//too much to the left....
@@ -128,13 +134,16 @@ export function moveTooltip(tooltip:any, positionProps:PositioningProps){
     }
     
     const tooltipClass = position === "top"?styles["tooltip--arrow-down"]:styles["tooltip--arrow-up"]
+    const clientY = 'touches' in e
+        ? e.touches[0]?.clientY ?? e.changedTouches[0]?.clientY ?? top
+        : e.clientY;
     tooltip
         .attr("class", `${styles.tooltip} ${tooltipClass}`)
         .style("left", baseXPos + "px")
         .style("top", 
             position === "top"?
-                (e.y - (offsetHeight + 20))  + "px":
-                (e.y + 30)  + "px")                
+                (clientY - (offsetHeight + 20))  + "px":
+                (clientY + 30)  + "px")                
 }
 
 export function tooltipMove(e:any, tooltip:any){

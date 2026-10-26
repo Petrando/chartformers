@@ -699,42 +699,37 @@ export function StackedBarChart({
         const tooltipFormat = {prefix, suffix, formatType}        
         serie
             .selectAll<SVGRectElement, ExtendedSeriesPoint>("rect")
-                .on("pointerenter", function(e, d){                                        
-                    
-                    canvas.select(orientation === "vertical"?".x-axis":".y-axis").selectAll("text")
-                        .filter(dText=>dText === d.data.label)
-                        .attr("class", (orientation === "vertical"?xAxisTextClass:"") + " " + stackedBarStyles.hoveredAxisText)
-
-                    tooltip.style("opacity", 1)
-                                                                                    
-                    const value = d.data[d.barKey] as number
-                    const {total} = d.data
-                    const percentage = (value/total!) * 100
-                                        
-                    tooltip.select("p.label").text(d.data.label)
-                    tooltip.select("p.layer span.label span.chev").style("background", fillByKey(d.barKey))
-                    tooltip.select("p.layer span.label span.label").text(d.barKey)
-                    tooltip.select("p.layer span.value").text(formatTooltipNum(value, tooltipFormat))                    
-                    tooltip.select("p.total span.value").text(formatTooltipNum(total ?? 0, tooltipFormat))
-
+                .on("mouseover touchstart", pointerenter)                
+                .on("mousemove", (e, d)=>{                                                                               
                     moveTooltip(tooltip, {e, svg:svgNode as SVGSVGElement, yScale: valueScale})
                 })
-                .on("touch", function(e, d){
-                    //unhoverLegend()
-                    select(orientation === "vertical"?".x-axis":".y-axis").selectAll("text")
-                        .filter(dText=>dText === d.data.label)
-                        //.attr("class", xAxisTextClass)
-                })
-                .on("pointermove", (e, d)=>{                                                                               
-                    moveTooltip(tooltip, {e, svg:svgNode as SVGSVGElement, yScale: valueScale})
-                })
-                .on("pointerleave", function(e, d){
+                .on("mouseleave", function(e, d){
                     canvas.select(orientation === 'vertical'?".x-axis":".y-axis").selectAll("text")
                         .filter(dText=>dText === d.data.label)
                         .attr("class", orientation==='vertical'?xAxisTextClass:"")
 
                     tooltip.style("opacity", 0);
                 })
+
+        function pointerenter(e: MouseEvent | TouchEvent, d: ExtendedSeriesPoint){
+            canvas.select(orientation === "vertical"?".x-axis":".y-axis").selectAll("text")
+                .filter(dText=>dText === d.data.label)
+                .attr("class", (orientation === "vertical"?xAxisTextClass:"") + " " + stackedBarStyles.hoveredAxisText)
+
+            tooltip.style("opacity", 1)
+                                                                            
+            const value = d.data[d.barKey] as number
+            const {total} = d.data
+            const percentage = (value/total!) * 100
+                                
+            tooltip.select("p.label").text(d.data.label)
+            tooltip.select("p.layer span.label span.chev").style("background", fillByKey(d.barKey))
+            tooltip.select("p.layer span.label span.label").text(d.barKey)
+            tooltip.select("p.layer span.value").text(formatTooltipNum(value, tooltipFormat))                    
+            tooltip.select("p.total span.value").text(formatTooltipNum(total ?? 0, tooltipFormat))
+
+            moveTooltip(tooltip, {e, svg:svgNode as SVGSVGElement, yScale: valueScale})
+        }
 
     }, [ ...renderDeps, isSorted, chartData, keys, justPlotted, orientation, 
         {prefix, suffix, formatType} ]);

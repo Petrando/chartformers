@@ -306,43 +306,11 @@ export function Sankey({data, tooltipFormat}: SankeyProps) {
                         return exit.transition().duration(animDuration/4).style("opacity", 0).remove()
                     }
                 )
-                .on("pointerenter", (e, d)=>{                         
-                    canvas.selectAll("path.link").filter(dPath => {
-                        const pathData = dPath as SankeyLink<sankeyNode, sankeyLink>
-                        return pathData.id !== d.id
-                    })                        
-                        .style("stroke", "#1f2937")
-                        .style("stroke-opacity", 0.05)
-
-                    /*canvas.selectAll("path.link").filter(dPath => {
-                        const pathData = dPath as SankeyLink<sankeyNode, sankeyLink>
-                        return pathData.id === d.id
-                    })
-                        .transition().duration(0)
-                        .attr("class", `link ${styles.sankeyEnergyLink}`);*/
-                    
-                    canvas.selectAll("text.label").filter((dText)=>{
-                        const labelData = dText as SankeyNode<sankeyNode, sankeyLink>
-                        if(labelData.name !== d.sourceName && labelData.name !== d.targetName){
-                            return true;
-                        }
-                        
-                        return false;
-                    })
-                        .style("opacity", 0);
-                    
-                    tooltip.style("opacity", 1)
-                    tooltip.select("p.title").text(d.id + basicFormat(d.value, tooltipFormat))                    
-                    tooltip.select("p.top-label").style("display", "none")
-                    tooltip.select("p.bottom-label").style("display", "none")
-
-                    tooltipMove(e, tooltip)
-                        
-                })
-                .on("pointermove", (e, d) => {                     
+                .on("mouseover touchstart", linkPointerEnter)
+                .on("mousemove", (e, d) => {                     
                     tooltipMove(e, tooltip)                    
                 })
-                .on("pointerleave", (e, d)=>{                    
+                .on("mouseleave", (e, d)=>{                    
                     tooltip.style("opacity", 0);                    
 
                     canvas.selectAll("path.link")  
@@ -359,7 +327,40 @@ export function Sankey({data, tooltipFormat}: SankeyProps) {
                     canvas.selectAll("text.label")
                         .style("opacity", 1)
                         
-                });                        
+                });
+                
+            function linkPointerEnter(e: MouseEvent | TouchEvent, d: SankeyLink<sankeyNode, sankeyLink>){
+                canvas.selectAll("path.link").filter(dPath => {
+                    const pathData = dPath as SankeyLink<sankeyNode, sankeyLink>
+                    return pathData.id !== d.id
+                })                        
+                    .style("stroke", "#1f2937")
+                    .style("stroke-opacity", 0.05)
+
+                /*canvas.selectAll("path.link").filter(dPath => {
+                    const pathData = dPath as SankeyLink<sankeyNode, sankeyLink>
+                    return pathData.id === d.id
+                })
+                    .transition().duration(0)
+                    .attr("class", `link ${styles.sankeyEnergyLink}`);*/
+                
+                canvas.selectAll("text.label").filter((dText)=>{
+                    const labelData = dText as SankeyNode<sankeyNode, sankeyLink>
+                    if(labelData.name !== d.sourceName && labelData.name !== d.targetName){
+                        return true;
+                    }
+                    
+                    return false;
+                })
+                    .style("opacity", 0);
+                
+                tooltip.style("opacity", 1)
+                tooltip.select("p.title").text(d.id + basicFormat(d.value, tooltipFormat))                    
+                tooltip.select("p.top-label").style("display", "none")
+                tooltip.select("p.bottom-label").style("display", "none")
+
+                tooltipMove(e, tooltip)
+            }
 
             const nodeDelay = (d:SankeyNode<sankeyNode, sankeyLink>) => {
                 if(result.hasCircularConnection){
@@ -441,51 +442,11 @@ export function Sankey({data, tooltipFormat}: SankeyProps) {
                         return exit.transition().duration(animDuration/4).style("opacity", 0).remove()
                     }
                 )
-                .on("pointerenter", (e,d)=>{                          
-
-                    canvas.selectAll("path.link").filter(dPath => {
-                        const pathData = dPath as SankeyLink<sankeyNode, sankeyLink>
-                        if(pathData.sourceName === d.name){
-                            return false;
-                        }
-                        if(pathData.targetName === d.name){
-                            return false;
-                        }
-                        return true;
-                    })
-                    .style("stroke", "#1f2937")
-                    .style("stroke-opacity", 0.05);
-                    
-                    const targets = d.sourceLinks?.map(dLink => dLink.targetName) ?? []
-                    const sources = d.targetLinks?.map(dLink => dLink.sourceName) ?? []
-
-                    const chains = [...sources, ...targets, d.name]
-                    
-                    canvas.selectAll("text.label").filter(dLabel => !chains.includes((dLabel as SankeyNode<sankeyNode, sankeyLink>).name))
-                        .style("opacity", 0.0625)                                        
-                    
-                    const { enteringValue, exitingValue, nodeState, stateColor } = getNodeStateStyle(d)                   
-                    
-                    tooltip.style("opacity", 1)
-                    tooltip.select("p.title").text(d.name + " :")
-                    tooltip.select("p.top-label")
-                        .style("display", "block")
-                        .text("in " + basicFormat(enteringValue!, tooltipFormat))                    
-                    tooltip.select("p.bottom-label")
-                        .style("display", "block")
-                        .text("out " + basicFormat(exitingValue!, tooltipFormat))
-                                        
-                    tooltip.select("p.small-text")
-                        .style("display", "block")
-                        .text(`${nodeState}`)
-                        .style("color", `${stateColor}`)
-
+                .on("mouseover touchstart", nodePointerEnter)
+                .on("mousemove", (e, d) => {                    
                     tooltipMove(e, tooltip)
                 })
-                .on("pointermove", (e, d) => {                    
-                    tooltipMove(e, tooltip)
-                })
-                .on("pointerleave", (e, d)=>{                                    
+                .on("mouseleave", (e, d)=>{                                    
                     tooltip.style("opacity", 0);                         
                     tooltip.select("p.small-text")
                         .style("display", "none")                   
@@ -525,6 +486,47 @@ export function Sankey({data, tooltipFormat}: SankeyProps) {
                     const colorIndex = layersRef.current.findIndex(layer => layer === d.name)
                     return indexColor(colorIndex, false)
                 });
+
+            function nodePointerEnter(e: MouseEvent | TouchEvent, d: SankeyNode<sankeyNode, sankeyLink>){
+                canvas.selectAll("path.link").filter(dPath => {
+                    const pathData = dPath as SankeyLink<sankeyNode, sankeyLink>
+                    if(pathData.sourceName === d.name){
+                        return false;
+                    }
+                    if(pathData.targetName === d.name){
+                        return false;
+                    }
+                    return true;
+                })
+                .style("stroke", "#1f2937")
+                .style("stroke-opacity", 0.05);
+                
+                const targets = d.sourceLinks?.map(dLink => dLink.targetName) ?? []
+                const sources = d.targetLinks?.map(dLink => dLink.sourceName) ?? []
+
+                const chains = [...sources, ...targets, d.name]
+                
+                canvas.selectAll("text.label").filter(dLabel => !chains.includes((dLabel as SankeyNode<sankeyNode, sankeyLink>).name))
+                    .style("opacity", 0.0625)                                        
+                
+                const { enteringValue, exitingValue, nodeState, stateColor } = getNodeStateStyle(d)                   
+                
+                tooltip.style("opacity", 1)
+                tooltip.select("p.title").text(d.name + " :")
+                tooltip.select("p.top-label")
+                    .style("display", "block")
+                    .text("in " + basicFormat(enteringValue!, tooltipFormat))                    
+                tooltip.select("p.bottom-label")
+                    .style("display", "block")
+                    .text("out " + basicFormat(exitingValue!, tooltipFormat))
+                                    
+                tooltip.select("p.small-text")
+                    .style("display", "block")
+                    .text(`${nodeState}`)
+                    .style("color", `${stateColor}`)
+
+                tooltipMove(e, tooltip)
+            }
 
             const labels = canvas.selectAll<SVGTextElement, SankeyNode<sankeyNode, sankeyLink>>("text.label")
                 .data(nodes, d=>d.name)

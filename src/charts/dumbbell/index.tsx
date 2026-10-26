@@ -232,9 +232,10 @@ export function DumbbellChart<T extends { label: string }>({
                     .style("opacity", 0)
                         .remove()
             )
-        .on("pointerenter", pointerEnter)
-        .on("pointermove", pointerMove)
-        .on("pointerleave", pointerLeave)
+        .on("mouseover", pointerEnter)
+        .on("touchstart", pointerEnter)
+        .on("mousemove", pointerMove)
+        .on("mouseleave", pointerLeave)
                         
         const r = isMediumScreen?7:4
 
@@ -260,9 +261,10 @@ export function DumbbellChart<T extends { label: string }>({
                     .style("opacity", 0)
                     .remove()
             )
-        .on("pointerenter", pointerEnter)
-        .on("pointermove", pointerMove)
-        .on("pointerleave", pointerLeave)
+        .on("mouseover", pointerEnter)
+        .on("touchstart", pointerEnter)
+        .on("mousemove", pointerMove)
+        .on("mouseleave", pointerLeave)
 
         const endCircles = canvas.selectAll<SVGCircleElement, dumbbellDatum>("circle.end")
             .data(data, (d) => d.label + "-end")
@@ -286,12 +288,13 @@ export function DumbbellChart<T extends { label: string }>({
                     .style("opacity", 0)
                     .remove()
             )
-        .on("pointerenter", pointerEnter)
-        .on("pointermove", pointerMove)
-        .on("pointerleave", pointerLeave)
+        .on("mouseover", pointerEnter)
+        .on("touchstart", pointerEnter)
+        .on("mousemove", pointerMove)
+        .on("mouseleave", pointerLeave)
             
         const tooltipFormat = { prefix, suffix, formatType }
-        function pointerEnter(e: MouseEvent, d: dumbbellDatum){            
+        function pointerEnter(e: MouseEvent | TouchEvent, d: dumbbellDatum){            
             const startValue = d[numKeys[0]] as number
             const endValue = d[numKeys[1]] as number
             tooltip.style("opacity", 1)

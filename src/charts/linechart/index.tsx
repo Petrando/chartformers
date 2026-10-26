@@ -327,11 +327,11 @@ export function LineChart({
             .attr("width", chartWidth < 0?0:chartWidth).attr("height", chartHeight)
             .style("fill", "red")
             .style("opacity", 0)                                
-            .on("pointerenter pointermove", pointermoved)
-            .on("pointerleave", pointerleft)
-            .on("touchstart", event => event.preventDefault())
+            .on("mouseover mousemove touchstart", pointermoved)            
+            .on("mouseleave", pointerleft)
+            //.on("touchstart", event => event.preventDefault())
 
-        function pointermoved(e: PointerEvent){                        
+        function pointermoved(e: MouseEvent | TouchEvent){                        
             
             const bisect = bisector((d: lineChartDatum) => 
                     xIsDate?
@@ -393,7 +393,7 @@ export function LineChart({
                 .attr("transform", `translate(${tooltipXPos},${tooltipYPos})`);             
         }
         
-        function pointerleft(e: PointerEvent){
+        function pointerleft(e: MouseEvent){
             tooltip.transition().duration(250).style("display", "none");
             
             tooltipCircles.style("opacity", 0)

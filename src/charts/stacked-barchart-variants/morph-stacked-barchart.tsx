@@ -811,42 +811,11 @@ export function MorphStackedBarChart({
                 undefined,
                 exit=>exit.attr("opacity", 0).style("fill", "grey").remove()
             )
-            .on("pointerenter", function(e, d){                
-                if(mode === "grouped" && isSorted){
-                    serie.selectAll<SVGRectElement, ExtendedSeriesPointWithSorted>("rect")
-                        .filter(dRect => dRect.barKey !== d.barKey)
-                        .style("opacity", 0.25)    
-                }
-
-                canvas.select(orientation === "vertical"?".x-axis":".y-axis").selectAll("text")
-                    .filter(dText=>dText === d.data.label)
-                    .attr("class", (orientation === "vertical"?xAxisTextClass:"") + " " + stackedBarStyles.hoveredAxisText)
-                
-                tooltip.style("opacity", 1)                    
-                
-                const value = d.data[d.barKey] as number
-                const total = d.data.total ?? 0
-                const percentage = (value/total!) * 100
-                const percentText = format(".1f")(percentage) + "%"
-                
-                tooltip.select("p.label").text(d.data.label)
-                tooltip.select("p.layer span.label span.chev").style("background", fillByKey(d.barKey))
-                tooltip.select("p.layer span.label span.label").text(d.barKey)
-                tooltip.select("p.layer span.value")
-                    .text(mode === "percentage"?percentText:formatTooltipNum(value, tooltipFormat))
-                tooltip.select("p.total span.value")
-                    .text(
-                        mode === "percentage"?
-                        `(${basicFormat(value, tooltipFormat)} of ${basicFormat(total, tooltipFormat)})`:
-                        formatTooltipNum(total, tooltipFormat)
-                    )
-
+            .on("mouseover touchstart", pointerenter)
+            .on("mousemove", (e, d)=>{                                                                               
                 moveTooltip(tooltip, {e, svg:svgNode as SVGSVGElement, yScale: valueScale})
             })
-            .on("pointermove", (e, d)=>{                                                                               
-                moveTooltip(tooltip, {e, svg:svgNode as SVGSVGElement, yScale: valueScale})
-            })
-            .on("pointerleave", function(e, d){
+            .on("mouseleave", function(e, d){
                 if(mode === "grouped" && isSorted){
                     serie.selectAll<SVGRectElement, ExtendedSeriesPointWithSorted>("rect")
                         .filter(dRect => dRect.barKey !== d.barKey)
@@ -859,6 +828,39 @@ export function MorphStackedBarChart({
 
                 tooltip.style("opacity", 0);
             })
+
+        function pointerenter(e: MouseEvent | TouchEvent, d: ExtendedSeriesPointWithSorted){
+            if(mode === "grouped" && isSorted){
+                serie.selectAll<SVGRectElement, ExtendedSeriesPointWithSorted>("rect")
+                    .filter(dRect => dRect.barKey !== d.barKey)
+                    .style("opacity", 0.25)    
+            }
+
+            canvas.select(orientation === "vertical"?".x-axis":".y-axis").selectAll("text")
+                .filter(dText=>dText === d.data.label)
+                .attr("class", (orientation === "vertical"?xAxisTextClass:"") + " " + stackedBarStyles.hoveredAxisText)
+            
+            tooltip.style("opacity", 1)                    
+            
+            const value = d.data[d.barKey] as number
+            const total = d.data.total ?? 0
+            const percentage = (value/total!) * 100
+            const percentText = format(".1f")(percentage) + "%"
+            
+            tooltip.select("p.label").text(d.data.label)
+            tooltip.select("p.layer span.label span.chev").style("background", fillByKey(d.barKey))
+            tooltip.select("p.layer span.label span.label").text(d.barKey)
+            tooltip.select("p.layer span.value")
+                .text(mode === "percentage"?percentText:formatTooltipNum(value, tooltipFormat))
+            tooltip.select("p.total span.value")
+                .text(
+                    mode === "percentage"?
+                    `(${basicFormat(value, tooltipFormat)} of ${basicFormat(total, tooltipFormat)})`:
+                    formatTooltipNum(total, tooltipFormat)
+                )
+
+            moveTooltip(tooltip, {e, svg:svgNode as SVGSVGElement, yScale: valueScale})
+        }
 
         function transitionNormal(){
             serie.selectAll<SVGRectElement, ExtendedSeriesPointWithSorted>("rect")

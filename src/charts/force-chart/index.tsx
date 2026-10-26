@@ -1330,76 +1330,18 @@ export function ForceLayoutGraph({
         const connectionFontSize = 10
         const hilitStroke = "black"
         nodes
-            .on("pointerenter", function(e, d){                                 
-                
+            .on("mouseover", function(e, d){                                                 
                 select(this).style("stroke", hilitStroke)
-
-                if(mode === "hierarchy" || mode === "bubble"){
-                    tooltip.transition().duration(250).style("opacity", 1)
-                }
-                
-                if(mode === "network" && noShortestPath){                                        
-                    const targetNodeLinks = pathLinks.filter(pathD => (pathD.source as networkNode).id === (d as networkNode).id)                        
-                    const targets = targetNodeLinks.data().map(dLink => (dLink.target as networkNode).id)
-                    const sourceNodeLinks = pathLinks.filter(pathD => (pathD.target as networkNode).id === (d as networkNode).id)
-                    const sources = sourceNodeLinks.data().map(dLink => (dLink.source as networkNode).id)
-
-                    //blur non connection links
-                    pathLinks.filter(pathD => 
-                        (pathD.source as networkNode).id !== (d as networkNode).id &&
-                        (pathD.target as networkNode).id !== (d as networkNode).id
-                    )
-                        .style("opacity", blurredLinkOpacity)
-
-                    const connections = [...sources, ...targets]
-                    labels.filter(dLabel => 
-                        !((dLabel as networkNode).id === (d as networkNode).id) &&
-                        !connections.includes((dLabel as networkNode).id))
-                        .style("opacity", 0)
-
-                    nodes
-                        .filter(dLabel => 
-                        !((dLabel as networkNode).id === (d as networkNode).id) &&
-                        !connections.includes((dLabel as networkNode).id))
-                        .style("opacity", blurredNodeOpacity)
-
-                    labels.filter(dLabel => (dLabel as networkNode).id === (d as networkNode).id)
-                        .style("font-size", highlightFontSize)
-
-                    labels.filter(dLabel => connections.includes((dLabel as networkNode).id))
-                        .style("font-size", connectionFontSize)                                        
-                    
-                }
-                else if(mode === "hierarchy"){                    
-                    const nameTooltip = tooltipContent.filter(dT => dT === "name").node()                    
-                    select(nameTooltip).text(`${(d as networkHierarchyNode).data.name}`)
-
-                    const valueTooltip = tooltipContent.filter(dT => dT === "value").node()
-                    select(valueTooltip).text(`${basicFormat((d as networkHierarchyNode).value!)}`)
-                }
-                else if(mode === "bubble"){                    
-                    for(const p of tooltipData){
-                    
-                        const tooltipP = tooltipContent.filter(d => d === p)
-                            .node()
-
-                        const baseTooltipPValue = (d as bubbleDataset)[p]
-                        const tooltipPValue = typeof baseTooltipPValue === "number"?
-                            baseTooltipPValue.toLocaleString():baseTooltipPValue
-                        
-                        const content = p === "label"?
-                            (tooltipPValue as string).toUpperCase():
-                            `${p}: ${tooltipPValue}`
-                        select(tooltipP).text(`${content}`)
-                                                
-                    }
-                }
-                                                                    
+                nodePointerEnter(e, d)                                                                                    
             })
-            .on("pointermove", function(e, d){
+            .on("touchstart", function(e, d){                                                 
+                select(this).style("stroke", hilitStroke)
+                nodePointerEnter(e, d)                                                                                    
+            })
+            .on("mousemove", function(e, d){
                 moveTooltip(tooltip, {e, svg:svgNode as SVGSVGElement })
             })
-            .on("pointerleave", function(e, d){ 
+            .on("mouseleave", function(e, d){ 
                 const stroke = nodeStroke(d)
                 select(this).style("stroke", stroke)
 
@@ -1412,48 +1354,97 @@ export function ForceLayoutGraph({
                 }
             })
 
+        function nodePointerEnter(e: MouseEvent | TouchEvent, d: chartNode){
+            if(mode === "hierarchy" || mode === "bubble"){
+                tooltip.transition().duration(250).style("opacity", 1)
+            }
+            
+            if(mode === "network" && noShortestPath){                                        
+                const targetNodeLinks = pathLinks.filter(pathD => (pathD.source as networkNode).id === (d as networkNode).id)                        
+                const targets = targetNodeLinks.data().map(dLink => (dLink.target as networkNode).id)
+                const sourceNodeLinks = pathLinks.filter(pathD => (pathD.target as networkNode).id === (d as networkNode).id)
+                const sources = sourceNodeLinks.data().map(dLink => (dLink.source as networkNode).id)
+
+                //blur non connection links
+                pathLinks.filter(pathD => 
+                    (pathD.source as networkNode).id !== (d as networkNode).id &&
+                    (pathD.target as networkNode).id !== (d as networkNode).id
+                )
+                    .style("opacity", blurredLinkOpacity)
+
+                const connections = [...sources, ...targets]
+                labels.filter(dLabel => 
+                    !((dLabel as networkNode).id === (d as networkNode).id) &&
+                    !connections.includes((dLabel as networkNode).id))
+                    .style("opacity", 0)
+
+                nodes
+                    .filter(dLabel => 
+                    !((dLabel as networkNode).id === (d as networkNode).id) &&
+                    !connections.includes((dLabel as networkNode).id))
+                    .style("opacity", blurredNodeOpacity)
+
+                labels.filter(dLabel => (dLabel as networkNode).id === (d as networkNode).id)
+                    .style("font-size", highlightFontSize)
+
+                labels.filter(dLabel => connections.includes((dLabel as networkNode).id))
+                    .style("font-size", connectionFontSize)                                        
+                
+            }
+            else if(mode === "hierarchy"){                    
+                const nameTooltip = tooltipContent.filter(dT => dT === "name").node()                    
+                select(nameTooltip).text(`${(d as networkHierarchyNode).data.name}`)
+
+                const valueTooltip = tooltipContent.filter(dT => dT === "value").node()
+                select(valueTooltip).text(`${basicFormat((d as networkHierarchyNode).value!)}`)
+            }
+            else if(mode === "bubble"){                    
+                for(const p of tooltipData){
+                
+                    const tooltipP = tooltipContent.filter(d => d === p)
+                        .node()
+
+                    const baseTooltipPValue = (d as bubbleDataset)[p]
+                    const tooltipPValue = typeof baseTooltipPValue === "number"?
+                        baseTooltipPValue.toLocaleString():baseTooltipPValue
+                    
+                    const content = p === "label"?
+                        (tooltipPValue as string).toUpperCase():
+                        `${p}: ${tooltipPValue}`
+                    select(tooltipP).text(`${content}`)
+                                            
+                }
+            }
+        }
+
         pathLinks
-            .on("pointerenter", function(e, d){                
+            .on("mouseover", function(e, d){                
                 select(this)
                     .style(
                         "stroke", 
                         (d as networkResolvedLink).type?
                         d3Color(color((d as networkResolvedLink).type!))?.darker().toString() ?? hilitStroke:hilitStroke
                     )
-                if(mode === "network"){                    
-                    tooltip.transition().duration(250).style("opacity", 1)
-                    const source = (d.source as networkNode).id
-                    const target = (d.target as networkNode).id
-                    if(noShortestPath){
-                        labels.filter(dLabel=> (dLabel as networkNode).id !== source &&
-                                (dLabel as networkNode).id !== target)
-                            .style("opacity", 0)
-
-                        labels.filter(dLabel=> (dLabel as networkNode).id === source ||
-                                (dLabel as networkNode).id === target)
-                            .style("font-size", connectionFontSize)
-                    }
-                    
-                    tooltip.transition().duration(250).style("opacity", 1)
-                    const nameTooltip = tooltipContent.filter(dT => dT === "name").node()                    
-                    select(nameTooltip).text(`${source} ⟶ ${target}`)
-
-                    const valueTooltip = tooltipContent.filter(dT => dT === "value").node()
-                    const baseValueText = (d as networkResolvedLink).value
-                    const valueText = typeof baseValueText === "number"?basicFormat(baseValueText):"---"
-                    select(valueTooltip).text(`${valueText}`)                    
-
-                    moveTooltip(tooltip, {e, svg:svgNode as SVGSVGElement })
-                }
-
+                
+                linkPointerEnter(e, d)
             })
-            .on("pointermove", function(e, d){
+            .on("touchstart", function(e, d){                
+                select(this)
+                    .style(
+                        "stroke", 
+                        (d as networkResolvedLink).type?
+                        d3Color(color((d as networkResolvedLink).type!))?.darker().toString() ?? hilitStroke:hilitStroke
+                    )
+                
+                linkPointerEnter(e, d)
+            })
+            .on("mousemove", function(e, d){
                 if(mode === "network"){
                     moveTooltip(tooltip, {e, svg:svgNode as SVGSVGElement })
                 }
                 
             })
-            .on("pointerleave", function(e, d){
+            .on("mouseleave", function(e, d){
                 select(this)
                     .style(
                         "stroke", 
@@ -1469,6 +1460,34 @@ export function ForceLayoutGraph({
                 }
                 
             })
+
+        function linkPointerEnter(e: MouseEvent | TouchEvent, d: chartLink){
+            if(mode === "network"){                    
+                tooltip.transition().duration(250).style("opacity", 1)
+                const source = (d.source as networkNode).id
+                const target = (d.target as networkNode).id
+                if(noShortestPath){
+                    labels.filter(dLabel=> (dLabel as networkNode).id !== source &&
+                            (dLabel as networkNode).id !== target)
+                        .style("opacity", 0)
+
+                    labels.filter(dLabel=> (dLabel as networkNode).id === source ||
+                            (dLabel as networkNode).id === target)
+                        .style("font-size", connectionFontSize)
+                }
+                
+                tooltip.transition().duration(250).style("opacity", 1)
+                const nameTooltip = tooltipContent.filter(dT => dT === "name").node()                    
+                select(nameTooltip).text(`${source} ⟶ ${target}`)
+
+                const valueTooltip = tooltipContent.filter(dT => dT === "value").node()
+                const baseValueText = (d as networkResolvedLink).value
+                const valueText = typeof baseValueText === "number"?basicFormat(baseValueText):"---"
+                select(valueTooltip).text(`${valueText}`)                    
+
+                moveTooltip(tooltip, {e, svg:svgNode as SVGSVGElement })
+            }
+        }
 
         const textOpacity = (d: chartNode) => {
             const r = nodeRadius(d)

@@ -709,7 +709,7 @@ export function DeltaWaterfall({
             tooltip.select("p.label span.value").text(formatTooltipNum(value, tooltipFormat))
         }
 
-        const openClosePointerEnter = (e: MouseEvent, d: openCloseData) => {
+        const openClosePointerEnter = (e: MouseEvent | TouchEvent, d: openCloseData) => {
             const { value, label } = d.data
             displayLabelAndValue(
                 d.label + " " + label + " :",
@@ -721,7 +721,7 @@ export function DeltaWaterfall({
 
             tooltip.style("opacity", 1)
         }
-        const pointerMove = (e: MouseEvent) => {
+        const pointerMove = (e: MouseEvent | TouchEvent) => {
             moveTooltip(tooltip, {e, svg:svgNode as SVGSVGElement })
         }
 
@@ -729,37 +729,40 @@ export function DeltaWaterfall({
             tooltip.style("opacity", 0)
         }
         openBars
-            .on("pointerenter", openClosePointerEnter)
-            .on("pointermove", pointerMove)
-            .on("pointerleave", pointerLeave)
+            .on("mouseover touchstart", openClosePointerEnter)
+            .on("mousemove", pointerMove)
+            .on("mouseleave", pointerLeave)
 
         closeBars
-            .on("pointerenter", openClosePointerEnter)
-            .on("pointermove", pointerMove)
-            .on("pointerleave", pointerLeave)
+            .on("mouseover touchstart", openClosePointerEnter)
+            .on("mousemove", pointerMove)
+            .on("mouseleave", pointerLeave)
 
         bars
-            .on("pointerenter", function(e, d){                
-                const {label, value} = d
-                displayLabelAndValue(label, value)
-                if(waterfallMode === "waterfall"){
-                    tooltip.select("p.from").style("display", "flex")
-                    tooltip.select("p.from span.label").text("from: ")
-                    tooltip.select("p.from span.value")
-                        .text(formatTooltipNum(d.start, tooltipFormat))
+            .on("mouseover touchstart", barPointerEnter)
+            .on("mousemove", pointerMove)
+            .on("mouseleave", pointerLeave)
 
-                    tooltip.select("p.to").style("display", "flex")
-                    tooltip.select("p.to span.label").text("to: ")
-                    tooltip.select("p.to span.value")
-                        .text(formatTooltipNum(d.end, tooltipFormat))
-                }else{
-                    tooltip.select("p.from").style("display", "none")
-                    tooltip.select("p.to").style("display", "none")
-                }
-                tooltip.style("opacity", 1) 
-            })
-            .on("pointermove", pointerMove)
-            .on("pointerleave", pointerLeave)
+        function barPointerEnter(e: MouseEvent | TouchEvent, d: waterfallDatum){
+            const {label, value} = d
+            displayLabelAndValue(label, value)
+            if(waterfallMode === "waterfall"){
+                tooltip.select("p.from").style("display", "flex")
+                tooltip.select("p.from span.label").text("from: ")
+                tooltip.select("p.from span.value")
+                    .text(formatTooltipNum(d.start ?? 0, tooltipFormat))
+
+                tooltip.select("p.to").style("display", "flex")
+                tooltip.select("p.to span.label").text("to: ")
+                tooltip.select("p.to span.value")
+                    .text(formatTooltipNum(d.end ?? 0, tooltipFormat))
+            }else{
+                tooltip.select("p.from").style("display", "none")
+                tooltip.select("p.to").style("display", "none")
+            }
+
+            tooltip.style("opacity", 1)
+        }
         
     }, [effectiveTimeframe, data, width, height, selected, isSorted,  
         { showLine, showDots, curve},

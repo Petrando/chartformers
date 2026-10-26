@@ -265,6 +265,9 @@ export function PieChart({data, innerRadius = 0, sortWithLegends = false, colorI
             .on("mouseover", function(e, d){
                 setHovered(d.data.label)
             })
+            .on("touchstart", function(e, d){
+                setHovered(d.data.label)
+            })
             .on("mouseout", ()=>{setHovered("")})
 
         const labelPosition = (d:PieArcDatum<pointData>) => {

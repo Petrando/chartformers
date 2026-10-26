@@ -365,28 +365,12 @@ export function PopulationPyramid({
                 undefined,
                 exit=>exit.remove()
             )
-            .on('pointerenter', function(e,d){                                      
-                                
-                if(isTotal && !isPercentage){
-                    canvas.selectAll<SVGGElement, SeriesPoint<ageRangeGroup>>(".femaleBars")
-                        .filter(dFemale => dFemale.data.ageRange === d.data.ageRange)                      
-                        .attr("class", "femaleBars" + " " + pyramidStyles.totalFemale)
-                }                
-            
-                canvas.select('g.yMale.axis').selectAll('text')
-                    .filter(function(dText){return d.data.ageRange===dText})
-                .style('font-weight', 'bold');                       
-
-                e.stopPropagation()                               
-                showTooltip("male", d)                
-                tooltipMove(d, tooltip)                                
-                
-            })
-            .on("pointermove", function(e){
+            .on('mouseover touchstart', malePointerEnter)
+            .on("mousemove", function(e){
                 e.stopPropagation()
                 tooltipMove(e, tooltip)                                    
             })
-            .on('pointerleave', function(e, d){                      
+            .on('mouseleave', function(e, d){                      
                 canvas.select('g.yMale.axis')
                     .selectAll('text')
                     .filter(function(dText){return d.data.ageRange === dText})
@@ -421,6 +405,22 @@ export function PopulationPyramid({
                 const baseWidth = xMale(d[0]) - xMale(d[1])
                 return isNaN(baseWidth)?0:baseWidth 
             });
+
+            function malePointerEnter(e: MouseEvent | TouchEvent, d:SeriesPoint<ageRangeGroup>){
+                if(isTotal && !isPercentage){
+                    canvas.selectAll<SVGGElement, SeriesPoint<ageRangeGroup>>(".femaleBars")
+                        .filter(dFemale => dFemale.data.ageRange === d.data.ageRange)                      
+                        .attr("class", "femaleBars" + " " + pyramidStyles.totalFemale)
+                }                
+            
+                canvas.select('g.yMale.axis').selectAll('text')
+                    .filter(function(dText){return d.data.ageRange===dText})
+                .style('font-weight', 'bold');                       
+
+                e.stopPropagation()                               
+                showTooltip("male", d)                
+                tooltipMove(d, tooltip)
+            }
 
             const femaleStyles = (isTotal && !isPercentage)?pyramidStyles.femaleTotal:pyramidStyles.female
 
@@ -473,26 +473,12 @@ export function PopulationPyramid({
                     undefined,
                     exit=>exit.remove()
                 )
-                .on('pointerenter', function(e,d){                               
-                    e.stopPropagation()
-                    canvas.select('g.yFemale.axis')
-                        .selectAll('text').filter(function(dText){return d.data.ageRange===dText})
-                        .style('font-weight', 'bold');  
-
-                    if(isTotal && !isPercentage){                  
-                        canvas.selectAll<SVGGElement, SeriesPoint<ageRangeGroup>>(".maleBars")
-                            .filter(dMale => dMale.data.ageRange === d.data.ageRange)                                      
-                            .attr("class", "maleBars" + " " + pyramidStyles.totalMale)
-                    }
-
-                    showTooltip("female", d)
-                    tooltipMove(d, tooltip)                    
-                })
-                .on("pointermove", function(e){
+                .on('mouseover touchstart', femalePointerEnter)
+                .on("mousemove", function(e){
                     e.stopPropagation()
                     tooltipMove(e, tooltip)                    
                 })
-                .on('pointerleave', function(e, d){
+                .on('mouseleave', function(e, d){
                     canvas.select('g.yFemale.axis')
                         .selectAll('text')
                         .filter(function(dText){return d.data.ageRange===dText})
@@ -531,6 +517,22 @@ export function PopulationPyramid({
                     const baseWidth = xFemale(d[1]) - xFemale(d[0])
                     return isNaN(baseWidth)?0:baseWidth 
                 })
+            
+            function femalePointerEnter(e: MouseEvent | TouchEvent, d: SeriesPoint<ageRangeGroup>){
+                e.stopPropagation()
+                canvas.select('g.yFemale.axis')
+                    .selectAll('text').filter(function(dText){return d.data.ageRange===dText})
+                    .style('font-weight', 'bold');  
+
+                if(isTotal && !isPercentage){                  
+                    canvas.selectAll<SVGGElement, SeriesPoint<ageRangeGroup>>(".maleBars")
+                        .filter(dMale => dMale.data.ageRange === d.data.ageRange)                                      
+                        .attr("class", "maleBars" + " " + pyramidStyles.totalMale)
+                }
+
+                showTooltip("female", d)
+                tooltipMove(d, tooltip)
+            }
 
             function showTooltip(gender: "male" | "female", d: SeriesPoint<ageRangeGroup>){
                 tooltip.style("opacity", 1)                

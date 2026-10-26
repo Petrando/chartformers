@@ -384,46 +384,48 @@ export function WaterfallChart({
         
         const tooltipFormat = { formatType, prefix, suffix}
         bars    
-            .on("pointerenter", function(e, d){           
-                //U+25B2 / U+25BC     "▲" + 
-                tooltip.select("p.label span.label span.chev")
-                    .style("color", d.value >= 0?colors.inflows:colors.outflows)
-                    .text(
-                        d.value > 0?"▲":
-                        d.value < 0?"▼":
-                        ""
-                    )
-                tooltip.select("p.label span.label span.text").text(d.label + " :")                
-                tooltip.select("p.label span.value").text(formatTooltipNum(d.value, tooltipFormat))
-                if(d.type === "total"){                    
+            .on("mouseover touchstart", pointerenter)
+            .on("mousemove", function(e, d){
+                moveTooltip(tooltip, {e, svg:svgNode as SVGSVGElement })
+            })
+            .on("mouseleave", function(e, d){
+                tooltip.style("opacity", 0)
+            })
+            
+        function pointerenter(e: MouseEvent | TouchEvent, d: waterfallDatum){
+            //U+25B2 / U+25BC     "▲" + 
+            tooltip.select("p.label span.label span.chev")
+                .style("color", d.value >= 0?colors.inflows:colors.outflows)
+                .text(
+                    d.value > 0?"▲":
+                    d.value < 0?"▼":
+                    ""
+                )
+            tooltip.select("p.label span.label span.text").text(d.label + " :")                
+            tooltip.select("p.label span.value").text(formatTooltipNum(d.value, tooltipFormat))
+            if(d.type === "total"){                    
+                tooltip.select("p.from").style("display", "none")
+                tooltip.select("p.to").style("display", "none")
+            }else{                    
+                
+                if(mode === "waterfall"){
+                    tooltip.select("p.from").style("display", "flex")
+                    tooltip.select("p.from span.label").text("from: ")
+                    tooltip.select("p.from span.value")
+                        .text(formatTooltipNum(d.start ?? 0, tooltipFormat))
+
+                    tooltip.select("p.to").style("display", "flex")
+                    tooltip.select("p.to span.label").text("to: ")
+                    tooltip.select("p.to span.value")
+                        .text(formatTooltipNum(d.end ?? 0, tooltipFormat))
+                }else{
                     tooltip.select("p.from").style("display", "none")
                     tooltip.select("p.to").style("display", "none")
-                }else{                    
-                    
-                    if(mode === "waterfall"){
-                        tooltip.select("p.from").style("display", "flex")
-                        tooltip.select("p.from span.label").text("from: ")
-                        tooltip.select("p.from span.value")
-                            .text(formatTooltipNum(d.start, tooltipFormat))
-
-                        tooltip.select("p.to").style("display", "flex")
-                        tooltip.select("p.to span.label").text("to: ")
-                        tooltip.select("p.to span.value")
-                            .text(formatTooltipNum(d.end, tooltipFormat))
-                    }else{
-                        tooltip.select("p.from").style("display", "none")
-                        tooltip.select("p.to").style("display", "none")
-                    }                    
-                }
-                tooltip.style("opacity", 1)
-                moveTooltip(tooltip, {e, svg:svgNode as SVGSVGElement })
-            })
-            .on("pointermove", function(e, d){
-                moveTooltip(tooltip, {e, svg:svgNode as SVGSVGElement })
-            })
-            .on("pointerleave", function(e, d){
-                tooltip.style("opacity", 0)
-            })                                
+                }                    
+            }
+            tooltip.style("opacity", 1)
+            moveTooltip(tooltip, {e, svg:svgNode as SVGSVGElement })
+        }
 
         const labelSize = 12
 

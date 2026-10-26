@@ -65,7 +65,9 @@ export function CirclePacks({data, tooltipFormat, colorScheme = 'monochrome', al
     const [ isSorted, setIsSorted ] = useState(false)    
     const isFirstRender = useRef(true)
     const [ref, parentSize] = useParentSize<HTMLDivElement>();
-    const { width:parentWidth, height: parentHeight} = parentSize;    
+    const { width:parentWidth, height: parentHeight} = parentSize;
+    
+    const lastTouchRef = useRef(Date.now())
 
     useEffect(()=>{
         setPackData((prev) => {            
@@ -238,56 +240,18 @@ export function CirclePacks({data, tooltipFormat, colorScheme = 'monochrome', al
                         .style("fill", nodeFill),
                     exit=>exit.transition().duration(animDuration).style("opacity", 0).remove()
                 )
-                .on('mouseover', function(e, d){                        
-                    if(focus.parent===d){
-                        texts.filter(function(dText) { return (dText as HierarchyCircularNode<hierarchyData>).parent === focus || (this as SVGTextElement).style.display === "inline"; })	    	  
-                            .style("font-size", LABELFONTSIZE * thicknessK)
-                            .style("fill-opacity", function(d) { return (d as HierarchyCircularNode<hierarchyData>).parent === focus ? 1 : 0; })
-                            .style("display", function(d){return ((d as HierarchyCircularNode<hierarchyData>).parent===focus? "inline":"none");});
-                    }
-                    else{  
-                        if(d===focus){
-                            texts.filter(function(dText) { return (dText as HierarchyCircularNode<hierarchyData>).parent === focus || (this as SVGTextElement).style.display === "inline"; })	    	  
-                                .style("font-size", LABELFONTSIZE * thicknessK)
-                                .style("fill-opacity", function(d) { return (d as HierarchyCircularNode<hierarchyData>).parent === focus ? 1 : 0; })
-                                .style("display", function(d){return ((d as HierarchyCircularNode<hierarchyData>).parent===focus? "inline":"none");});
-                        }else /*if(d.parent===focus)*/{
-                            texts.filter(function(dText){
-                                if(isSorted){
-                                    const dCircle = d as HierarchyNode<hierarchyData>
-                                    const textData = dText as HierarchyNode<hierarchyData>
-                                    return textData.name!==dCircle.name
-                                }
-                                
-                                return (dText as HierarchyCircularNode<hierarchyData>).data.name!=d.data.name;
-                            })
-                                .style("fill-opacity", 0)
-                                .style("display", "none");
-                            
-                            texts.filter(function(dText){
-                                if(isSorted){
-                                    const dCircle = d as HierarchyNode<hierarchyData>
-                                    const textData = dText as HierarchyNode<hierarchyData>
-                                    return textData.name!==dCircle.name
-                                }
-                                return (dText as HierarchyCircularNode<hierarchyData>).data.name===d.data.name;
-                            })
-                                .style("fill-opacity", 1)
-                                .style("display", "inline");
-                        }
-                    }
-                                        		                     
+                .on('mouseover', function(e, d){
+                    pointerenter(e, d)                        
                     if(d!=root){select(this)
                         .style("stroke-width", CIRCLESTROKE * thicknessK * 2.5)
                         .style("stroke", "#e4e4e7");}
-                    
-                    const name = d.data.name === "branches"?"Total":d.data.name
-                    tooltip.select("p.name").text(name)
-                    const value = d.value ?? 0
-                    tooltip.select("p.value").text(basicFormat(value, tooltipFormat).toLocaleString())
-                    tooltip.transition().duration(250).style("opacity", 1)                    
-
-                    moveTooltip(tooltip, {e, svg:svgNode as SVGSVGElement })
+                })
+                .on('touchstart', function(e, d){
+                    e.preventDefault()
+                    pointerenter(e, d)                        
+                    if(d!=root){select(this)
+                        .style("stroke-width", CIRCLESTROKE * thicknessK * 2.5)
+                        .style("stroke", "#e4e4e7");}
                 })
                 .on("mousemove", (e, d)=>{
                     moveTooltip(tooltip, {e, svg:svgNode as SVGSVGElement })
@@ -306,8 +270,19 @@ export function CirclePacks({data, tooltipFormat, colorScheme = 'monochrome', al
 
                     tooltip.transition().duration(250).style("opacity", 0)
                 })
-                .on("click", function(e, d){                 
-                    const k = diameter / view[2];
+                .on("click", circleClicked)
+                .on("touchend", function(e, d){
+                    e.preventDefault()
+                    const currentTime = Date.now()
+                    const timeDiff = currentTime - lastTouchRef.current                    
+                    if(timeDiff <= 300){
+                        circleClicked(e, d)
+                    }
+                    lastTouchRef.current = currentTime
+                })
+
+            function circleClicked(e: MouseEvent | TouchEvent, d: PackedNodeWithSorted<hierarchyData>){
+                const k = diameter / view[2];
                                 
                     //return  d.r * k; 		 
                     if(d===root){reset();return;}
@@ -316,7 +291,56 @@ export function CirclePacks({data, tooltipFormat, colorScheme = 'monochrome', al
                     circles
                         .style("stroke-width", CIRCLESTROKE * thicknessK);                        
                     e.stopPropagation()
-                })
+            }
+
+            function pointerenter(e: MouseEvent | TouchEvent, d: PackedNodeWithSorted<hierarchyData>){
+                if(focus.parent===d){
+                    texts.filter(function(dText) { return (dText as HierarchyCircularNode<hierarchyData>).parent === focus || (this as SVGTextElement).style.display === "inline"; })	    	  
+                        .style("font-size", LABELFONTSIZE * thicknessK)
+                        .style("fill-opacity", function(d) { return (d as HierarchyCircularNode<hierarchyData>).parent === focus ? 1 : 0; })
+                        .style("display", function(d){return ((d as HierarchyCircularNode<hierarchyData>).parent===focus? "inline":"none");});
+                }
+                else{  
+                    if(d===focus){
+                        texts.filter(function(dText) { return (dText as HierarchyCircularNode<hierarchyData>).parent === focus || (this as SVGTextElement).style.display === "inline"; })	    	  
+                            .style("font-size", LABELFONTSIZE * thicknessK)
+                            .style("fill-opacity", function(d) { return (d as HierarchyCircularNode<hierarchyData>).parent === focus ? 1 : 0; })
+                            .style("display", function(d){return ((d as HierarchyCircularNode<hierarchyData>).parent===focus? "inline":"none");});
+                    }else /*if(d.parent===focus)*/{
+                        texts.filter(function(dText){
+                            if(isSorted){
+                                const dCircle = d as HierarchyNode<hierarchyData>
+                                const textData = dText as HierarchyNode<hierarchyData>
+                                return textData.name!==dCircle.name
+                            }
+                            
+                            return (dText as HierarchyCircularNode<hierarchyData>).data.name!=d.data.name;
+                        })
+                            .style("fill-opacity", 0)
+                            .style("display", "none");
+                        
+                        texts.filter(function(dText){
+                            if(isSorted){
+                                const dCircle = d as HierarchyNode<hierarchyData>
+                                const textData = dText as HierarchyNode<hierarchyData>
+                                return textData.name!==dCircle.name
+                            }
+                            return (dText as HierarchyCircularNode<hierarchyData>).data.name===d.data.name;
+                        })
+                            .style("fill-opacity", 1)
+                            .style("display", "inline");
+                    }
+                }
+                                                                                        
+                
+                const name = d.data.name === "branches"?"Total":d.data.name
+                tooltip.select("p.name").text(name)
+                const value = d.value ?? 0
+                tooltip.select("p.value").text(basicFormat(value, tooltipFormat).toLocaleString())
+                tooltip.transition().duration(250).style("opacity", 1)                    
+
+                moveTooltip(tooltip, {e, svg:svgNode as SVGSVGElement })
+            }
 
             function textTransform(d: PackedNodeWithSorted<hierarchyData>) { 
                 const k = diameter / view[2];

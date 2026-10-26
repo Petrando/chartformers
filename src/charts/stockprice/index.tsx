@@ -164,7 +164,7 @@ export function StockPriceChart({ data, timeframe = "daily", mode = "linechart",
                     undefined,
                     exit=>exit.remove()
                 )
-                .on("pointerenter", function(e, d){                    
+                .on("mouseover mousemove touchstart", function(e, d){                    
                     const {date, open, hi, low, close, volume} = d
                     const candleWidth = select(this).node()?.getBBox().width ?? 0
                     setTooltip({ date, open, hi, low, close, volume })

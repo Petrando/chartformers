@@ -366,112 +366,75 @@ export function ChordDiagram({
         const blurredOpacity = 0.3
                 
         nodes    
-            .on("pointerenter", function(e, d){
-                e.stopPropagation()                
-                nodes.filter(dNode => dNode.index !== d.index).style("opacity", blurredOpacity)
-                links.filter(dLink => dLink.source.index !== d.index && dLink.target.index !== d.index)
-                    .style("opacity", blurredOpacity)
-                    
-                const sourceLinks = links.filter(dLink => 
-                    dLink.target.index === d.index && dLink.source.index !== d.index)
-                const targetLinks = links.filter(dLink => 
-                    dLink.source.index === d.index && dLink.target.index !== d.index)
-                const selfLink = links.filter(dLink => 
-                    dLink.source.index === d.index && dLink.target.index === d.index)
-                const sourceData = sourceLinks.data()
-                const targetData = targetLinks.data()
-                const selfData = selfLink.data()
-                const inValues = sourceData.reduce((acc, curr) => {
-                    return acc + curr.target.value
-                }, 0)
-                const outValues = targetData.reduce((acc, curr) => {                    
-                    return acc + curr.source.value
-                }, 0)
-                const selfValues = selfData.reduce((acc, curr) => {
-                    return acc + curr.source.value
-                }, 0)                
-                
-                tooltip.style("opacity", 1)
-                
-                const name = names[d.index]
-                tooltip.select('p.name').style("display", "block").text(name)
-                tooltip.select('p.value1').style("display", "flex")
-                tooltip.select('p.value1 span.label')
-                    .text('inflows: ')
-                tooltip.select('p.value1 span.value')
-                    .text(`${prefix}${formatNum(inValues)}${suffix}`)
-
-                tooltip.select('p.value2').style("display", "flex")
-                tooltip.select('p.value2 span.label')
-                    .text('outflows: ')
-                tooltip.select('p.value2 span.value')
-                    .text(`${prefix}${formatNum(outValues)}${suffix}`)
-                    
-                tooltip.select('p.selfValue').style("display", "flex")
-                tooltip.select('p.selfValue span.label')
-                    .text('internal: ')
-                tooltip.select('p.selfValue span.value')
-                    .text(`${prefix}${formatNum(selfValues)}${suffix}`)                                                
-
-                moveTooltip(tooltip, {e, svg:svgNode as SVGSVGElement })
-                
-            })
-            .on("pointermove", (e, d)=>{                
+            .on("mouseover", nodePointerEnter)
+            .on("touchstart", nodePointerEnter)
+            .on("mousemove", (e, d)=>{                
                 moveTooltip(tooltip, {e, svg:svgNode as SVGSVGElement })
             })
-            .on("pointerleave", function(e, d){                
+            .on("mouseleave", function(e, d){                
                 nodes.filter(dNode => dNode.index !== d.index).style("opacity", 1)
                 links.style("opacity", 1)
 
                 tooltip.style("opacity", 0)
             })
+
+        function nodePointerEnter(e: MouseEvent | TouchEvent, d: ChordGroup){
+            e.stopPropagation()                
+            nodes.filter(dNode => dNode.index !== d.index).style("opacity", blurredOpacity)
+            links.filter(dLink => dLink.source.index !== d.index && dLink.target.index !== d.index)
+                .style("opacity", blurredOpacity)
+                
+            const sourceLinks = links.filter(dLink => 
+                dLink.target.index === d.index && dLink.source.index !== d.index)
+            const targetLinks = links.filter(dLink => 
+                dLink.source.index === d.index && dLink.target.index !== d.index)
+            const selfLink = links.filter(dLink => 
+                dLink.source.index === d.index && dLink.target.index === d.index)
+            const sourceData = sourceLinks.data()
+            const targetData = targetLinks.data()
+            const selfData = selfLink.data()
+            const inValues = sourceData.reduce((acc, curr) => {
+                return acc + curr.target.value
+            }, 0)
+            const outValues = targetData.reduce((acc, curr) => {                    
+                return acc + curr.source.value
+            }, 0)
+            const selfValues = selfData.reduce((acc, curr) => {
+                return acc + curr.source.value
+            }, 0)                
+            
+            tooltip.style("opacity", 1)
+            
+            const name = names[d.index]
+            tooltip.select('p.name').style("display", "block").text(name)
+            tooltip.select('p.value1').style("display", "flex")
+            tooltip.select('p.value1 span.label')
+                .text('inflows: ')
+            tooltip.select('p.value1 span.value')
+                .text(`${prefix}${formatNum(inValues)}${suffix}`)
+
+            tooltip.select('p.value2').style("display", "flex")
+            tooltip.select('p.value2 span.label')
+                .text('outflows: ')
+            tooltip.select('p.value2 span.value')
+                .text(`${prefix}${formatNum(outValues)}${suffix}`)
+                
+            tooltip.select('p.selfValue').style("display", "flex")
+            tooltip.select('p.selfValue span.label')
+                .text('internal: ')
+            tooltip.select('p.selfValue span.value')
+                .text(`${prefix}${formatNum(selfValues)}${suffix}`)                                                
+
+            moveTooltip(tooltip, {e, svg:svgNode as SVGSVGElement })
+        }
         
         links
-            .on("pointerenter", function(e, d){
-                e.stopPropagation()
-                nodes.filter(dNode => dNode.index !== d.source.index && dNode.index !== d.target.index)
-                    .style("opacity", blurredOpacity)
-                links.filter(dLink => dLink.source.index !== d.source.index || dLink.target.index !== d.target.index)
-                    .style("opacity", blurredOpacity)
-
-                tooltip.style("opacity", 1)                
-                                                
-                const sourceName = names[d.source.index];
-                const targetName = names[d.target.index];                
-                const sourceValue = `${prefix}${formatNum(d.source.value)}${suffix}`
-                const targetValue = `${prefix}${formatNum(d.target.value)}${suffix}`
-                const value = `
-                    ${prefix}
-                    ${formatNum(d.source.value - d.target.value)}
-                    ${suffix}
-                ` 
-                               
-                if(sourceName === targetName){
-                    tooltip.select('p.name').style("display", "block")
-                        .text(`${sourceName} (internal): ${sourceValue}`)
-                    tooltip.select('p.value1').style("display", "none")
-                    tooltip.select('p.value2').style("display", "none")
-                    tooltip.select('p.selfValue').style("display", "none")
-                }else{
-                    tooltip.select('p.name').style("display", "none")
-                    tooltip.select('p.value1').style("display", "flex")
-                    tooltip.select('p.value1 span.label').text(`${sourceName} → ${targetName}:`)
-                    tooltip.select('p.value1 span.value').text(`${sourceValue}`)
-
-                    tooltip.select('p.value2').style("display", "flex")
-                    tooltip.select('p.value2 span.label').text(`${targetName} → ${sourceName}:`)
-                    tooltip.select('p.value2 span.value').text(`${targetValue}`)
-
-                    tooltip.select('p.selfValue').style("display", "flex")
-                    tooltip.select('p.selfValue span.label').text(`Total ${sourceName} → ${targetName}:`)
-                    tooltip.select('p.selfValue span.value').text(`${value}`)                                            
-                }                                                   
-                               
-            })
-            .on("pointermove", (e, d)=>{                
+            .on("mouseover", linkPointerEnter)
+            .on("touchstart", linkPointerEnter)
+            .on("mousemove", (e, d)=>{                
                 moveTooltip(tooltip, {e, svg:svgNode as SVGSVGElement })
             })
-            .on("pointerleave", function(e, d){                
+            .on("mouseleave", function(e, d){                
                 nodes.filter(dNode => dNode.index !== d.source.index && dNode.index !== d.target.index)
                     .style("opacity", 1)
                 links.filter(dLink => dLink.source.index !== d.source.index || dLink.target.index !== d.target.index)
@@ -479,6 +442,47 @@ export function ChordDiagram({
 
                 tooltip.style("opacity", 0)
             });
+
+        function linkPointerEnter(e: MouseEvent | TouchEvent, d:Chord){
+            e.stopPropagation()
+            nodes.filter(dNode => dNode.index !== d.source.index && dNode.index !== d.target.index)
+                .style("opacity", blurredOpacity)
+            links.filter(dLink => dLink.source.index !== d.source.index || dLink.target.index !== d.target.index)
+                .style("opacity", blurredOpacity)
+
+            tooltip.style("opacity", 1)                
+                                            
+            const sourceName = names[d.source.index];
+            const targetName = names[d.target.index];                
+            const sourceValue = `${prefix}${formatNum(d.source.value)}${suffix}`
+            const targetValue = `${prefix}${formatNum(d.target.value)}${suffix}`
+            const value = `
+                ${prefix}
+                ${formatNum(d.source.value - d.target.value)}
+                ${suffix}
+            ` 
+                            
+            if(sourceName === targetName){
+                tooltip.select('p.name').style("display", "block")
+                    .text(`${sourceName} (internal): ${sourceValue}`)
+                tooltip.select('p.value1').style("display", "none")
+                tooltip.select('p.value2').style("display", "none")
+                tooltip.select('p.selfValue').style("display", "none")
+            }else{
+                tooltip.select('p.name').style("display", "none")
+                tooltip.select('p.value1').style("display", "flex")
+                tooltip.select('p.value1 span.label').text(`${sourceName} → ${targetName}:`)
+                tooltip.select('p.value1 span.value').text(`${sourceValue}`)
+
+                tooltip.select('p.value2').style("display", "flex")
+                tooltip.select('p.value2 span.label').text(`${targetName} → ${sourceName}:`)
+                tooltip.select('p.value2 span.value').text(`${targetValue}`)
+
+                tooltip.select('p.selfValue').style("display", "flex")
+                tooltip.select('p.selfValue span.label').text(`Total ${sourceName} → ${targetName}:`)
+                tooltip.select('p.selfValue span.value').text(`${value}`)                                            
+            }
+        }
         
     }, [matrixData, width, height,  {prefix, suffix, formatType}]);
     

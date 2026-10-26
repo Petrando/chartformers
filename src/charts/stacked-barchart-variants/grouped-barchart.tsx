@@ -36,7 +36,9 @@ export function GroupedBarChart({
         
     const [plotted, setPlotted] = useState<string[]>(["all"]);
     const previousPlotted = useDeferredValue(plotted)            
-    const [isSorted, setIsSorted] = useState<boolean>(false);    
+    const [isSorted, setIsSorted] = useState<boolean>(false);
+    
+    const lastTouchLegendRef = useRef(Date.now())
     
     const uiControls = useUIControls();     
     
@@ -195,53 +197,8 @@ export function GroupedBarChart({
             )
 
         legends
-            .on("click", (e, d)=>{
-                setPlotted(prev=>{
-                    let newPlot:string[] = []
-                    if(focusOnPlot){
-                        /*
-                        If there is a previous plot and no current plot
-                        or vice versa, no current plot but there is previous plot
-                        then don't sort.
-                        */
-                        if(prev[0] === d){
-                            newPlot = ["all"]
-                            setIsSorted(false)
-                        }else{
-                            newPlot = [d]
-                            if(previousPlotted[0] === "all"){
-                                setIsSorted(false)
-                            }
-                        }
-                    }else{
-                        if(prev.includes(d)){
-                            newPlot = prev.filter(p => p !== d)                           
-                        }else{
-                            newPlot = [...prev, d]                           
-                        }
-                    }
-                    return newPlot
-                })
-            })
-            .on("pointerenter", (e, d)=>{
-                const serie = canvas.selectAll<SVGGElement, ExtendedSeriesWithSorted>(".serie")
-                if(plotted[0] === "all"){
-                    if(focusOnPlot){
-                        serie
-                            .attr("fill", layerFill)
-                            .filter(dSerie => dSerie.key !== d)                            
-                                .transition().duration(250)
-                            .style("opacity", 0.25)
-                        
-                    }else{
-                        serie
-                            .attr("fill", layerFill)
-                            .filter(dSerie => dSerie.key === d)                            
-                                .transition().duration(250)
-                            .style("opacity", 0.25)
-                    }   
-                }
-            })
+            .on("click", legendClick)            
+            .on("pointerenter", legendPointerEnter)
             .on("pointerleave", (e, d)=>{
                 const serie = canvas.selectAll<SVGGElement, ExtendedSeriesWithSorted>(".serie")
                 if(plotted[0] === "all"){
@@ -251,6 +208,55 @@ export function GroupedBarChart({
                     .style("opacity", 1)
                 }                
             })
+        
+        function legendClick(e: MouseEvent | TouchEvent, d: string){
+            setPlotted(prev=>{
+                let newPlot:string[] = []
+                if(focusOnPlot){
+                    /*
+                    If there is a previous plot and no current plot
+                    or vice versa, no current plot but there is previous plot
+                    then don't sort.
+                    */
+                    if(prev[0] === d){
+                        newPlot = ["all"]
+                        setIsSorted(false)
+                    }else{
+                        newPlot = [d]
+                        if(previousPlotted[0] === "all"){
+                            setIsSorted(false)
+                        }
+                    }
+                }else{
+                    if(prev.includes(d)){
+                        newPlot = prev.filter(p => p !== d)                           
+                    }else{
+                        newPlot = [...prev, d]                           
+                    }
+                }
+                return newPlot
+            })
+        }
+
+        function legendPointerEnter(e: MouseEvent | TouchEvent, d: string){
+            const serie = canvas.selectAll<SVGGElement, ExtendedSeriesWithSorted>(".serie")
+            if(plotted[0] === "all"){
+                if(focusOnPlot){
+                    serie
+                        .attr("fill", layerFill)
+                        .filter(dSerie => dSerie.key !== d)                            
+                            .transition().duration(250)
+                        .style("opacity", 0.25)
+                    
+                }else{
+                    serie
+                        .attr("fill", layerFill)
+                        .filter(dSerie => dSerie.key === d)                            
+                            .transition().duration(250)
+                        .style("opacity", 0.25)
+                }   
+            }
+        }
 
         const tooltip = container.select("div#tooltip")
             .style("opacity", 0);
@@ -577,40 +583,11 @@ export function GroupedBarChart({
 
         serie
             .selectAll<SVGRectElement, ExtendedSeriesPointWithSorted>("rect")
-                .on("pointerenter", function(e, d){
-                    if(isSorted){
-                        serie.selectAll<SVGRectElement, ExtendedSeriesPointWithSorted>("rect")
-                            .filter(dRect => dRect.barKey !== d.barKey)
-                            .style("opacity", 0.25)    
-                    }
-                    
-                    canvas.select(orientation === "vertical"?".x-axis":".y-axis").selectAll("text")
-                        .filter(dText=>dText === d.data.label).attr("class", (orientation === "vertical"?xAxisTextClass:"") + " " + stackedBarStyles.hoveredAxisText)
-
-                    tooltip.style("opacity", 1)                        
-                    
-                    const value = d.data[d.barKey] as number
-                    const {total} = d.data
-                    const percentage = (value as number/total!) * 100
-                    const percentText = format(".1f")(percentage) + "%"
-                    tooltip.select("p.label").text(d.data.label)
-                    tooltip.select("p.layer span.label span.chev").style("background", fillByKey(d.barKey))
-                    tooltip.select("p.layer span.label span.label").text(d.barKey)
-                    tooltip.select("p.layer span.value").text(formatTooltipNum(value, tooltipFormat))                    
-                    
-                    tooltip.select("p.total span.value").text(formatTooltipNum(total ?? 0, tooltipFormat))
-
+                .on("mouseover touchstart", pointerEnter)                
+                .on("mousemove touchmove", (e, d)=>{
                     moveTooltip(tooltip, {e, svg:svgNode as SVGSVGElement, yScale: valueScale})
                 })
-                .on("touch", function(e, d){
-                    //unhoverLegend()
-                    select(".x-axis").selectAll("text")
-                        .filter(dText=>dText === d.data.label).attr("class", xAxisTextClass)
-                })
-                .on("pointermove", (e, d)=>{
-                    moveTooltip(tooltip, {e, svg:svgNode as SVGSVGElement, yScale: valueScale})
-                })
-                .on("pointerleave", function(e, d){
+                .on("mouseleave", function(e, d){
                     if(isSorted){
                         serie.selectAll<SVGRectElement, ExtendedSeriesPointWithSorted>("rect")
                             .filter(dRect => dRect.barKey !== d.barKey)
@@ -621,7 +598,32 @@ export function GroupedBarChart({
                         .attr("class", orientation === "vertical"?xAxisTextClass:"")
 
                     tooltip.style("opacity", 0);
-                })                                     
+                }) 
+        function pointerEnter(e: MouseEvent | TouchEvent, d: ExtendedSeriesPointWithSorted){
+            if(isSorted){
+                serie.selectAll<SVGRectElement, ExtendedSeriesPointWithSorted>("rect")
+                    .filter(dRect => dRect.barKey !== d.barKey)
+                    .style("opacity", 0.25)    
+            }
+            
+            canvas.select(orientation === "vertical"?".x-axis":".y-axis").selectAll("text")
+                .filter(dText=>dText === d.data.label).attr("class", (orientation === "vertical"?xAxisTextClass:"") + " " + stackedBarStyles.hoveredAxisText)
+
+            tooltip.style("opacity", 1)                        
+            
+            const value = d.data[d.barKey] as number
+            const {total} = d.data
+            const percentage = (value as number/total!) * 100
+            const percentText = format(".1f")(percentage) + "%"
+            tooltip.select("p.label").text(d.data.label)
+            tooltip.select("p.layer span.label span.chev").style("background", fillByKey(d.barKey))
+            tooltip.select("p.layer span.label span.label").text(d.barKey)
+            tooltip.select("p.layer span.value").text(formatTooltipNum(value, tooltipFormat))                    
+            
+            tooltip.select("p.total span.value").text(formatTooltipNum(total ?? 0, tooltipFormat))
+
+            moveTooltip(tooltip, {e, svg:svgNode as SVGSVGElement, yScale: valueScale})
+        }                                    
 
     }, [ ...renderDeps, isSorted, chartData, orientation, tooltipFormat ]);
     

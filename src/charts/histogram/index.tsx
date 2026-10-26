@@ -647,29 +647,11 @@ export function Histogram({
                         .style("opacity", 0)
                         .remove()
                 ) 
-                .on("pointerenter", function(e, d){                    
-                    tooltip.select("p.range span.badge")
-                        .style("background", barFill(d))
-                    tooltip.select("p.range span.label")
-                        .text(`
-                            ${formatTooltipNum(d.x0 ?? 0, tooltipFormat)}
-                            <= ${valueKey} < 
-                            ${formatTooltipNum(d.x1 ?? 0, tooltipFormat)}
-                        `)
-                    const count = d.length
-                    tooltip.select("p.amount")
-                            .text(`
-                                ${count} 
-                                member${count > 1?"s":""}
-                            `)
-                    tooltip.style("opacity", 1)
-
+                .on("mouseover touchstart", barPointerEnter)
+                .on("mousemove", function(e, d){
                     moveTooltip(tooltip, {e, svg:svgNode as SVGSVGElement, yScale: valueScale})
                 })
-                .on("pointermove", function(e, d){
-                    moveTooltip(tooltip, {e, svg:svgNode as SVGSVGElement, yScale: valueScale})
-                })
-                .on("pointerleave", function(e, d){
+                .on("mouseleave", function(e, d){
                     tooltip.style("opacity", 0)
                 })
                 .on("dblclick", function(e, d){
@@ -757,6 +739,26 @@ export function Histogram({
                     }
                                         
                 })
+
+            function barPointerEnter(e: MouseEvent | TouchEvent, d: binnedData){
+                tooltip.select("p.range span.badge")
+                    .style("background", barFill(d))
+                tooltip.select("p.range span.label")
+                    .text(`
+                        ${formatTooltipNum(d.x0 ?? 0, tooltipFormat)}
+                        <= ${valueKey} < 
+                        ${formatTooltipNum(d.x1 ?? 0, tooltipFormat)}
+                    `)
+                const count = d.length
+                tooltip.select("p.amount")
+                        .text(`
+                            ${count} 
+                            member${count > 1?"s":""}
+                        `)
+                tooltip.style("opacity", 1)
+
+                moveTooltip(tooltip, {e, svg:svgNode as SVGSVGElement, yScale: valueScale})
+            }
                        
             const lineColor = layerIdx === 1?
                 isSingleData?"#394447":(!withNegativeData?colors.base:colors.layer1.positive):

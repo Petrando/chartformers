@@ -5,7 +5,8 @@ import { scaleBand, scaleLinear, axisLeft, axisBottom, min, max, format,
 import { useD3 } from '../../hooks/useD3';
 import { useParentSize } from '../../hooks/useParentSize';
 import { useUIControls } from '../../hooks/useUIControls';
-import { Tooltip, moveTooltip } from '../../components/tooltip';
+import { moveTooltip } from '../../components/tooltip';
+import { LabelValueTooltip as Tooltip } from '../../components/label-value-tooltip';
 import { cloneObj, formatTooltipNum, indexSelectedColor, renderLineChart } from '../../utils';
 import { inactiveColor } from '../../../dev/data/constants';
 import styles from '../global.module.css';
@@ -122,7 +123,7 @@ export function BarChart({
                 .scale(labelScale)
                 .tickSizeOuter(0):
             axisBottom(valueScale)
-                .ticks(5, "s")
+                .ticks(10, "s")
                 .tickSizeOuter(0)
                 .tickSize(-graphHeight);        
 
@@ -133,7 +134,7 @@ export function BarChart({
             .attr("class", xAxisTextClass);                         
 
         const y1Axis = orientation === 'vertical'?
-            axisLeft(valueScale).ticks(5, "s").tickSize(-graphWidth):
+            axisLeft(valueScale).ticks(10, "s").tickSize(-graphWidth):
             axisLeft(labelScale).tickSizeOuter(0)                 
                     
         canvas.select<SVGGElement>(".y-axis")
@@ -334,26 +335,7 @@ export function BarChart({
                             Sort
                     </label>
                 }
-                <Tooltip>
-                    <p className='label' 
-                        style={{
-                            fontWeight: 600, margin: "3px", fontSize: "12px", color: "wheat", 
-                            display:"flex", justifyContent: "center", alignItems:"center", gap: 2
-                        }}
-                    >
-                        <span className='chev' style={{width:10, height: 10, borderRadius: 2}}/>
-                        <span 
-                            className='value'                             
-                        />
-                    </p>
-                    <p 
-                        className='value' 
-                        style={{
-                            fontWeight: 700, margin: "3px", fontSize: "13px", color: "wheat", 
-                            textAlign: "center"
-                        }}
-                    />
-                </Tooltip>
+                <Tooltip />
             </div> 
         </div>
     );

@@ -2,7 +2,8 @@ import React, {useEffect, useState, useRef} from 'react';
 import * as d3 from 'd3';
 import { useD3 } from '../hooks/useD3';
 import { useParentSize } from '../hooks/useParentSize';
-import { Tooltip, moveTooltip } from '../components/tooltip';
+import { moveTooltip } from '../components/tooltip';
+import { LabelValueTooltip as Tooltip } from '../components/label-value-tooltip';
 import { cloneObj, basicFormat } from '../utils';
 import styles from './global.module.css';
 import { tooltipFormat, hierarchyData } from '../types';
@@ -203,9 +204,11 @@ export function Sunburst({data, alwaysSort=true,  tooltipFormat}: sunburstProps)
         const svgTranslate = baseWidth > baseHeight?
             `translate(${padding}, 0)`:`translate(0, ${padding})`
         
+        container
+            .on("touchstart pointerleave", ()=>{tooltip.style("opacity", 0)})
         const canvasSvg = container.select<SVGSVGElement>("svg")                        
             .attr("transform", svgTranslate)                 
-            .style("font", "10px sans-serif")
+            .style("font", "10px sans-serif")                                
 
         const svgNode = canvasSvg.node()
         const canvas = canvasSvg.select<SVGGElement>('.plot-area')                       
@@ -304,34 +307,44 @@ export function Sunburst({data, alwaysSort=true,  tooltipFormat}: sunburstProps)
             )
             .on("mouseover", pointerenter)
             .on("touchstart", function(e, d){
+                e.stopPropagation()                
                 e.preventDefault()
                 pointerenter(e, d)
             })
             .on("mousemove", function(e, d){
+                e.stopPropagation()                
+                e.preventDefault()
                 moveTooltip(tooltip, {e, svg:svgNode as SVGSVGElement })
             })
             .on("mouseleave", function(e, d){
                 /*if(focus !== root){
                     return
-                }*/
+                }*/                
                 labelCanvas.selectAll<SVGTextElement, sunburstData>("text.suntext")
                     .filter(dText => dText.data.name === d.data.name)
                     .style("fill-opacity", d => labelVisible(d) ? 1 : 0)
                     .style("text-shadow", d => labelVisible(d)?labelShadow:"none")
 
-                tooltip.transition().duration(250).style("opacity", 0)
+                tooltip.style("opacity", 0)
             })
             .on("click", function(e, d){
+                e.stopPropagation()                
+                e.preventDefault()
                 if(d.children){
                     clicked(e, d)
                 }
             })
             .on("touchend", function(e, d){
+                e.stopPropagation()                
+                e.preventDefault()
                 const currentTime = Date.now()
                 if(currentTime - lastTouchRef.current <= 300){
                     if(d.children){
                         clicked(e, d)
-                    }    
+                    }
+                    tooltip.style("opacity", 0)    
+                }else{
+                    pointerenter(e, d)
                 }
                 lastTouchRef.current = currentTime
             })
@@ -339,17 +352,20 @@ export function Sunburst({data, alwaysSort=true,  tooltipFormat}: sunburstProps)
         function pointerenter(e: MouseEvent | TouchEvent, d: sunburstData){
             /*if(focus !== root){
                 return
-            }*/                
+            }*/
+            e.stopPropagation()                
+            e.preventDefault()
             labelCanvas.selectAll<SVGTextElement, sunburstData>("text.suntext")
                 .filter(dText => dText.data.name === d.data.name)
                 .style("fill-opacity", 1)
                 .style("text-shadow", labelShadow)                
 
+            tooltip.select("p.label span.chev").style("background", pathFill(d))
             const name = d.data.name === "branches"?"Total":d.data.name                
-            tooltip.select("p.name").text(name)
+            tooltip.select("p.label span.value").text(name)
             const value = d.value ?? 0
             tooltip.select("p.value").text(basicFormat(value, tooltipFormat).toLocaleString())
-            tooltip.transition().duration(250).style("opacity", 1)
+            tooltip.style("opacity", 1)
 
             moveTooltip(tooltip, {e, svg:svgNode as SVGSVGElement })
         }
@@ -429,6 +445,8 @@ export function Sunburst({data, alwaysSort=true,  tooltipFormat}: sunburstProps)
                 .attrTween("transform", d => () => labelTransform(d.current as rect));
 
             setPrevSunData(root)
+
+            tooltip.style("opacity", 0)
         }
             
         function arcVisible(d: sunburstData) {
@@ -480,13 +498,13 @@ export function Sunburst({data, alwaysSort=true,  tooltipFormat}: sunburstProps)
             <div
                 ref={chartRef} 
                 className={`${styles["fill-container"]}`}
-                style={{ display:"flex", flexDirection:"column", position: "relative",}}> 
+                style={{ display:"flex", flexDirection:"column", position: "relative" }}> 
                 {
                     dimension > 0 && prevSunData !== null &&
                     <svg                
                         width={dimension}
                         height={dimension}
-                        style={{position: "absolute", left: 0, top: 0}}
+                        style={{ position: "absolute", left: 0, top: 0 }}
                         viewBox={`${[-dimension / 2, -dimension / 2, dimension, dimension]}`}
                         
                     >
@@ -509,16 +527,7 @@ export function Sunburst({data, alwaysSort=true,  tooltipFormat}: sunburstProps)
                     />
                         Sort
                 </label>        
-                <Tooltip>
-                    <p className='name' 
-                        style={{fontWeight: "300px", margin: "3px",  fontSize: "12px", color: "wheat"}}>
-                        Tooltip
-                    </p>
-                    <p className='value' 
-                        style={{fontWeight: "400px", margin: "3px", fontSize: "13px", color: "wheat", textAlign:"right"}}>
-                        Tooltip
-                    </p>
-                </Tooltip>                                  
+                <Tooltip />                                  
             </div> 
         </div>
     );

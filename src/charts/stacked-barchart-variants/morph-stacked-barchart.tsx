@@ -391,7 +391,7 @@ export function MorphStackedBarChart({
                 .tickValues(labelScale.domain())
                 .tickSizeOuter(0):
              axisBottom(valueScale)                
-                .ticks(4, mode === "percentage"?".0%":"s")
+                .ticks(10, mode === "percentage"?".0%":"s")
                 .tickSizeOuter(0)
                 .tickSize(-graphHeight);
             
@@ -414,7 +414,7 @@ export function MorphStackedBarChart({
             .style("display", "none")
             
         const yAxis = orientation === 'vertical'
-            ? axisLeft(valueScale).ticks(4, mode === "percentage"?".0%":"s").tickSize(-graphWidth)
+            ? axisLeft(valueScale).ticks(10, mode === "percentage"?".0%":"s").tickSize(-graphWidth)
             : axisLeft(labelScale).tickSizeOuter(0);                    
                                         
         canvas.select<SVGGElement>(".y-axis")            

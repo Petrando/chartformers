@@ -493,11 +493,10 @@ export function Histogram({
                     ((isSorted?axisTop(binSorted):axisTop(binRanges))):
                         axisTop(valueScale)
                 
-                orientation === "vertical"?xAxis.tickSizeOuter(0).ticks(10)
-                    :xAxis
-                        .tickSizeOuter(0)
-                        .ticks(5, "s")                
-                        .tickSize(-graphHeight)                                
+                xAxis.tickSizeOuter(0).ticks(10)
+                if(orientation === "vertical"){
+                    xAxis.tickSize(-graphHeight)
+                }                                               
 
                 layerCanvas.select<SVGGElement>(".x-axis")                    
                     .transition().duration(animDuration).call(xAxis)

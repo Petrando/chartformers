@@ -4,7 +4,8 @@ import {select, hierarchy, pack, scaleLinear, interpolateHcl,
     HierarchyCircularNode, HierarchyNode} from 'd3';
 import { useD3 } from '../../hooks/useD3';
 import { useParentSize } from '../../hooks/useParentSize';
-import { Tooltip, moveTooltip } from '../../components/tooltip';
+import { LabelValueTooltip as Tooltip } from '../../components/label-value-tooltip';
+import { moveTooltip } from '../../components/tooltip';
 import { basicFormat, cloneObj } from '../../utils';
 import { oldPack } from './utils';
 import { hierarchyData, tooltipFormat } from '../../types';
@@ -102,7 +103,7 @@ export function CirclePacks({data, tooltipFormat, colorScheme = 'monochrome', al
             const height = parentHeight;
 
             const LABELFONTSIZE = 12;
-            const CIRCLESTROKE = 1.5;
+            const CIRCLESTROKEWIDTH = 1.5;
 
             if(width === 0 || height === 0){
                 return
@@ -143,6 +144,8 @@ export function CirclePacks({data, tooltipFormat, colorScheme = 'monochrome', al
             // Start traversal from the root node
             assignSortedGeometry(nodes[0], oldNodeMap);
             
+            container
+                .on("touchstart pointerleave", ()=>{tooltip.style("opacity", 0)})
             const tooltip = container.select("#tooltip").style("opacity", 0)
             const canvasSvg = container.select<SVGSVGElement>("svg")
             const svgNode = canvasSvg.node()
@@ -207,6 +210,7 @@ export function CirclePacks({data, tooltipFormat, colorScheme = 'monochrome', al
                 return ((yPos - view[1]) * k);
             }
 
+            const circleStroke = "#737373"
             const circles = canvas
                 .selectAll<SVGCircleElement, PackedNodeWithSorted<hierarchyData>>("circle")
                 .data(nodes,(d:PackedNodeWithSorted<hierarchyData>) => d.data.name)
@@ -226,44 +230,56 @@ export function CirclePacks({data, tooltipFormat, colorScheme = 'monochrome', al
                             .attr("r", circleRadius)
                             .attr("cx", xPos)
                             .attr("cy", yPos)
-                            .style("stroke", "#737373")
-                            .style("stroke-width", CIRCLESTROKE * thicknessK)
+                            .style("stroke", circleStroke)
+                            .style("stroke-width", CIRCLESTROKEWIDTH * thicknessK)
                             .style("fill", nodeFill),
                     update=>update.transition().duration(animDuration)
                         .attr("cx", xPos)
                         .attr("cy", yPos)
                         .attr("r", circleRadius)
                         .style("stroke", function(d){
-                            return "#737373";
+                            return circleStroke;
                         })
-                        .style("stroke-width", CIRCLESTROKE * thicknessK)
+                        .style("stroke-width", CIRCLESTROKEWIDTH * thicknessK)
                         .style("fill", nodeFill),
                     exit=>exit.transition().duration(animDuration).style("opacity", 0).remove()
                 )
+            circles
                 .on('mouseover', function(e, d){
                     pointerenter(e, d)                        
-                    if(d!=root){select(this)
-                        .style("stroke-width", CIRCLESTROKE * thicknessK * 2.5)
+                    if(d!=root){
+                        select(this)
+                        .style("stroke-width", CIRCLESTROKEWIDTH * thicknessK * 2.5)
                         .style("stroke", "#e4e4e7");}
+
+                    
                 })
                 .on('touchstart', function(e, d){
+                    e.stopPropagation()
                     e.preventDefault()
-                    pointerenter(e, d)                        
+                    pointerenter(e, d)
+                    
                     if(d!=root){select(this)
-                        .style("stroke-width", CIRCLESTROKE * thicknessK * 2.5)
+                        .style("stroke-width", CIRCLESTROKEWIDTH * thicknessK * 2.5)
                         .style("stroke", "#e4e4e7");}
+                    
+                    circles.filter(dCircle => dCircle.data.name !== d.data.name)
+                        .style("stroke-width", CIRCLESTROKEWIDTH * thicknessK)
+                        .style("stroke", circleStroke)
                 })
                 .on("mousemove", (e, d)=>{
+                    e.stopPropagation()                
+                    e.preventDefault()
                     moveTooltip(tooltip, {e, svg:svgNode as SVGSVGElement })
                 })                
-                .on('mouseout', function(e, d){
+                .on('mouseleave', function(e, d){
                     texts.filter(function(d) { return (d as HierarchyCircularNode<hierarchyData>).parent === focus || (this as SVGTextElement).style.display === "inline"; })	    	  
                         //.style("font-size", LABELFONTSIZE * thicknessK)
                         .style("fill-opacity", function(d) { return (d as HierarchyCircularNode<hierarchyData>).parent === focus ? 1 : 0; })
                         .style("display", function(d){return ((d as HierarchyCircularNode<hierarchyData>).parent===focus? "inline":"none");});
             
                     select(this)
-                        .style("stroke-width", CIRCLESTROKE * thicknessK)
+                        .style("stroke-width", CIRCLESTROKEWIDTH * thicknessK)
                         .style("stroke", function(d){
                             return "#737373";
                         });
@@ -272,16 +288,31 @@ export function CirclePacks({data, tooltipFormat, colorScheme = 'monochrome', al
                 })
                 .on("click", circleClicked)
                 .on("touchend", function(e, d){
+                    e.stopPropagation()
                     e.preventDefault()
                     const currentTime = Date.now()
                     const timeDiff = currentTime - lastTouchRef.current                    
                     if(timeDiff <= 300){
                         circleClicked(e, d)
                     }
+                    else{
+                        pointerenter(e, d)
+                    
+                        if(d!=root){select(this)
+                            .style("stroke-width", CIRCLESTROKEWIDTH * thicknessK * 2.5)
+                            .style("stroke", "#e4e4e7");}
+                        
+                        circles.filter(dCircle => dCircle.data.name !== d.data.name)
+                            .style("stroke-width", CIRCLESTROKEWIDTH * thicknessK)
+                            .style("stroke", circleStroke)
+                    }
                     lastTouchRef.current = currentTime
                 })
 
             function circleClicked(e: MouseEvent | TouchEvent, d: PackedNodeWithSorted<hierarchyData>){
+                e.stopPropagation()                
+                e.preventDefault()
+                
                 const k = diameter / view[2];
                                 
                     //return  d.r * k; 		 
@@ -289,8 +320,7 @@ export function CirclePacks({data, tooltipFormat, colorScheme = 'monochrome', al
                     focus!=d?clicked(d):reset();
                     
                     circles
-                        .style("stroke-width", CIRCLESTROKE * thicknessK);                        
-                    e.stopPropagation()
+                        .style("stroke-width", CIRCLESTROKEWIDTH * thicknessK);                                            
             }
 
             function pointerenter(e: MouseEvent | TouchEvent, d: PackedNodeWithSorted<hierarchyData>){
@@ -332,9 +362,9 @@ export function CirclePacks({data, tooltipFormat, colorScheme = 'monochrome', al
                     }
                 }
                                                                                         
-                
+                tooltip.select("p.label span.chev").style("background", nodeFill(d))
                 const name = d.data.name === "branches"?"Total":d.data.name
-                tooltip.select("p.name").text(name)
+                tooltip.select("p.label span.value").text(name)
                 const value = d.value ?? 0
                 tooltip.select("p.value").text(basicFormat(value, tooltipFormat).toLocaleString())
                 tooltip.transition().duration(250).style("opacity", 1)                    
@@ -398,7 +428,8 @@ export function CirclePacks({data, tooltipFormat, colorScheme = 'monochrome', al
                 
                 const scalingTranslate = ((myR*2)/diameter)*2; 
                 canvas.transition().duration(1000)        
-                    .attr("transform", "translate(" + translateX + "," + translateY + ")scale("+(scale)+")");
+                    .attr("transform", "translate(" + translateX + "," + translateY + ")scale("+(scale)+")")
+                    .on("end", ()=>{ tooltip.style("opacity", 0) });
                                         
                 texts
                     .style("font-size", LABELFONTSIZE * thicknessK + 'px')
@@ -460,16 +491,7 @@ export function CirclePacks({data, tooltipFormat, colorScheme = 'monochrome', al
                     />
                         Sort
                 </label>
-                <Tooltip>
-                    <p className='name' 
-                        style={{fontWeight: "300px", margin: "3px",  fontSize: "12px", color: "wheat"}}>
-                        Tooltip
-                    </p>
-                    <p className='value' 
-                        style={{fontWeight: "400px", margin: "3px", fontSize: "13px", color: "wheat", textAlign:"right"}}>
-                        Tooltip
-                    </p>
-                </Tooltip>
+                <Tooltip roundMarker={true} />
             </div>            
         </div>  
     )

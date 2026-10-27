@@ -313,7 +313,7 @@ export function GroupedBarChart({
                 .tickSizeOuter(0)
                 .tickSize(0):
             axisBottom(valueScale)                
-                .ticks(4, "s")
+                .ticks(10, "s")
                 .tickSizeOuter(0)
                 .tickSize(-graphHeight);        
 
@@ -335,7 +335,7 @@ export function GroupedBarChart({
             .style("display", "none")
                                                                                                                     
         const yAxis = orientation === 'vertical'
-            ? axisLeft(valueScale).ticks(4, "s").tickSize(-graphWidth)
+            ? axisLeft(valueScale).ticks(10, "s").tickSize(-graphWidth)
             : axisLeft(labelScale).tickSizeOuter(0).tickSize(0);            
                                 
         canvas.select<SVGGElement>(".y-axis")  

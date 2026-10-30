@@ -6,7 +6,8 @@ export { GroupedBarChart } from './charts/stacked-barchart-variants/grouped-barc
 export { PercentageBarChart } from './charts/stacked-barchart-variants/percentage-barchart';
 export { MorphStackedBarChart } from './charts/stacked-barchart-variants/morph-stacked-barchart'
 export { Sankey } from './charts/sankey';
-export { CirclePacks } from './charts/circle-packs';
+export { CirclePack } from './charts/circle-pack';
+export { CirclePacks } from './charts/circle-pack/circle-packs'
 export { PopulationPyramid } from './charts/population-pyramid'
 export { StockPriceChart} from './charts/stockprice'
 export { Sunburst } from './charts/sunburst'

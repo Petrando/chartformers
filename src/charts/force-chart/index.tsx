@@ -11,7 +11,7 @@ import {
   Force,
   ForceLink
 } from "d3-force";
-import { oldPack } from '../circle-packs/utils'; 
+import { oldPack } from '../circle-pack/utils'; 
 import { useD3 } from '../../hooks/useD3';
 import { useLayerIndex } from '../../hooks/useLayerIndex';
 import { useParentSize } from '../../hooks/useParentSize';

@@ -1,4 +1,4 @@
-import React, {useState, useEffect, useDeferredValue} from 'react';
+import React, {useState, useEffect } from 'react';
 import { axisBottom, axisLeft, format, max, ScaleBand, scaleBand, scaleLinear, select, Series, 
     stack, stackOffsetExpand, stackOffsetNone, stackOrderNone } from 'd3';
 import { useD3 } from '../../hooks/useD3';
@@ -7,7 +7,7 @@ import { useContainerSize } from '../../hooks/useContainerSize';
 import { useLayerIndex } from '../../hooks/useLayerIndex';
 import { Tooltip } from './tooltip';
 import { moveTooltip } from '../../components/tooltip';
-import { cloneObj, indexColor, basicFormat, formatTooltipNum } from '../../utils';
+import { cloneObj, indexColor, basicFormat } from '../../utils';
 import { inactiveColor } from '../../../dev/data/constants';
 import { WarningModal } from './negative-data-warning';
 import styles from '../global.module.css';

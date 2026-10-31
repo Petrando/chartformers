@@ -16,8 +16,9 @@ import { useLayerIndex } from '../../hooks/useLayerIndex';
 type PackProps = {
     data: hierarchyData;
     tooltipFormat?: tooltipFormat;
-    colorScheme?: 'monochrome' | 'rainbow';
-    alwaysSort?: boolean;
+    colorScheme?: 'monochrome' | 'rainbow';    
+    hideLabel?: boolean;
+    sortOption?: "allow" | "always" | "disallow";
 }
 
 type PackedNodeWithSorted<T> = HierarchyCircularNode<T> & {
@@ -61,7 +62,7 @@ function assignSortedGeometry<T extends { name: string }>(
     }
 }
 
-export function CirclePack({data, tooltipFormat, colorScheme = 'monochrome', alwaysSort = false }: PackProps) {
+export function CirclePack({data, tooltipFormat, colorScheme = 'monochrome', hideLabel = false, sortOption = "allow" }: PackProps) {
     const [hierarchyData, setPackData] = useState<hierarchyData | null>(null);
     const [ isSorted, setIsSorted ] = useState(false)    
     const isFirstRender = useRef(true)
@@ -80,7 +81,7 @@ export function CirclePack({data, tooltipFormat, colorScheme = 'monochrome', alw
         })
     }, [data])
 
-    useEffect(() => { setIsSorted(alwaysSort) }, [ alwaysSort ])
+    useEffect(() => { setIsSorted(sortOption === "always") }, [ sortOption ])
     
     const layersRef = useLayerIndex(data.children?.map(d => d.name) as string[])
     const BASE_COLORS = quantize(interpolateRainbow, 12);    
@@ -247,10 +248,11 @@ export function CirclePack({data, tooltipFormat, colorScheme = 'monochrome', alw
             circles
                 .on('mouseover', function(e, d){
                     pointerenter(e, d)                        
-                    if(d!=root){
+                    if(d!=root){                        
                         select(this)
-                        .style("stroke-width", CIRCLESTROKEWIDTH * thicknessK * 2.5)
-                        .style("stroke", "#e4e4e7");}
+                        .style("stroke-width", CIRCLESTROKEWIDTH * thicknessK)
+                        .style("stroke", "#e4e4e7");
+                    }
 
                     
                 })
@@ -259,9 +261,11 @@ export function CirclePack({data, tooltipFormat, colorScheme = 'monochrome', alw
                     e.preventDefault()
                     pointerenter(e, d)
                     
-                    if(d!=root){select(this)
-                        .style("stroke-width", CIRCLESTROKEWIDTH * thicknessK * 2.5)
-                        .style("stroke", "#e4e4e7");}
+                    if(d!=root){
+                        select(this)
+                            .style("stroke-width", CIRCLESTROKEWIDTH * thicknessK)
+                            .style("stroke", "#e4e4e7");
+                    }
                     
                     circles.filter(dCircle => dCircle.data.name !== d.data.name)
                         .style("stroke-width", CIRCLESTROKEWIDTH * thicknessK)
@@ -379,9 +383,10 @@ export function CirclePack({data, tooltipFormat, colorScheme = 'monochrome', alw
                 return "translate(" + (xPos - view[0]) * k + "," + (yPos - view[1]) * k + ")"; 
             }
 
+            const textData = hideLabel?[]:nodes
             const texts = canvas
                 .selectAll<SVGTextElement, PackedNodeWithSorted<hierarchyData>>("text")
-                .data(nodes, d=>d.data.name)
+                .data(textData, d=>d.data.name)
                 .join(
                     enter=>enter.append("text")  
                         .attr("class", packStyles["circle_pack_label"])                          
@@ -458,7 +463,7 @@ export function CirclePack({data, tooltipFormat, colorScheme = 'monochrome', alw
 
             reset()
         }, 
-        [hierarchyData, colorScheme, parentWidth, parentHeight, isSorted]
+        [hierarchyData, colorScheme, parentWidth, parentHeight, isSorted, hideLabel]
     );
 
     return (
@@ -480,7 +485,8 @@ export function CirclePack({data, tooltipFormat, colorScheme = 'monochrome', alw
                     className={styles["controls-label"]}
                     style={{
                         position: "absolute", right: "12px", top: "6px", 
-                        opacity: alwaysSort?0:1, pointerEvents: alwaysSort?"none":"auto"
+                        opacity: sortOption !== "allow"?0:1, 
+                        pointerEvents: sortOption !== "allow"?"none":"auto"
                     }}
                 >
                     <input 

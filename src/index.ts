@@ -3,12 +3,10 @@ export { LineChart } from './charts/linechart'
 export { PieChart } from './charts/piechart'
 export { StackedBarChart } from './charts/stacked-barchart-variants/stacked-barchart';
 export { GroupedBarChart } from './charts/stacked-barchart-variants/grouped-barchart';
-export { PercentageBarChart } from './charts/stacked-barchart-variants/percentage-barchart';
 export { PercentStackedBarChart } from './charts/stacked-barchart-variants/percent-stacked-barchart'
 export { MorphStackedBarChart } from './charts/stacked-barchart-variants/morph-stacked-barchart'
 export { Sankey } from './charts/sankey';
 export { CirclePack } from './charts/circle-pack';
-export { CirclePacks } from './charts/circle-pack/circle-packs'
 export { PopulationPyramid } from './charts/population-pyramid'
 export { StockPriceChart} from './charts/stockprice'
 export { Sunburst } from './charts/sunburst'

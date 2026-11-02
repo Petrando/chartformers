@@ -341,24 +341,13 @@ export function CirclePack({data, tooltipFormat, colorScheme = 'monochrome', hid
                             .style("fill-opacity", function(d) { return (d as HierarchyCircularNode<hierarchyData>).parent === focus ? 1 : 0; })
                             .style("display", function(d){return ((d as HierarchyCircularNode<hierarchyData>).parent===focus? "inline":"none");});
                     }else /*if(d.parent===focus)*/{
-                        texts.filter(function(dText){
-                            if(isSorted){
-                                const dCircle = d as HierarchyNode<hierarchyData>
-                                const textData = dText as HierarchyNode<hierarchyData>
-                                return textData.name!==dCircle.name
-                            }
-                            
+                        texts.filter(function(dText){                                                        
                             return (dText as HierarchyCircularNode<hierarchyData>).data.name!=d.data.name;
                         })
                             .style("fill-opacity", 0)
                             .style("display", "none");
                         
-                        texts.filter(function(dText){
-                            if(isSorted){
-                                const dCircle = d as HierarchyNode<hierarchyData>
-                                const textData = dText as HierarchyNode<hierarchyData>
-                                return textData.name!==dCircle.name
-                            }
+                        texts.filter(function(dText){                            
                             return (dText as HierarchyCircularNode<hierarchyData>).data.name===d.data.name;
                         })
                             .style("fill-opacity", 1)

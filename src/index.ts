@@ -16,6 +16,7 @@ export { DumbbellChart } from  './charts/dumbbell'
 export { ChordDiagram } from './charts/chord'
 export { Histogram } from './charts/histogram'
 export { ForceLayoutGraph } from  './charts/force-chart'
+export { BubbleForceGraph } from './charts/force-chart/bubble-force'
 export { TreeDiagram } from './charts/tree'
 //consider adding exports for types as well
 //currently waterfallDatum 'type' property cannot be strengthened

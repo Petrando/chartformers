@@ -151,13 +151,13 @@ export function BubbleForceGraph({
         }
 
         const mainPallete =  [            
-            "#d4f3ec", // 6  pale aqua     (pale, cool)
-            "#e8a838", // 7  amber         (mid, warm)
-            "#3aa797", // 15 teal          (mid-dark, cool)
+            "#e8c1a0", // 12 peach         (light, warm)            
             "#fbf1b0", // 9  pale yellow   (pale, warm)
-            "#f47560", // 10 coral         (mid, warm)
             "#61cdbb", // 11 mint-teal     (mid, cool)
-            "#e8c1a0", // 12 peach         (light, warm)
+            "#e8a838", // 7  amber         (mid, warm)            
+            "#f47560", // 10 coral         (mid, warm)
+            "#3aa797", // 15 teal          (mid-dark, cool)            
+            "#d4f3ec", // 6  pale aqua     (pale, cool)
             "#d1473c", // 13 red           (dark-mid, warm)
             "#bfeadf", // 14 pale mint     (pale, cool)
             "#2a7f7a", // 8  deep teal     (dark, cool)            

@@ -49,7 +49,6 @@ type bubbleGraphProps = {
     data: bubbleDataset[];
     valueProp: string;
     groupBy?: string;
-    nodeId?: string;
     collision?: nodeCollision;
     clusterByGroup?: boolean;
     tooltipColumns?: string[];
@@ -65,7 +64,6 @@ export function BubbleForceGraph({
     data,
     valueProp,
     groupBy,
-    nodeId,
     tooltipColumns = [],
     collision,
     clusterByGroup,
@@ -904,7 +902,7 @@ export function BubbleForceGraph({
         } 
                         
     }, [
-        data, valueProp, groupBy, nodeId, tooltipColumns, clusterByGroup, collision, noLabel, isSorted, 
+        data, valueProp, groupBy, tooltipColumns, clusterByGroup, collision, noLabel, isSorted, 
         selectedGroup, color, width, height, {prefix, suffix, formatType} 
     ]);
             

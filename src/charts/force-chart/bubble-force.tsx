@@ -22,6 +22,7 @@ import { Tooltip, getTooltip, moveTooltip } from '../../components/tooltip';
 import { basicFormat, cloneObj, indexSelectedColor, isFiniteNumber } from '../../utils';
 import styles from '../global.module.css';
 import { tooltipFormat, hierarchyData } from '../../types';
+import { nodeCollision } from './types';
 
 type primitiveOrDate = string | number | boolean | Date; //symbol | null | undefined 
 
@@ -49,6 +50,7 @@ type bubbleGraphProps = {
     valueProp: string;
     groupBy?: string;
     nodeId?: string;
+    collision?: nodeCollision;
     clusterByGroup?: boolean;
     tooltipColumns?: string[];
     noLabel?: boolean;        
@@ -65,6 +67,7 @@ export function BubbleForceGraph({
     groupBy,
     nodeId,
     tooltipColumns = [],
+    collision,
     clusterByGroup,
     noLabel,            
     color: {
@@ -111,7 +114,7 @@ export function BubbleForceGraph({
         if(!reRenderJustChanged.current){                        
             reRender.current = false
         }        
-    }, [ selectedGroup, isSorted ])
+    }, [ selectedGroup, isSorted, groupBy, clusterByGroup, collision ])
 
     useEffect(()=>{ 
         setSelectedGroup("") 
@@ -305,15 +308,19 @@ export function BubbleForceGraph({
         }
         
         if(reRender.current){            
-
             const diameter = Math.min(width, height)
             nodesData = createSortedBubble(root, diameter, simulation)
         }
 
         const baseRadius = 4
-                
-        console.log(reRender.current)
+                        
         //forceSimulation settings
+        const nodeCollision = { 
+            type: collision?.type ?? "disallow",
+            margin: collision?.margin ?? 0.5,
+            minDistance: collision?.minDistance ?? 1
+        }
+
         function centroid<T extends d3.SimulationNodeDatum>(
             nodes: T[],
             getRadius: (node: T) => number
@@ -390,14 +397,19 @@ export function BubbleForceGraph({
             d => d.r ?? 0,
             0.2
         );
+        const collisionMargin = Math.max(0, nodeCollision.margin)
+        const collisionMinDistance = Math.max(0, nodeCollision.minDistance)
+        const collide = forceCollide<processedBubbleDataset>()
+                .radius((d: processedBubbleDataset) => Math.max(d.r + collisionMargin, collisionMinDistance))
+                .iterations(3)
+        function charge(d: SimulationNodeDatum) {
+            return -Math.pow((d as processedBubbleDataset).r ?? 0, 2.0) * forceStrengthBubble;
+        }
         const forceStrengthBubble = 0.03;        
+        
         if(reRender.current){
             simulation.nodes(nodesData)//.stop()
-
-            function charge(d: SimulationNodeDatum) {
-                return -Math.pow((d as processedBubbleDataset).r ?? 0, 2.0) * forceStrengthBubble;
-            }                
-            
+                                        
             simulation
                 .velocityDecay(0.2)
                 .force('x', forceX().strength(forceStrengthBubble).x(0))
@@ -406,24 +418,13 @@ export function BubbleForceGraph({
             if(!clusterByGroup){                
                 simulation
                     .force('charge', forceManyBody().strength(charge))
-                    .force(
-                        "collide", 
-                        forceCollide<processedBubbleDataset>()
-                            .radius((d: processedBubbleDataset) => Math.max(d.r, 2))
-                            //.iterations(3)
-                    )
+                    .force("collide", nodeCollision.type === "allow"?null:collide)
                     .force("cluster", null)
             }else{                
-                
-                simulation                    
-                    .force("cluster", groupBy?cluster:null)
-                    .force(
-                        "collide", 
-                        forceCollide<processedBubbleDataset>()
-                            .radius((d: processedBubbleDataset) => Math.max(d.r, 2))
-                            //.iterations(3)
-                    )
-                
+                simulation
+                    .force('charge', forceManyBody().strength(charge))                                        
+                    .force("collide", collide)
+                    .force("cluster", groupBy?cluster:null)                
             }
                                                                                     
             simulationRef.current = simulation
@@ -572,7 +573,7 @@ export function BubbleForceGraph({
                         )                            
                 }       
                 simulation 
-                    //.force("charge", forceManyBody().strength(-30))
+                    //.force("charge", forceManyBody().strength(-30))                    
                     .force("cluster", null)
                     .force(
                         "collide", 
@@ -616,17 +617,16 @@ export function BubbleForceGraph({
                                         notSelectedPosition.y
                                 })
                         )
-                }                
+                }
+                                
                 simulation
-                    .force(
-                        "collide", 
-                        forceCollide<processedBubbleDataset>()
-                            .radius((d: processedBubbleDataset) => Math.max(d.r, 2))
-                            //.iterations(3)
-                    )
+                    .force('charge', forceManyBody().strength(charge))
+                    //.force('charge', collision?forceManyBody().strength(charge):null)                    
+                    .force("collide", nodeCollision.type === "allow"?null:collide)
                     .force("cluster", clusterByGroup && groupBy?cluster:null)
                     .alpha(0.75)
                     .alphaTarget(0)
+
                 setTimeout(()=>{simulation.restart()}, 500)
             }
         }
@@ -671,12 +671,11 @@ export function BubbleForceGraph({
                 const group = d[groupBy ?? ""] as string
                 return color(group)
             }
-            /*const idx = i ?? 1
-            console.log(idx)
-            const base = d3Color(depthColor(idx.toString())) ?? rgb("#000000");
-            return base.brighter(0.4 * idx).formatHex();*/
-            //return fillOf(d, i ?? 1)
-            return valueColor(d[valueProp] as number)
+            //const idx = i ?? 1            
+            //const base = d3Color(depthColor(idx.toString())) ?? rgb("#000000");
+            //return base.brighter(0.4 * idx).formatHex();
+            return fillOf(d, i ?? 1)
+            //return valueColor(d[valueProp] as number)
             
         }
         
@@ -879,14 +878,25 @@ export function BubbleForceGraph({
             event: D3DragEvent<SVGCircleElement, processedBubbleDataset, processedBubbleDataset>,
             d: processedBubbleDataset
         ): void {
-            if (!event.active) {                
-                simulation
-                    .force(
-                        "collide", 
-                        forceCollide<processedBubbleDataset>()
-                            .radius((d:processedBubbleDataset)=>!isSorted?d.r:d.r/3)
-                    )
-                    .alphaTarget(0);
+            if (!event.active) {
+                if(isSorted)
+                {
+                    simulation
+                        .force(
+                            "collide", 
+                            forceCollide<processedBubbleDataset>()
+                                .radius((d:processedBubbleDataset)=>!isSorted?d.r:d.r/3)
+                        )
+                        .alphaTarget(0);
+                }
+                else 
+                {
+                    simulation
+                        .force('charge', forceManyBody().strength(charge))                        
+                        .force("collide", nodeCollision.type === "allow"?null:collide)
+                        .force("cluster", clusterByGroup && groupBy?cluster:null)
+                }                
+                
             }
 
             d.fx = null;
@@ -894,8 +904,8 @@ export function BubbleForceGraph({
         } 
                         
     }, [
-        data, valueProp, groupBy, nodeId, tooltipColumns, clusterByGroup, noLabel,isSorted, 
-        selectedGroup,color,  width, height, {prefix, suffix, formatType} 
+        data, valueProp, groupBy, nodeId, tooltipColumns, clusterByGroup, collision, noLabel, isSorted, 
+        selectedGroup, color, width, height, {prefix, suffix, formatType} 
     ]);
             
     return (

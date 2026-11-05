@@ -35,3 +35,9 @@ export type networkHierarchyLink = SimulationLinkDatum<networkHierarchyNode> &
     {
         value?: number;
     };
+
+export type nodeCollision = {
+    type?: "allow" | "disallow";
+    margin?: number;
+    minDistance?: number;
+}

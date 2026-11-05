@@ -41,3 +41,8 @@ export type nodeCollision = {
     margin?: number;
     minDistance?: number;
 }
+
+export type grouplessColor = {
+    colorBy?: "value" | "index";
+    byValuePallete?: "warm" | "cool" | "diverging";
+}

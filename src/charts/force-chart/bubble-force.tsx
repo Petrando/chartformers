@@ -22,7 +22,7 @@ import { Tooltip, getTooltip, moveTooltip } from '../../components/tooltip';
 import { basicFormat, cloneObj, indexSelectedColor, isFiniteNumber } from '../../utils';
 import styles from '../global.module.css';
 import { tooltipFormat, hierarchyData } from '../../types';
-import { nodeCollision } from './types';
+import { nodeCollision, grouplessColor } from './types';
 
 type primitiveOrDate = string | number | boolean | Date; //symbol | null | undefined 
 
@@ -53,10 +53,7 @@ type bubbleGraphProps = {
     clusterByGroup?: boolean;
     tooltipColumns?: string[];
     noLabel?: boolean;        
-    color?: {
-        idx?: number;
-        type?: 'fixed' | 'colorful';
-    };
+    grouplessColor?: grouplessColor;
     tooltipFormat?: tooltipFormat;
 }
 
@@ -67,12 +64,8 @@ export function BubbleForceGraph({
     tooltipColumns = [],
     collision,
     clusterByGroup,
-    noLabel,            
-    color: {
-        idx = 0,               // default idx
-        type = 'fixed',        // default type
-    } = { idx: 0, type: 'fixed' },
-    
+    noLabel = true,            
+    grouplessColor,    
     tooltipFormat: {
         prefix = "", suffix = "", formatType = "long"
     } = { prefix: "", suffix: "", formatType: "long"}
@@ -92,8 +85,7 @@ export function BubbleForceGraph({
     const isMediumScreen = width > 576;
     // Define the controls element (checkbox)        
     const simulationRef = useRef<Simulation<processedBubbleDataset, undefined> | null>(null);
-
-    const color = {idx, type}    
+        
     const animDuration = 250;    
 
     useEffect(() => {
@@ -112,7 +104,7 @@ export function BubbleForceGraph({
         if(!reRenderJustChanged.current){                        
             reRender.current = false
         }        
-    }, [ selectedGroup, isSorted, groupBy, clusterByGroup, collision ])
+    }, [ selectedGroup, isSorted, groupBy, clusterByGroup, grouplessColor, collision ])
 
     useEffect(()=>{ 
         setSelectedGroup("") 
@@ -653,9 +645,12 @@ export function BubbleForceGraph({
             ? [Math.min(...valueExtent), Math.max(...valueExtent)]
             : [0, 1];
 
+        const { colorBy, byValuePallete } = grouplessColor ?? { colorBy: "index", byValuePallete: "diverging "}
+        const valuePallete = byValuePallete === "cool"?cool:
+            byValuePallete === "warm"?warm:diverging
         const valueColor = scaleQuantize<string>()
             .domain(safeValueExtent)
-            .range(diverging);
+            .range(valuePallete);
 
         const fillOf = (d: processedBubbleDataset, i: number) => {
             const c = d3Color(baseColor(i)) ?? rgb("#000000");
@@ -672,8 +667,8 @@ export function BubbleForceGraph({
             //const idx = i ?? 1            
             //const base = d3Color(depthColor(idx.toString())) ?? rgb("#000000");
             //return base.brighter(0.4 * idx).formatHex();
-            return fillOf(d, i ?? 1)
-            //return valueColor(d[valueProp] as number)
+            return colorBy === "index"?fillOf(d, i ?? 1):
+                valueColor(d[valueProp] as number)            
             
         }
         
@@ -695,9 +690,7 @@ export function BubbleForceGraph({
             .attr("r", nodeRadius)
             .attr("fill", nodeFill)
 
-        const baseFontSize = 6
-        const highlightFontSize = 12
-        const connectionFontSize = 10
+        const baseFontSize = 6    
         const hilitStroke = "black"
 
         nodes
@@ -862,6 +855,7 @@ export function BubbleForceGraph({
             }
             d.fx = d.x;
             d.fy = d.y;
+            
         }
 
         function dragged(
@@ -870,6 +864,8 @@ export function BubbleForceGraph({
         ): void {
             d.fx = event.x;
             d.fy = event.y;
+
+            tooltip.style("opacity", 0)
         }
 
         function dragEnded(
@@ -899,11 +895,13 @@ export function BubbleForceGraph({
 
             d.fx = null;
             d.fy = null;
+
+            nodes.attr("stroke", nodeStroke)
         } 
                         
     }, [
         data, valueProp, groupBy, tooltipColumns, clusterByGroup, collision, noLabel, isSorted, 
-        selectedGroup, color, width, height, {prefix, suffix, formatType} 
+        selectedGroup, grouplessColor, width, height, {prefix, suffix, formatType} 
     ]);
             
     return (

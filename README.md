@@ -2,7 +2,8 @@
 
 [![npm version](https://img.shields.io/npm/v/chartformers)](https://www.npmjs.com/package/chartformers)
 [![npm downloads](https://img.shields.io/npm/dw/chartformers)](https://www.npmjs.com/package/chartformers)
-[![packagephobia](https://packagephobia.com/badge?p=chartformers)](https://packagephobia.com/result?p=chartformers)
+[![Bundle Size](https://img.shields.io/bundlephobia/minzip/chartformers)](https://bundlephobia.com/package/chartformers)
+<!--[![packagephobia](https://packagephobia.com/badge?p=chartformers)](https://packagephobia.com/result?p=chartformers@1.0.46)-->
 [![bundlejs](https://img.shields.io/badge/bundlejs-minzipped-brightgreen)](https://bundlejs.com/?q=chartformers)
 [![GitHub stars](https://img.shields.io/github/stars/petrando/chartformers)](https://github.com/petrando/chartformers)
 [![license](https://img.shields.io/npm/l/chartformers)](./LICENSE)
@@ -20,8 +21,8 @@ It is designed to simplify chart creation in modern React apps while retaining t
 - Easy-to-use React components for common chart types  
 - Smooth animated transitions  
 - **Performance-first**:  
-  - ~**46 KB min+gzip** for typical usage  
-  - ~**27–30 KB gzip per chart** (tree-shaken)  
+  - ~**~29–42 KB min+gzip** per chart (tree-shaken)
+  - Most chart components average ~**35–36 KB gzip**   
 - Fully **tree-shakeable** and **modular**  
 - Full **TypeScript** support  
 - Responsive charts that auto-fit their containers  

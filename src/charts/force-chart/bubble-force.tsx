@@ -200,6 +200,7 @@ export function BubbleForceGraph({
         
         legends
             .on("click", function(_, d){
+                if(legendsData.length === 1)return;
                 setSelectedGroup(selectedGroup !== d?d:"")
                 setIsSorted(false)
             })
@@ -660,7 +661,7 @@ export function BubbleForceGraph({
         }
         
         const nodeStroke = (d: processedBubbleDataset) => rgb(nodeFill(d)).darker().toString()
-
+        
         const nodes = canvas
             .selectAll<SVGCircleElement, processedBubbleDataset>("circle.node")
             .data( nodesData, (_, i) => i )
@@ -695,7 +696,6 @@ export function BubbleForceGraph({
 
                 tooltip.style("display", "none")
             })
-
         
         /*
         | Corner       | SVG coordinate          |
@@ -744,7 +744,10 @@ export function BubbleForceGraph({
                 Math.max(leftClampedXPos, rightClampedXPos)
 
             const baseYPos = clampY(d)
-            const bottomYPos = baseYPos + radius + GAP
+            const baseBottomYPos = baseYPos + radius + GAP
+            const bottomEdge = baseBottomYPos + h            
+            const bottomOverlap =  bottomEdge - height/2
+            const bottomYPos = bottomOverlap > 0 ?baseBottomYPos - bottomOverlap:baseBottomYPos
             const topYPos = baseYPos - h - radius - GAP            
             const fitsAbove = topYPos > (-height/2);
             const yPos =  fitsAbove?topYPos:bottomYPos                        

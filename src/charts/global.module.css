@@ -213,23 +213,23 @@
 .legend-container:hover .legend-rect {
     width: 18px;
     height: 18px;
-    border: 1.5px solid #007bff;
+    border: 1.5px solid #7C3AED;
 }
 
 .legend-container-sm:hover .legend-rect {
     width: 14px;
     height: 14px;
-    border: 1.5px solid #007bff;
+    border: 1.5px solid #7C3AED;
 }
 
 .legend-container-active .legend-rect {
-    border: 2px solid #007bff;    
+    border: 2px solid #4F46E5;    
     width: 18px;
     height: 18px;
 }
 
 .legend-container-active-sm .legend-rect {
-    border: 2px solid #007bff;    
+    border: 2px solid #4F46E5;    
     width: 14px;
     height: 14px;
 }

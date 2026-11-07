@@ -1,27 +1,16 @@
 import React, {useState, useRef, useEffect, useDeferredValue} from 'react';
-import { select, max, color as d3Color, scalePow, hierarchy, drag, D3DragEvent, rgb,
-    forceSimulation, forceLink, forceManyBody, forceCenter, forceCollide, Simulation,
-    forceX, forceY, HierarchyNode, HierarchyCircularNode, HierarchyLink, pack, quadtree, rollup,
-    tree, TreeLayout, scaleOrdinal, schemeCategory10, interpolate, QuadtreeLeaf,
-    scaleQuantize,
-    extent,    
+import { select, color as d3Color, drag, D3DragEvent, rgb, forceSimulation, forceManyBody, 
+    forceCollide, Simulation, forceX, forceY, rollup, scaleOrdinal,scaleQuantize,        
  } from 'd3';
-import {
-  //Simulation,
-  SimulationNodeDatum,
-  SimulationLinkDatum,
-  Force,
-  ForceLink
-} from "d3-force";
+import { SimulationNodeDatum } from "d3-force";
 import { oldPack } from '../circle-pack/utils'; 
 import { useD3 } from '../../hooks/useD3';
-import { useLayerIndex } from '../../hooks/useLayerIndex';
 import { useParentSize } from '../../hooks/useParentSize';
 import { useContainerSize } from '../../hooks/useContainerSize';
-import { Tooltip, getTooltip, moveTooltip } from '../../components/tooltip';
-import { basicFormat, cloneObj, indexSelectedColor, isFiniteNumber } from '../../utils';
+import { cloneObj, isFiniteNumber } from '../../utils';
 import styles from '../global.module.css';
-import { tooltipFormat, hierarchyData } from '../../types';
+import tooltipStyles from '../../components/tooltip.module.css'
+import { tooltipFormat } from '../../types';
 import { nodeCollision, grouplessColor } from './types';
 
 type primitiveOrDate = string | number | boolean | Date; //symbol | null | undefined 
@@ -75,8 +64,7 @@ export function BubbleForceGraph({
     const [chartContainerRef, chartSize] = useContainerSize<HTMLDivElement>()
     const { width, height } = chartSize
 
-    const [selectedGroup, setSelectedGroup] = useState("")
-    const defferedSelectedGroup = useDeferredValue(selectedGroup)
+    const [selectedGroup, setSelectedGroup] = useState("")    
     const [isSorted, setIsSorted] = useState(false)           
 
     const reRender = useRef(true)
@@ -113,12 +101,9 @@ export function BubbleForceGraph({
 
     const chartRef = useD3<HTMLDivElement>((container) => {
         if (width === 0 || height === 0) return;
-        
-        const radius = Math.min(width, height) / 2 - 30;        
+                
 
-        const canvasSvg = container.select<SVGSVGElement>("svg")
-                    
-        const defs = canvasSvg.selectAll("defs")
+        const canvasSvg = container.select<SVGSVGElement>("svg")                            
         const svgNode = canvasSvg.node()
         const canvas = canvasSvg.select<SVGGElement>('.plot-area')
 
@@ -221,19 +206,22 @@ export function BubbleForceGraph({
 
         const chartData = cloneObj(data)
 
-        const tooltip = container.select(`#tooltip`).style("opacity", 0)
+        const tooltip = canvas.select("foreignObject#tooltip")
+        const tip = tooltip.select("div.tt")
                 
         const tooltipData = tooltipColumns.length > 0?tooltipColumns:
             data.length > 0?
             ["label"].concat(Object.keys(data[0]).map(key => key)):
             []
 
-        const tooltipContent = tooltip.selectAll<HTMLParagraphElement, string>("p.content")
+        const tooltipContent = tip.selectAll<HTMLParagraphElement, string>("p.content")
             .data(tooltipData, d => d)
             .join("p")
                 .attr("class", d => `content ${d}`)
                 .style("font-weight", 300).style("margin", 1)
                 .style("font-size", 300).style("color", "wheat")
+                .style("margin", 0)
+                .style("max-width", "none")
 
         const root = chartData
 
@@ -626,8 +614,7 @@ export function BubbleForceGraph({
         const palette = ["#e8c1a0", "#f47560", "#f1e15b", "#e8a838", "#61cdbb", "#97e3d5"];
         const warm = ["#fbf1b0", "#f1e15b", "#e8a838", "#f47560", "#d1473c", "#8f2d3a"];
         const cool = ["#d4f3ec", "#97e3d5", "#61cdbb", "#3aa797", "#2a7f7a", "#1d5b61"];
-        const diverging = ["#2a7f7a", "#61cdbb", "#bfeadf", "#f6ecd2", "#e8a838", "#f47560", "#c4452f"];
-        const depthColor = scaleOrdinal(palette)
+        const diverging = ["#2a7f7a", "#61cdbb", "#bfeadf", "#f6ecd2", "#e8a838", "#f47560", "#c4452f"];        
 
         const hash = (i: number) => {
             let x = (i + 1) * 2654435761 >>> 0;
@@ -701,24 +688,36 @@ export function BubbleForceGraph({
             .on("touchstart", function(e, d){                                                 
                 select(this).style("stroke", hilitStroke)
                 nodePointerEnter(e, d)                                                                                    
-            })
-            .on("mousemove", function(e, d){
-                moveTooltip(tooltip, {e, svg:svgNode as SVGSVGElement })
-            })
+            })            
             .on("mouseleave", function(e, d){ 
                 const stroke = nodeStroke(d)
                 select(this).style("stroke", stroke)
 
-                tooltip.transition().duration(250).style("opacity", 0)
+                tooltip.style("display", "none")
             })
 
+        
+        /*
+        | Corner       | SVG coordinate          |
+        | ------------ | ----------------------- |
+        | Top-left     | `(-width/2, -height/2)` |
+        | Top-right    | `(width/2, -height/2)`  |
+        | Bottom-left  | `(-width/2, height/2)`  |
+        | Bottom-right | `(width/2, height/2)`   |
+
+        */
+                
         function nodePointerEnter(e: MouseEvent | TouchEvent, d: processedBubbleDataset){
-            tooltip.transition().duration(250).style("opacity", 1)
+            const GAP = 6
+
+            const tooltipWidth = 200
+            const tooltipHeight = 200
+            tooltip.attr("width", tooltipWidth).attr("height", tooltipHeight).style("display", "block"); // show first so it can be measured
             
             for(const p of tooltipData){
                 
                 const tooltipP = tooltipContent.filter(d => d === p)
-                    .node()
+                    .node()                
 
                 const baseTooltipPValue = (d as bubbleDataset)[p]
                 const tooltipPValue = typeof baseTooltipPValue === "number"?
@@ -730,6 +729,38 @@ export function BubbleForceGraph({
                 select(tooltipP).text(`${content}`)
                                         
             }
+
+            const tipNode = tip.node() as HTMLDivElement | null;
+            const w = tipNode?.offsetWidth ?? 0;
+            const h = tipNode?.offsetHeight ?? 0;                                    
+
+            const radius = nodeRadius(d)
+            const baseXPos = clampX(d) - w/2            
+            const leftClampedXPos = Math.max(-width/2, baseXPos)            
+            const rightmostPos = leftClampedXPos + w
+            const rightDiff = rightmostPos - (width/2)            
+            const rightClampedXPos = rightDiff > 0?leftClampedXPos - rightDiff:leftClampedXPos
+            const xPos = Math.min(leftClampedXPos, rightClampedXPos)
+
+            const baseYPos = clampY(d)
+            const bottomYPos = baseYPos + radius + GAP
+            const topYPos = baseYPos - h - radius - GAP            
+            const fitsAbove = topYPos > (-height/2);
+            const yPos =  fitsAbove?topYPos:bottomYPos                        
+
+            tooltip
+                    .transition().duration(250)
+                .attr("width", w)
+                .attr("height", h)
+                .attr("x", xPos)
+                .attr("y", yPos )
+                /*.on("end", function(){
+                    tooltip.select("div.tt")                                                 
+                        .attr(
+                            "class", 
+                            `tt ${tooltipStyles.tooltip} ${fitsAbove?tooltipStyles["tooltip--arrow-down"]:tooltipStyles["tooltip--arrow-up"]}`
+                        )
+                });*/
         }
 
         const textOpacity = (d: processedBubbleDataset) => {
@@ -763,6 +794,7 @@ export function BubbleForceGraph({
             .text(d => d.label)
 
         labels.raise()
+        tooltip.raise()
 
         simulation.on("tick", () => {                        
 
@@ -865,7 +897,7 @@ export function BubbleForceGraph({
             d.fx = event.x;
             d.fy = event.y;
 
-            tooltip.style("opacity", 0)
+            tooltip.style("display", "none")
         }
 
         function dragEnded(
@@ -958,10 +990,18 @@ export function BubbleForceGraph({
                         viewBox={`${-width/2} ${-height/2} ${width} ${height}`}
                     >
                         <defs />
-                        <g className="plot-area" />                        
-                    </svg>            
-                
-                    <Tooltip />
+                        <g className="plot-area">
+                            <foreignObject id="tooltip" style={{pointerEvents: "none"}}>
+                                <div 
+                                    style={{                                        
+                                        width: "max-content", boxSizing: "border-box", 
+                                        pointerEvents: "none", whiteSpace: "nowrap",                                                                                 
+                                    }}
+                                    className={`tt ${tooltipStyles.tooltip}`}                                    
+                                />
+                            </foreignObject>    
+                        </g>                        
+                    </svg>                                                
                 </div>
             </div>
             

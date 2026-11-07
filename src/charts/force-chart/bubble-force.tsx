@@ -740,7 +740,8 @@ export function BubbleForceGraph({
             const rightmostPos = leftClampedXPos + w
             const rightDiff = rightmostPos - (width/2)            
             const rightClampedXPos = rightDiff > 0?leftClampedXPos - rightDiff:leftClampedXPos
-            const xPos = Math.min(leftClampedXPos, rightClampedXPos)
+            const xPos = w < width?Math.min(leftClampedXPos, rightClampedXPos):
+                Math.max(leftClampedXPos, rightClampedXPos)
 
             const baseYPos = clampY(d)
             const bottomYPos = baseYPos + radius + GAP

@@ -84,13 +84,16 @@ export function BubbleForceGraph({
 
     useEffect(() => {        
         reRender.current = true        
-    }, [ width, height, noLabel])
+    }, [ width, height ])
 
     useEffect(() => {        
         if(!reRenderJustChanged.current){                        
             reRender.current = false
         }        
-    }, [ selectedGroup, isSorted, groupBy, clusterByGroup, grouplessColor, collision, tooltipFormat ])
+    }, [ 
+        selectedGroup, isSorted, groupBy, clusterByGroup, grouplessColor, collision, tooltipFormat, 
+        noLabel 
+    ])
 
     useEffect(()=>{ 
         setSelectedGroup("") 

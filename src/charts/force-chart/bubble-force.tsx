@@ -7,7 +7,7 @@ import { oldPack } from '../circle-pack/utils';
 import { useD3 } from '../../hooks/useD3';
 import { useParentSize } from '../../hooks/useParentSize';
 import { useContainerSize } from '../../hooks/useContainerSize';
-import { cloneObj, isFiniteNumber } from '../../utils';
+import { cloneObj, formatTooltipNum, isFiniteNumber } from '../../utils';
 import styles from '../global.module.css';
 import tooltipStyles from '../../components/tooltip.module.css'
 import { tooltipFormat } from '../../types';
@@ -55,10 +55,8 @@ export function BubbleForceGraph({
     clusterByGroup,
     noLabel = true,            
     grouplessColor,    
-    tooltipFormat: {
-        prefix = "", suffix = "", formatType = "long"
-    } = { prefix: "", suffix: "", formatType: "long"}
-    }:bubbleGraphProps) {
+    tooltipFormat
+}:bubbleGraphProps) {
     const [ref, parentSize] = useParentSize<HTMLDivElement>();    
     const { width: parentWidth, height: parentHeight } = parentSize;
     const [chartContainerRef, chartSize] = useContainerSize<HTMLDivElement>()
@@ -92,7 +90,7 @@ export function BubbleForceGraph({
         if(!reRenderJustChanged.current){                        
             reRender.current = false
         }        
-    }, [ selectedGroup, isSorted, groupBy, clusterByGroup, grouplessColor, collision ])
+    }, [ selectedGroup, isSorted, groupBy, clusterByGroup, grouplessColor, collision, tooltipFormat ])
 
     useEffect(()=>{ 
         setSelectedGroup("") 
@@ -100,8 +98,7 @@ export function BubbleForceGraph({
     }, [ width, height])
 
     const chartRef = useD3<HTMLDivElement>((container) => {
-        if (width === 0 || height === 0) return;
-                
+        if (width === 0 || height === 0) return;                
 
         const canvasSvg = container.select<SVGSVGElement>("svg")                            
         const svgNode = canvasSvg.node()
@@ -289,9 +286,7 @@ export function BubbleForceGraph({
         if(reRender.current){            
             const diameter = Math.min(width, height)
             nodesData = createSortedBubble(root, diameter, simulation)
-        }
-
-        const baseRadius = 4
+        }        
                         
         //forceSimulation settings
         const nodeCollision = { 
@@ -678,25 +673,9 @@ export function BubbleForceGraph({
             .attr("r", nodeRadius)
             .attr("fill", nodeFill)
 
-        const baseFontSize = 6    
+        const baseFontSize = isMediumScreen?10:8
         const hilitStroke = "black"
-
-        nodes
-            .on("mouseover", function(e, d){                                                 
-                select(this).style("stroke", hilitStroke)
-                nodePointerEnter(e, d)                                                                                    
-            })
-            .on("touchstart", function(e, d){                                                 
-                select(this).style("stroke", hilitStroke)
-                nodePointerEnter(e, d)                                                                                    
-            })            
-            .on("mouseleave", function(e, d){ 
-                const stroke = nodeStroke(d)
-                select(this).style("stroke", stroke)
-
-                tooltip.style("display", "none")
-            })
-        
+                
         /*
         | Corner       | SVG coordinate          |
         | ------------ | ----------------------- |
@@ -706,7 +685,8 @@ export function BubbleForceGraph({
         | Bottom-right | `(width/2, height/2)`   |
 
         */
-                
+        
+        const bubbleTooltipFormat = tooltipFormat ?? { prefix: "", suffix: "", formatType: "long"}
         function nodePointerEnter(e: MouseEvent | TouchEvent, d: processedBubbleDataset){
             const GAP = 6
 
@@ -720,9 +700,14 @@ export function BubbleForceGraph({
                     .node()                
 
                 const baseTooltipPValue = (d as bubbleDataset)[p]
-                const tooltipPValue = typeof baseTooltipPValue === "number"?
-                    baseTooltipPValue.toLocaleString():baseTooltipPValue
-                
+                let tooltipPValue
+                if(p!== valueProp){
+                    tooltipPValue = typeof baseTooltipPValue === "number"?
+                        baseTooltipPValue.toLocaleString():baseTooltipPValue
+                }else{
+                    tooltipPValue = formatTooltipNum(baseTooltipPValue as number, bubbleTooltipFormat)
+                }
+                                
                 const content = p === "label"?
                     (tooltipPValue as string).toUpperCase():
                     `${p}: ${tooltipPValue}`
@@ -796,6 +781,30 @@ export function BubbleForceGraph({
             .style("opacity", textOpacity)
             .style("font-size", baseFontSize)
             .text(d => d.label)
+
+        nodes
+            .on("mouseover", function(e, d){                                                 
+                select(this).style("stroke", hilitStroke)
+                labels.filter(dLabel => dLabel.label !== d.label)
+                    .style("opacity", 0)
+                if(isMediumScreen){
+                    labels.filter(dLabel => dLabel.label === d.label)
+                        .style("opacity", 1)
+                }
+                
+                nodePointerEnter(e, d)                                                                                    
+            })
+            .on("touchstart", function(e, d){                                                 
+                select(this).style("stroke", hilitStroke)
+                nodePointerEnter(e, d)                                                                                    
+            })            
+            .on("mouseleave", function(e, d){ 
+                const stroke = nodeStroke(d)
+                select(this).style("stroke", stroke)
+                labels.style("opacity", textOpacity)
+
+                tooltip.style("display", "none")
+            })
 
         labels.raise()
         tooltip.raise()
@@ -913,7 +922,7 @@ export function BubbleForceGraph({
                         
     }, [
         data, valueProp, groupBy, tooltipColumns, clusterByGroup, collision, noLabel, isSorted, 
-        selectedGroup, grouplessColor, width, height, {prefix, suffix, formatType} 
+        selectedGroup, grouplessColor, width, height, tooltipFormat 
     ]);
             
     return (

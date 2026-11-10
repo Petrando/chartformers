@@ -83,14 +83,25 @@ export const formatNum = (num: number, formatType:formatType = "long") => {
     if(num < 0){
         return num.toFixed(4)
     }
-    return formatType === "long"?format(",")(num):format("~s")(num)
+
+    //format(",")(num)
+    return formatType === "long"?format(",.0f")(num):format("~s")(num)
 }
 export const formatTooltipNum = (num: number, tooltipFormat: tooltipFormat) => {
     const { formatType, prefix, suffix } = tooltipFormat
-
+    
     const sign = num < 0?"-":""
     const formattedNum = formatNum(Math.abs(num), formatType)
-    return `${prefix}${sign}${formattedNum}${suffix}`
+    
+    let result = ``
+    if(prefix && prefix !== ''){
+        result+=`${prefix}`
+    }
+    result+=`${sign}${formattedNum}`
+    if(suffix && suffix !== ''){
+        result+=`${suffix}`
+    } 
+    return result
 }
 
 export function isISODateString(str: string | Date) {

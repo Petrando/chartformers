@@ -291,8 +291,8 @@ export function BubbleForceGraph({
         //forceSimulation settings
         const nodeCollision = { 
             type: collision?.type ?? "disallow",
-            margin: collision?.margin ?? 0.5,
-            minDistance: collision?.minDistance ?? 1
+            margin: collision?.margin ?? 0.25,
+            minDistance: collision?.minDistance ?? 0.5
         }
 
         function centroid<T extends d3.SimulationNodeDatum>(

@@ -806,31 +806,7 @@ export function BubbleForceGraph({
                 .attr("cx",clampX)
                 .attr("cy", clampY);
                 
-            labels                
-                .attr("transform", d => {                    
-                    
-                    const labelData = d
-                    if(labelData.depth === 0){
-                        return ''
-                    }
-
-                    const x = d.x ?? 0;
-                    const y = d.y ?? 0;
-                    const baseX = labelData.baseX ?? 0;
-
-                    // Don't generate an invalid transform
-                    if (
-                        !isFiniteNumber(x) ||
-                        !isFiniteNumber(y) ||
-                        !isFiniteNumber(baseX)
-                    ) {
-                        return "";
-                    }
-                    const angle = baseX * 180 / Math.PI - 90;
-                    const flip = baseX >= Math.PI ? 180 : 0;
-
-                    return `rotate(${angle + flip}, ${x}, ${y})`;
-                })
+            labels                                
                 .attr("x", d => {
                     const xFactor = 0
                     const baseDX = clampX(d)

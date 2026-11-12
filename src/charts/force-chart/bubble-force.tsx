@@ -9,6 +9,7 @@ import { useParentSize } from '../../hooks/useParentSize';
 import { useContainerSize } from '../../hooks/useContainerSize';
 import { cloneObj, formatTooltipNum, isFiniteNumber } from '../../utils';
 import styles from '../global.module.css';
+import forceStyles from './force.module.css'
 import tooltipStyles from '../../components/tooltip.module.css'
 import { tooltipFormat } from '../../types';
 import { nodeCollision, grouplessColor } from './types';
@@ -665,14 +666,14 @@ export function BubbleForceGraph({
             .data( nodesData, (_, i) => i )
             .join(
                 enter=>enter.append("circle")
-                    .attr("class", "node")
-                    .attr("stroke", "none")
+                    .attr("class", `node ${forceStyles.bubble}`)
+                    //.attr("stroke", "none")
                     .attr("r", nodeRadius)
                     .attr("fill", nodeFill),
                 undefined,
                 exit=>exit.remove()
             )            
-            .attr("stroke", nodeStroke)
+            //.attr("stroke", nodeStroke)
             .attr("r", nodeRadius)
             .attr("fill", nodeFill)
 
@@ -787,7 +788,7 @@ export function BubbleForceGraph({
 
         nodes
             .on("mouseover", function(e, d){                                                 
-                select(this).style("stroke", hilitStroke)
+                //select(this).style("stroke", hilitStroke)
                 labels.filter(dLabel => dLabel.label !== d.label)
                     .style("opacity", 0)
                 if(isMediumScreen){
@@ -798,12 +799,12 @@ export function BubbleForceGraph({
                 nodePointerEnter(e, d)                                                                                    
             })
             .on("touchstart", function(e, d){                                                 
-                select(this).style("stroke", hilitStroke)
+                //select(this).style("stroke", hilitStroke)
                 nodePointerEnter(e, d)                                                                                    
             })            
             .on("mouseleave", function(e, d){ 
                 const stroke = nodeStroke(d)
-                select(this).style("stroke", stroke)
+                //select(this).style("stroke", stroke)
                 labels.style("opacity", textOpacity)
 
                 tooltip.style("display", "none")

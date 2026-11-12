@@ -1,0 +1,9 @@
+.bubble {
+    stroke-width: 0.5px;
+    stroke: #473c39;
+}
+
+.bubble:hover {
+    stroke-width: 1.5px;
+    stroke: #0ea5e9;
+}

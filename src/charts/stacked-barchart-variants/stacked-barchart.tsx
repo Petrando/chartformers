@@ -1,7 +1,7 @@
 import React, {useState, useEffect} from 'react';
 import { 
-    axisBottom, axisLeft, min, max, ScaleBand, scaleBand, scaleLinear, ScaleLinear, select, Series, 
-    SeriesPoint, stack, stackOffsetDiverging, stackOffsetNone 
+    axisBottom, axisLeft, min, max, type ScaleBand, scaleBand, scaleLinear, type ScaleLinear, Series, 
+    SeriesPoint, stack, stackOffsetDiverging
 } from 'd3';
 import { useD3 } from '../../hooks/useD3';
 import { useParentSize } from '../../hooks/useParentSize';
@@ -13,9 +13,10 @@ import { cloneObj, indexColor, basicFormat, formatTooltipNum } from '../../utils
 import { inactiveColor } from '../../../dev/data/constants';
 import styles from '../global.module.css';
 import stackedBarStyles from './stacked-barchart.module.css';
+import { defaultMargin, defaultLabelAxis, defaultValueAxis } from './constants';
 import { 
-    LayeredData, ExtendedSeries, ExtendedSeriesPoint, StackedBarChartProps, 
-    stackOrderByCategory } from './types';
+    type LayeredData, type ExtendedSeries, type ExtendedSeriesPoint, type StackedBarChartProps, 
+    type  stackOrderByCategory } from './types';
 import { useUIControls } from '../../hooks/useUIControls';
 
 type StackedBarChartPropsExtended =
@@ -28,6 +29,7 @@ export function StackedBarChart({
         tooltipFormat: {
             prefix = "", suffix = "", formatType = "long"
         } = { prefix: "", suffix: "", formatType: "long"},
+        margin, labelAxis, valueAxis
     }
     : StackedBarChartPropsExtended
 ) {
@@ -66,9 +68,7 @@ export function StackedBarChart({
     
     const chartRef = useD3<HTMLDivElement>((container) => {
         if (width === 0 || height === 0) return;        
-        
-        const margin = { top: 20, right: 30, bottom: 30, left: 30 };         
-        
+                                
         const keys = chartData.length === 0 ? [] :
         (Object.keys(chartData[0]) as (keyof LayeredData)[])
             .filter((key) => key !== "label" && key !== "total") as string[];
@@ -109,13 +109,18 @@ export function StackedBarChart({
                 
             }):filteredData
                 
-        const graphWidth = width - margin.left - margin.right,
-            graphHeight = height - margin.top - margin.bottom;
+        const marginLeft = margin?.left??defaultMargin.left 
+        const marginRight = margin?.right ?? defaultMargin.right
+        const marginTop = margin?.top ?? defaultMargin.top
+        const marginBottom = margin?.bottom ?? defaultMargin.bottom
+
+        const graphWidth = width - marginLeft - marginRight,
+            graphHeight = height - marginTop - marginBottom;
 
         const canvasSvg = container.select<SVGSVGElement>("svg")
         const svgNode = canvasSvg.node()
         const canvas = canvasSvg.select<SVGGElement>('.plot-area')
-            .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+            .attr("transform", "translate(" + marginLeft + "," + marginTop + ")");
 
         const controls = container.select<HTMLDivElement>(".controls")
         const legendsContainer = controls.select<HTMLDivElement>(".legends-container")
@@ -284,13 +289,18 @@ export function StackedBarChart({
             setPrevData(cloneObj(chartData));
         }                       
 
+        const paddingInner = labelAxis?.paddingInner ?? (isMediumScreen?0.4:0.25)
+        const paddingOuter = labelAxis?.paddingOuter ?? defaultLabelAxis.paddingOuter
+        const labelAxisAlign = labelAxis?.align ?? defaultLabelAxis.align
+        const labelAxisTickSizeInner = labelAxis?.tickSizeInner ?? defaultLabelAxis.tickSizeInner
+        
         const labels = sortedData.map(function(d: LayeredData) { return d.label; });
         const labelScale: ScaleBand<string> = scaleBand<string>()
             .domain(labels)
             .rangeRound(orientation === 'vertical'?[0, graphWidth]:[graphHeight, 0])
-            .paddingInner(isMediumScreen?0.4:0.25)
-            .paddingOuter(0.2)            
-            .align(0.2)
+            .paddingInner(paddingInner)
+            .paddingOuter(paddingOuter)            
+            .align(labelAxisAlign)
 
         const baseValueMax = focusOnPlot?(
             plotted[0] === "all"?
@@ -316,13 +326,18 @@ export function StackedBarChart({
                                             
         const prevXLabels: string[] = [];
         
+        const valueAxisTicks = valueAxis?.ticks ?? defaultValueAxis.ticks
+        const valueAxisTickSizeInner = valueAxis?.tickSizeInner ?? defaultValueAxis.tickSizeInner
+        
         const xAxis = orientation === 'vertical' 
             ?axisBottom(labelScale)
                 .tickValues(labelScale.domain())
-                .tickSizeOuter(0):
-             axisBottom(valueScale)                
-                .ticks(10, "s")
                 .tickSizeOuter(0)
+                .tickSizeInner(labelAxisTickSizeInner):
+             axisBottom(valueScale)                
+                .ticks(valueAxisTicks, "s")
+                .tickSizeOuter(0)
+                .tickSizeInner(valueAxisTickSizeInner)
                 .tickSize(-graphHeight);
             
         canvas.select<SVGGElement>(".x-axis")                        
@@ -331,7 +346,7 @@ export function StackedBarChart({
             .call(xAxis) 
             .selectAll("text")
             .style("cursor", "pointer")
-            .attr("dy", !isMediumScreen ? ".20em" : "1em")
+            .attr("dy", !isMediumScreen?"1em":".6em")
             .attr("dx", !isMediumScreen ? "-.8em" : "0em")
             .attr("class", xAxisTextClass)
             .selectAll(".tick")
@@ -341,11 +356,11 @@ export function StackedBarChart({
             
         canvas.select<SVGGElement>(".x-axis") 
             .selectAll("path")
-            .style("display", "none")
-            
+            .style("display", "none")            
+        
         const yAxis = orientation === 'vertical'
-            ? axisLeft(valueScale).ticks(10, "s").tickSize(-graphWidth)
-            : axisLeft(labelScale).tickSizeOuter(0);                    
+            ? axisLeft(valueScale).ticks(valueAxisTicks, "s").tickSizeInner(20).tickSize(-graphWidth)
+            : axisLeft(labelScale).tickSizeOuter(0).tickSizeInner(labelAxisTickSizeInner);                    
                                         
         canvas.select<SVGGElement>(".y-axis")            
             .attr("transform", `translate(0,0)`)               
@@ -732,7 +747,7 @@ export function StackedBarChart({
         }
 
     }, [ ...renderDeps, isSorted, chartData, keys, justPlotted, orientation, 
-        {prefix, suffix, formatType} ]);
+        margin, labelAxis, valueAxis, {prefix, suffix, formatType} ]);
             
     return (
         <div 

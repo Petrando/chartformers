@@ -1,3 +1,5 @@
+export type marginType = { top?: number, right?: number, bottom?: number, left?: number }
+
 export type pointData = {
     label: string;
     value: number;

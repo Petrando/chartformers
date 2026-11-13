@@ -1,4 +1,4 @@
-import { tooltipFormat } from "../../types";
+import { marginType, tooltipFormat } from "../../types";
 
 export interface LayeredData {
   label: string;
@@ -27,10 +27,25 @@ export type ExtendedSeriesPointWithSorted = d3.SeriesPoint<LayeredData & { sorte
 
 export type ExtendedSeriesWithSorted = ExtendedSeriesPointWithSorted[] & { key: string };
 
+export type labelAxisType = {
+      paddingInner?: number;
+      paddingOuter?: number;
+      align?: number;
+      tickSizeInner?: number;
+}
+
+export type valueAxisType = {
+      tickSizeInner?: number;
+      ticks?: number;
+    }
+
 export interface StackedBarChartProps {
     data: LayeredData[];
     colorIdx?: number;
     orientation?: 'vertical' | 'horizontal';
+    margin?: marginType;
+    labelAxis?: labelAxisType;
+    valueAxis?: valueAxisType;
     tooltipFormat?: tooltipFormat;
 }
 

@@ -10,10 +10,12 @@ import { Tooltip } from './tooltip';
 import { moveTooltip } from '../../components/tooltip';
 import { cloneObj, indexColor, basicFormat, formatTooltipNum } from '../../utils';
 import { inactiveColor } from '../../../dev/data/constants';
+import { defaultMargin, defaultLabelAxis, defaultValueAxis } from './constants';
 import styles from '../global.module.css';
 import stackedBarStyles from './stacked-barchart.module.css';
-import { LayeredData, ExtendedSeriesPointWithSorted, ExtendedSeriesWithSorted, StackedBarChartProps,
-    stackOrderByCategory
+import { 
+    type LayeredData, type ExtendedSeriesPointWithSorted, type ExtendedSeriesWithSorted, 
+    type StackedBarChartProps, type stackOrderByCategory
  } from './types';
 import { WarningModal } from './negative-data-warning';
 
@@ -29,7 +31,8 @@ export function MorphStackedBarChart({
     data, colorIdx = 0, mode = 'stacked', orientation = 'vertical', focusOnPlot = false, 
     tooltipFormat: {
         prefix = "", suffix = "", formatType = "long"
-    } = { prefix: "", suffix: "", formatType: "long"}
+    } = { prefix: "", suffix: "", formatType: "long"},
+    margin, labelAxis, valueAxis
 }: MorphStackedBarChartProps) {
     const [ref, parentSize] = useParentSize<HTMLDivElement>();
     const prevModeRef = useRef<modeType>(mode);
@@ -89,7 +92,7 @@ export function MorphStackedBarChart({
         }        
     }, [defferedMode, mode]);
         
-    const renderDeps = [ width, height, plotted, colorIdx ]
+    const renderDeps = [ width, height, plotted, colorIdx, margin, labelAxis, valueAxis ]
 
     const chartData:LayeredData[] = cloneObj(stackData);
     const tooltipFormat = { prefix, suffix, formatType }                        
@@ -102,9 +105,7 @@ export function MorphStackedBarChart({
         
     const chartRef = useD3<HTMLDivElement>((container) => {
         if (width <= 1 || height <= 1 ) return;                
-        
-        const margin = { top: 20, right: 30, bottom: 30, left: 30 };                  
-
+                                  
         const prevMode = prevModeRef.current
 
         const keys = chartData.length === 0 ? [] :
@@ -150,14 +151,19 @@ export function MorphStackedBarChart({
                 }
                 
             }):filteredData
-                                
-        const graphWidth = width - margin.left - margin.right,
-            graphHeight = height - margin.top - margin.bottom;
+                           
+        const marginLeft = margin?.left??defaultMargin.left 
+        const marginRight = margin?.right ?? defaultMargin.right
+        const marginTop = margin?.top ?? defaultMargin.top
+        const marginBottom = margin?.bottom ?? defaultMargin.bottom
+
+        const graphWidth = width - marginLeft - marginRight,
+            graphHeight = height - marginTop - marginBottom;
 
         const canvasSvg = container.select<SVGSVGElement>("svg")
         const svgNode = canvasSvg.node()
         const canvas = canvasSvg.select<SVGGElement>('.plot-area')
-            .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+            .attr("transform", "translate(" + marginLeft + "," + marginTop + ")");
 
         const controls = container.select<HTMLDivElement>(".controls")
         const legendsContainer = controls.select<HTMLDivElement>(".legends-container")
@@ -325,22 +331,33 @@ export function MorphStackedBarChart({
             isFirstRender = true;
             setPrevData(cloneObj(chartData));
         }
-                
-        const labelScale: ScaleBand<string> = scaleBand<string>()
-            .rangeRound(orientation === 'vertical'?[0, graphWidth]:[graphHeight, 0])
-            .domain(xLabels)
-            .paddingInner(
-                (mode !== "grouped" || 
+                                        
+        /*
+            //paddingInner previously at 13/11/2026
+            (mode !== "grouped" || 
                 (mode === "grouped" && (
                     (focusOnPlot && plotted[0] !== "all") ||
                     (!focusOnPlot && selectedKeys.length === 1)
                 ))                    
-            )?(isMediumScreen?0.4:0.25):0.1)
-            .paddingOuter(0.2)
-            .align(0.2)
-            
+            )?(isMediumScreen?0.4:0.25):0.1
+        */
         const singleLayerActive = (focusOnPlot && plotted[0] !== "all") || selectedKeys.length === 1
         const isStacked = mode === "stacked" || mode === "percentage"
+
+        const paddingInner = labelAxis?.paddingInner ?? 
+                (isStacked || 
+                (!isStacked && singleLayerActive)                    
+            )?(isMediumScreen?0.4:0.25):0.1
+        const paddingOuter = labelAxis?.paddingOuter ?? defaultLabelAxis.paddingOuter
+        const labelAxisAlign = labelAxis?.align ?? defaultLabelAxis.align
+        const labelAxisTickSizeInner = labelAxis?.tickSizeInner ?? defaultLabelAxis.tickSizeInner
+        
+        const labelScale: ScaleBand<string> = scaleBand<string>()
+            .rangeRound(orientation === 'vertical'?[0, graphWidth]:[graphHeight, 0])
+            .domain(xLabels)
+            .paddingInner(paddingInner)
+            .paddingOuter(paddingOuter)
+            .align(labelAxisAlign)                    
 
         const baseValueMax = mode === "stacked"?
                     focusOnPlot?(
@@ -385,14 +402,19 @@ export function MorphStackedBarChart({
 
         const xAxisTextClass = (!isMediumScreen && orientation === 'vertical')?stackedBarStyles.rotatedAxisText:
             stackedBarStyles.axisText;
+
+        const valueAxisTicks = valueAxis?.ticks ?? defaultValueAxis.ticks
+        const valueAxisTickSizeInner = valueAxis?.tickSizeInner ?? defaultValueAxis.tickSizeInner
                                                             
         const xAxis = orientation === 'vertical' 
             ?axisBottom(labelScale)
                 .tickValues(labelScale.domain())
-                .tickSizeOuter(0):
-             axisBottom(valueScale)                
-                .ticks(10, mode === "percentage"?".0%":"s")
                 .tickSizeOuter(0)
+                .tickSizeInner(labelAxisTickSizeInner):
+             axisBottom(valueScale)                
+                .ticks(valueAxisTicks, mode === "percentage"?".0%":"s")
+                .tickSizeOuter(0)
+                .tickSizeInner(valueAxisTickSizeInner)
                 .tickSize(-graphHeight);
             
         canvas.select<SVGGElement>(".x-axis")                        
@@ -401,7 +423,7 @@ export function MorphStackedBarChart({
             .call(xAxis) 
             .selectAll("text")
             .style("cursor", "pointer")
-            .attr("dy", !isMediumScreen ? ".20em" : "1em")
+            .attr("dy", !isMediumScreen ? "1em" : ".6em")
             .attr("dx", !isMediumScreen ? "-.8em" : "0em")
             .attr("class", xAxisTextClass)
             .selectAll(".tick")

@@ -220,6 +220,8 @@ export function PercentStackedBarChart({
         const paddingOuter = labelAxis?.paddingOuter ?? defaultLabelAxis.paddingOuter
         const labelAxisAlign = labelAxis?.align ?? defaultLabelAxis.align
         const labelAxisTickSizeInner = labelAxis?.tickSizeInner ?? defaultLabelAxis.tickSizeInner
+        const displayLabelAxisGrid = labelAxis?.displayGrid ?? defaultLabelAxis.displayGrid
+        const labelAxisTickPadding = labelAxis?.tickPadding ?? defaultLabelAxis.tickPadding
 
         const labels = sortedData.map(function(d: LayeredData) { return d.label; });
         const labelScale = scaleBand<string | number>()
@@ -238,17 +240,20 @@ export function PercentStackedBarChart({
 
         const valueAxisTicks = valueAxis?.ticks ?? defaultValueAxis.ticks
         const valueAxisTickSizeInner = valueAxis?.tickSizeInner ?? defaultValueAxis.tickSizeInner
+        const displayValueAxisGrid = valueAxis?.displayGrid ?? defaultValueAxis.displayGrid
+        const valueAxisTickPadding = valueAxis?.tickPadding ?? defaultValueAxis.tickPadding
         
         const xAxis = orientation === 'vertical' 
             ?axisBottom(labelScale)
                 .tickValues(labelScale.domain())
                 .tickSizeOuter(0)
-                .tickSizeInner(labelAxisTickSizeInner):
+                .tickSizeInner(displayLabelAxisGrid?-graphHeight:labelAxisTickSizeInner)                                
+                .tickPadding(labelAxisTickPadding):
             axisBottom(valueScale)                
                 .ticks(valueAxisTicks, isPercentage?".0%":"s")
                 .tickSizeOuter(0)
-                .tickSizeInner(labelAxisTickSizeInner)
-                .tickSize(-graphHeight);
+                .tickSizeInner(displayValueAxisGrid?-graphHeight:valueAxisTickSizeInner)
+                .tickPadding(valueAxisTickPadding);
 
         canvas.select<SVGGElement>(".x-axis")
             .attr("transform", `translate(0,${graphHeight})`)
@@ -259,10 +264,15 @@ export function PercentStackedBarChart({
             .attr("dy", !isMediumScreen ? "1em" : ".6em")
             .attr("dx", !isMediumScreen ? "-.8em" : "0em")
             .attr("class", xAxisTextClass)
-            .selectAll(".tick")
+            .select<SVGGElement>(".x-axis")
+            /*.selectAll(".tick")
             .filter(d => d === 0)
             .select("line")
-            .remove();
+            .remove();*/
+
+        canvas.select<SVGGElement>(".x-axis") 
+            .selectAll("path")
+            .style("display", "none")
 
         const yMax = max(chartData, (d: LayeredData) => d.total)                                                                   
 
@@ -271,17 +281,24 @@ export function PercentStackedBarChart({
             .range([graphHeight, 0]);                                        
             
         const yAxis = orientation === 'vertical'
-            ? axisLeft(valueScale).ticks(10, isPercentage?".0%":"s").tickSize(-graphWidth)
-            : axisLeft(labelScale).tickSizeOuter(0);            
+            ? axisLeft(valueScale)
+                .ticks(valueAxisTicks, isPercentage?".0%":"s")
+                .tickSizeOuter(0)
+                .tickSizeInner(displayValueAxisGrid?-graphWidth:valueAxisTickSizeInner)
+                .tickPadding(valueAxisTickPadding)
+            : axisLeft(labelScale)
+                .tickSizeOuter(0)
+                .tickSizeInner(displayLabelAxisGrid?-graphWidth:labelAxisTickSizeInner)
+                .tickPadding(labelAxisTickPadding);            
                                 
         canvas.select<SVGGElement>(".y-axis")  
             .attr("transform", `translate(0,0)`)                      
                 .transition().duration(animDuration)
             .call(yAxis)
-            .selectAll(".tick")
+            /*.selectAll(".tick")
             .filter(d => d === 0)
             .select("line")
-            .remove()        
+            .remove()*/        
 
         const dataLayers: Series<LayeredData, string>[] = stack<LayeredData>()        
             .keys(selectedKeys)
@@ -378,6 +395,11 @@ export function PercentStackedBarChart({
             const isTopLayer = selectedKeys.indexOf(d.barKey) === selectedKeys.length - 1
                 || d.barKey === plotted[0]
 
+            const isBottomLayer = selectedKeys.indexOf(d.barKey) === 0
+
+            if(isTopLayer && isBottomLayer){
+                return "none"
+            }
             if(isTopLayer){
                 if(orientation === 'vertical'){
                     return `${rectStrokeWidth + rectStrokeHeight} ${rectStrokeWidth} ${rectStrokeHeight}`
@@ -385,6 +407,13 @@ export function PercentStackedBarChart({
                     return `${rectStrokeWidth + rectStrokeHeight + rectStrokeWidth}`;
                 }
             }
+            if(isBottomLayer){
+                if(orientation === 'vertical'){
+                    return `${rectStrokeHeight + rectStrokeWidth + rectStrokeHeight} ${rectStrokeWidth}`
+                }else {
+                    return `${rectStrokeWidth} ${rectStrokeHeight} ${rectStrokeWidth + rectStrokeHeight}`
+                }
+            } 
 
             return orientation === 'vertical'?
                 `${rectStrokeHeight} ${rectStrokeWidth}`:
@@ -562,8 +591,16 @@ export function PercentStackedBarChart({
                     >
                         <g className="plot-area">
                             <g className="plot-rects" />
-                            <g className={`${orientation === 'vertical'?stackedBarStyles["value-axis"]:""} y-axis`} />
-                            <g className={`${orientation === 'horizontal'?stackedBarStyles["value-axis"]:""} x-axis`} />    
+                            <g className={`${
+                                orientation === 'vertical'?
+                                stackedBarStyles["value-axis"]:
+                                stackedBarStyles["label-axis"]} y-axis
+                            `} />
+                            <g className={`
+                                ${orientation === 'horizontal'?
+                                stackedBarStyles["value-axis"]:
+                                stackedBarStyles["label-axis"]} x-axis`
+                            } />    
                         </g>                        
                     </svg>
                     <Tooltip totalLabel='' />                    

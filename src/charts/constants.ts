@@ -1,0 +1,1 @@
+export const zeroLineStroke = "#57534e"

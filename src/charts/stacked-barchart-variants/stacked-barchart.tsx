@@ -18,6 +18,7 @@ import {
     type LayeredData, type ExtendedSeries, type ExtendedSeriesPoint, type StackedBarChartProps, 
     type  stackOrderByCategory } from './types';
 import { useUIControls } from '../../hooks/useUIControls';
+import { zeroLineStroke } from '../constants';
 
 type StackedBarChartPropsExtended =
     StackedBarChartProps & {
@@ -291,8 +292,10 @@ export function StackedBarChart({
 
         const paddingInner = labelAxis?.paddingInner ?? (isMediumScreen?0.4:0.25)
         const paddingOuter = labelAxis?.paddingOuter ?? defaultLabelAxis.paddingOuter
-        const labelAxisAlign = labelAxis?.align ?? defaultLabelAxis.align
+        const labelAxisAlign = labelAxis?.align ?? defaultLabelAxis.align        
+        const displayLabelAxisGrid = labelAxis?.displayGrid ?? defaultLabelAxis.displayGrid
         const labelAxisTickSizeInner = labelAxis?.tickSizeInner ?? defaultLabelAxis.tickSizeInner
+        const labelAxisTickPadding = labelAxis?.tickPadding ?? defaultLabelAxis.tickPadding
         
         const labels = sortedData.map(function(d: LayeredData) { return d.label; });
         const labelScale: ScaleBand<string> = scaleBand<string>()
@@ -327,18 +330,22 @@ export function StackedBarChart({
         const prevXLabels: string[] = [];
         
         const valueAxisTicks = valueAxis?.ticks ?? defaultValueAxis.ticks
+        const displayValueAxisGrid = valueAxis?.displayGrid ?? defaultValueAxis.displayGrid
         const valueAxisTickSizeInner = valueAxis?.tickSizeInner ?? defaultValueAxis.tickSizeInner
+        const valueAxisTickPadding = valueAxis?.tickPadding ?? defaultValueAxis.tickPadding
         
         const xAxis = orientation === 'vertical' 
             ?axisBottom(labelScale)
-                .tickValues(labelScale.domain())
-                .tickSizeOuter(0)
-                .tickSizeInner(labelAxisTickSizeInner):
+                .tickValues(labelScale.domain())                                
+                .tickSizeOuter(0)                                
+                .tickSizeInner(displayLabelAxisGrid?-graphHeight:labelAxisTickSizeInner)                                
+                .tickPadding(labelAxisTickPadding)
+            :
              axisBottom(valueScale)                
                 .ticks(valueAxisTicks, "s")
-                .tickSizeOuter(0)
-                .tickSizeInner(valueAxisTickSizeInner)
-                .tickSize(-graphHeight);
+                .tickSizeOuter(0)                
+                .tickSizeInner(displayValueAxisGrid?-graphHeight:valueAxisTickSizeInner)
+                .tickPadding(valueAxisTickPadding);
             
         canvas.select<SVGGElement>(".x-axis")                        
             .attr("transform", `translate(0,${graphHeight})`)
@@ -349,42 +356,52 @@ export function StackedBarChart({
             .attr("dy", !isMediumScreen?"1em":".6em")
             .attr("dx", !isMediumScreen ? "-.8em" : "0em")
             .attr("class", xAxisTextClass)
-            .selectAll(".tick")
+            .select<SVGGElement>(".x-axis")
+            /*.selectAll(".tick")
             .filter(d => d === 0)
             .select("line")
-            .remove()
+            .remove()*/
             
         canvas.select<SVGGElement>(".x-axis") 
             .selectAll("path")
             .style("display", "none")            
         
         const yAxis = orientation === 'vertical'
-            ? axisLeft(valueScale).ticks(valueAxisTicks, "s").tickSizeInner(20).tickSize(-graphWidth)
-            : axisLeft(labelScale).tickSizeOuter(0).tickSizeInner(labelAxisTickSizeInner);                    
+            ? axisLeft(valueScale)
+                .ticks(valueAxisTicks, "s")
+                .tickSizeOuter(0)
+                .tickSizeInner(displayValueAxisGrid?-graphWidth:valueAxisTickSizeInner)
+                .tickPadding(valueAxisTickPadding)
+            : axisLeft(labelScale)
+                .tickSizeOuter(0)
+                .tickSizeInner(displayLabelAxisGrid?-graphWidth:labelAxisTickSizeInner)
+                .tickPadding(labelAxisTickPadding)
                                         
         canvas.select<SVGGElement>(".y-axis")            
             .attr("transform", `translate(0,0)`)               
                 .transition().duration(animDuration)
             .call(yAxis)
-            .selectAll(".tick")
+            /*.selectAll(".tick")
             .filter(d => d === 0)
             .select("line")
-            .remove()
+            .remove()*/
             
-        canvas.select<SVGGElement>(".y-axis") 
+        /*canvas.select<SVGGElement>(".y-axis") 
             .selectAll("path")
-            .style("display", "none")
+            .style("display", "none")*/
 
         const zeroLine = canvas.select("line.zero-line")
-            .attr("x1", 0).attr("y1", 0)
+            .attr("x1", 0)
+            .attr("y1", orientation === "vertical"?graphHeight:0)
             .attr("x2", orientation === "vertical"?graphWidth:0)
-            .attr("y2", orientation === "vertical"?0:graphHeight)
-                //.transition().duration(animDuration)
+            .attr("y2", graphHeight)
+                .transition().duration(animDuration)
+            .style("opacity", valueMin === 0?0:1)
             .attr("transform", 
                 orientation === "vertical"?
-                `translate(0, ${valueScale(0) || 0})`:
+                `translate(0, ${(valueScale(0) || 0) - graphHeight})`:
                 `translate(${valueScale(0) || 0}, 0)`
-            )
+            )            
 
         const dataLayers: Series<LayeredData, string>[] =
             stack<LayeredData>()            
@@ -577,8 +594,12 @@ export function StackedBarChart({
            
             const rectStackOrder = stackOrderByCategory.find(dStack => dStack.label === d.data.label)
             const rectValue = d.data[d.barKey]
-            const isTopLayer = rectStackOrder?.top === d.barKey && Number(rectValue) >= 0
-            const isBottomLayer = rectStackOrder?.bottom === d.barKey && Number(rectValue) < 0
+            const isTopLayer = rectStackOrder?.top === d.barKey && Number(rectValue) > 0
+            const isBottomLayer = rectStackOrder?.bottom === d.barKey// && Number(rectValue) <= 0
+            
+            if(isTopLayer && isBottomLayer){
+                return "none"
+            }
             if(isTopLayer){
                 if(orientation === 'vertical'){
                     return `${rectStrokeWidth + rectStrokeHeight} ${rectStrokeWidth} ${rectStrokeHeight}`
@@ -792,13 +813,17 @@ export function StackedBarChart({
                             width > 0 &&
                             <g className="plot-area">
                                 <g className="plot-rects" />
-                                <g className={`${orientation === 'vertical'?
-                                    stackedBarStyles["value-axis"]:stackedBarStyles["label-axis"]} 
-                                    y-axis`} />
-                                <g className={`${orientation === 'horizontal'?
-                                    stackedBarStyles["value-axis"]:stackedBarStyles["label-axis"]} 
-                                    x-axis`} />  
-                                <line className='zero-line' stroke="currentColor" strokeWidth={1} />
+                                <g className={`
+                                    ${orientation === 'vertical'?
+                                        stackedBarStyles["value-axis"]:stackedBarStyles["label-axis"]}                                     
+                                        y-axis
+                                `} />
+                                <g className={`
+                                    ${orientation === 'horizontal'?
+                                        stackedBarStyles["value-axis"]:stackedBarStyles["label-axis"]} 
+                                        x-axis
+                                `} />  
+                                <line className='zero-line' stroke={zeroLineStroke} strokeWidth={1} />
                             </g>
                         }                                                        
                     </svg>                    

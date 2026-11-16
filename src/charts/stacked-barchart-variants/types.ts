@@ -31,12 +31,16 @@ export type labelAxisType = {
       paddingInner?: number;
       paddingOuter?: number;
       align?: number;
+      displayGrid?: boolean;
       tickSizeInner?: number;
+      tickPadding?: number;
 }
 
 export type valueAxisType = {
-      tickSizeInner?: number;
+      displayGrid?: boolean;
       ticks?: number;
+      tickSizeInner?: number;
+      tickPadding?: number;
     }
 
 export interface StackedBarChartProps {

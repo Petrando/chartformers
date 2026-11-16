@@ -224,7 +224,7 @@ Special classes for normalized stacked
     display: none;
 }
 
-.value-axis line, .value-axis .tick {
+.value-axis line, .label-axis line {
   stroke: #d6d3d1;  
   stroke-width: 1.5px;
   shape-rendering: crispEdges;

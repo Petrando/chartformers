@@ -6,10 +6,14 @@ export const defaultLabelAxis = {
     paddingInner: 0.4,//NOTE: in the component paddingInner is by default calculated according to container's width
     paddingOuter: 0.2,
     align: 0.2,
+    displayGrid: false,
     tickSizeInner: 6,
+    tickPadding: 3,
 }
 
 export const defaultValueAxis = {
     ticks: 10,
-    tickSizeInner: 6
+    displayGrid: true,
+    tickSizeInner: 6,
+    tickPadding: 3,
 }

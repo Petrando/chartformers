@@ -281,6 +281,8 @@ export function GroupedBarChart({
         const paddingOuter = labelAxis?.paddingOuter ?? defaultLabelAxis.paddingOuter
         const labelAxisAlign = labelAxis?.align ?? defaultLabelAxis.align
         const labelAxisTickSizeInner = labelAxis?.tickSizeInner ?? defaultLabelAxis.tickSizeInner
+        const displayLabelAxisGrid = labelAxis?.displayGrid ?? defaultLabelAxis.displayGrid
+        const labelAxisTickPadding = labelAxis?.tickPadding ?? defaultLabelAxis.tickPadding
 
         const labels = sortedData.map(function(d: LayeredData) { return d.label; });
         const rotateXLabels = rotateLabels(width, labels)
@@ -322,17 +324,20 @@ export function GroupedBarChart({
 
         const valueAxisTicks = valueAxis?.ticks ?? defaultValueAxis.ticks
         const valueAxisTickSizeInner = valueAxis?.tickSizeInner ?? defaultValueAxis.tickSizeInner
-                                                   
+        const displayValueAxisGrid = valueAxis?.displayGrid ?? defaultValueAxis.displayGrid
+        const valueAxisTickPadding = valueAxis?.tickPadding ?? defaultValueAxis.tickPadding
+        
         const xAxis = orientation === 'vertical' 
             ?axisBottom(labelScale)
                 .tickValues(labelScale.domain())
                 .tickSizeOuter(0)
-                .tickSizeInner(labelAxisTickSizeInner):
+                .tickSizeInner(displayLabelAxisGrid?-graphHeight:labelAxisTickSizeInner)                                
+                .tickPadding(labelAxisTickPadding):
             axisBottom(valueScale)                
                 .ticks(valueAxisTicks, "s")
                 .tickSizeOuter(0)
-                .tickSizeInner(valueAxisTickSizeInner)
-                .tickSize(-graphHeight);        
+                .tickSizeInner(displayValueAxisGrid?-graphHeight:valueAxisTickSizeInner)
+                .tickPadding(valueAxisTickPadding);        
 
         canvas.select<SVGGElement>(".x-axis")
             .attr("transform", `translate(0,${graphHeight})`)
@@ -342,40 +347,47 @@ export function GroupedBarChart({
             .attr("dy", !isMediumScreen?"1em":".6em")
             .attr("dx", !isMediumScreen ? "-.8em" : "0em")
             .attr("class", xAxisTextClass)
-            .selectAll(".tick")
+            /*.selectAll(".tick")
             .filter(d => d === 0)
             .select("line")
-            .remove();
+            .remove();*/
 
         canvas.select<SVGGElement>(".x-axis") 
             .selectAll("path")
             .style("display", "none")
                                                                                                                     
         const yAxis = orientation === 'vertical'
-            ? axisLeft(valueScale).ticks(10, "s").tickSize(-graphWidth)
-            : axisLeft(labelScale).tickSizeOuter(0).tickSize(0);            
+            ? axisLeft(valueScale).ticks(10, "s")
+                .tickSizeOuter(0)
+                .tickSizeInner(displayValueAxisGrid?-graphWidth:valueAxisTickSizeInner)
+                .tickPadding(valueAxisTickPadding)
+            : axisLeft(labelScale).tickSizeOuter(0).tickSize(0)
+                .tickSizeInner(displayLabelAxisGrid?-graphWidth:labelAxisTickSizeInner)
+                .tickPadding(labelAxisTickPadding);            
                                 
         canvas.select<SVGGElement>(".y-axis")  
             .attr("transform", `translate(0,0)`)                     
                 .transition().duration(animDuration)
             .call(yAxis)            
-            .selectAll(".tick")
+            /*.selectAll(".tick")
             .filter(d => d === 0)
             .select("path")
-            .remove()
+            .remove()*/
             
         canvas.select<SVGGElement>(".y-axis") 
             .selectAll("path")
             .style("display", "none")
 
         const zeroLine = canvas.select("line.zero-line")
-            .attr("x1", 0).attr("y1", 0)
+            .attr("x1", 0)
+            .attr("y1", orientation === "vertical"?graphHeight:0)
             .attr("x2", orientation === "vertical"?graphWidth:0)
-            .attr("y2", orientation === "vertical"?0:graphHeight)
-                //.transition().duration(animDuration)
+            .attr("y2", graphHeight)
+                .transition().duration(animDuration)
+            .style("opacity", valueMin === 0?0:1)
             .attr("transform", 
                 orientation === "vertical"?
-                `translate(0, ${valueScale(0) || 0})`:
+                `translate(0, ${(valueScale(0) || 0) - graphHeight})`:
                 `translate(${valueScale(0) || 0}, 0)`
             )
 

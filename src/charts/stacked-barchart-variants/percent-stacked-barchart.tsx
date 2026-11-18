@@ -1,5 +1,5 @@
 import React, {useState, useEffect } from 'react';
-import { axisBottom, axisLeft, format, max, ScaleBand, scaleBand, scaleLinear, select, Series, 
+import { type Selection, axisBottom, axisLeft, format, max, scaleBand, scaleLinear, type Series, 
     stack, stackOffsetExpand, stackOffsetNone, stackOrderNone } from 'd3';
 import { useD3 } from '../../hooks/useD3';
 import { useParentSize } from '../../hooks/useParentSize';

@@ -1,11 +1,12 @@
 import React, {useState, useEffect, useDeferredValue, useRef } from 'react';
-import { axisBottom, axisLeft, format, min, max, type ScaleBand, scaleBand, scaleLinear, type Series, 
+import { axisBottom, axisLeft, format, min, max, type ScaleBand, scaleBand, scaleLinear, 
+    type Series, type Selection,
     stack, stackOffsetDiverging } from 'd3';
 import { useD3 } from '../../hooks/useD3';
 import { useParentSize } from '../../hooks/useParentSize';
 import { useContainerSize } from '../../hooks/useContainerSize';
 import { useLayerIndex } from '../../hooks/useLayerIndex';
-import { Tooltip } from './tooltip';
+import { positionTooltip, Tooltip } from './tooltip';
 import { moveTooltip } from '../../components/tooltip';
 import { formatTooltipNum } from '../../utils';
 import { cloneObj, indexColor, rotateLabels } from '../../utils';
@@ -13,6 +14,7 @@ import { inactiveColor } from '../../../dev/data/constants';
 import { defaultMargin, defaultLabelAxis, defaultValueAxis } from './constants';
 import styles from '../global.module.css';
 import stackedBarStyles from './stacked-barchart.module.css';
+import tooltipStyles from './tooltip.module.css'
 import { 
     type LayeredData, type ExtendedSeriesPointWithSorted, type ExtendedSeriesWithSorted, 
     type StackedBarChartProps 
@@ -614,7 +616,7 @@ export function GroupedBarChart({
             .selectAll<SVGRectElement, ExtendedSeriesPointWithSorted>("rect")
                 .on("mouseover touchstart", pointerEnter)                
                 .on("mousemove touchmove", (e, d)=>{
-                    moveTooltip(tooltip, {e, svg:svgNode as SVGSVGElement, yScale: valueScale})
+                    //moveTooltip(tooltip, {e, svg:svgNode as SVGSVGElement, yScale: valueScale})
                 })
                 .on("mouseleave", function(e, d){
                     if(isSorted){
@@ -638,7 +640,69 @@ export function GroupedBarChart({
             canvas.select(orientation === "vertical"?".x-axis":".y-axis").selectAll("text")
                 .filter(dText=>dText === d.data.label).attr("class", (orientation === "vertical"?xAxisTextClass:"") + " " + stackedBarStyles.hoveredAxisText)
 
-            tooltip.style("opacity", 1)                        
+            tooltip.style("opacity", 1)
+            
+            const tooltipNode = tooltip?.node();
+            if (!tooltipNode) return;
+
+            const tipW = (tooltipNode as HTMLElement).offsetWidth;
+            const tipH = (tooltipNode as HTMLElement).offsetHeight;
+
+            positionTooltip(
+                tooltip as unknown as Selection<SVGAElement | HTMLDivElement, any, any, any>, 
+                orientation, "grouped",
+                { left: marginLeft, right: marginRight, top: marginTop, bottom: marginBottom },
+                {
+                    x: labelScalePos(d), y: valueScalePos(d),
+                    width: labelScale.bandwidth()/selectedKeys.length, 
+                    height: valueScaleDimension(d)
+                },
+                {
+                    x: valueScalePos(d), y: labelScalePos(d), 
+                    width: valueScaleDimension(d), height: labelScale.bandwidth()/selectedKeys.length 
+                }
+            )
+
+            /*
+            const gap = 8
+            let left, top;
+            if(orientation === "horizontal") {                
+                const topY = marginTop + labelScalePos(d);
+                const barwidth = valueScaleDimension(d)
+                
+                const endX = marginLeft + valueScalePos(d);
+                left = endX + (barwidth - tipW) / 2// + gap;
+                
+                top = topY - tipH - gap;
+                const barheight = labelScale.bandwidth()/selectedKeys.length                
+                const onTop = top < 0
+                if (onTop) top = topY + barheight + gap
+                
+                tooltip
+                    .classed(`${tooltipStyles["tooltip--arrow-up"]}`, onTop)
+                    .classed(`${tooltipStyles["tooltip--arrow-down"]}`, !onTop)
+                        .transition().duration(250)
+                    .style("left", left + "px").style("top", top + "px")
+            } else {
+                
+                // Anchor at the bar's top border: above it, centered horizontally.
+                // If there is no room above, go just below the top border.
+                const barwidth = labelScale.bandwidth()/selectedKeys.length
+                const barCenterX = marginLeft + labelScalePos(d) + barwidth / 2;
+                const barTopY = marginTop + valueScalePos(d);
+                                
+                left = marginLeft + labelScalePos(d) + (barwidth - tipW)/2//Math.max(0, Math.min(baseLeft, width - tipW));
+                
+                let top = barTopY - tipH - gap;
+                const barheight = valueScaleDimension(d)
+                const onTop = top < 0
+                if (onTop) top = barTopY  + gap;
+                tooltip
+                    .classed(`${tooltipStyles["tooltip--arrow-up"]}`, onTop)
+                    .classed(`${tooltipStyles["tooltip--arrow-down"]}`, !onTop)
+                        .transition().duration(250)
+                    .style("left", left + "px").style("top", top + "px")
+            }*/
             
             const value = d.data[d.barKey] as number
             const {total} = d.data
@@ -651,7 +715,7 @@ export function GroupedBarChart({
             
             tooltip.select("p.total span.value").text(formatTooltipNum(total ?? 0, tooltipFormat))
 
-            moveTooltip(tooltip, {e, svg:svgNode as SVGSVGElement, yScale: valueScale})
+            //moveTooltip(tooltip, {e, svg:svgNode as SVGSVGElement, yScale: valueScale})
         }                                    
 
     }, [ ...renderDeps, isSorted, chartData, orientation, tooltipFormat, margin, labelAxis, valueAxis ]);
@@ -685,7 +749,7 @@ export function GroupedBarChart({
                 <div
                     ref={chartContainerRef} 
                     className={`${styles["fill-container"]}`}
-                    style={{ display:"flex", flexDirection:"column"}}>
+                    style={{ display:"flex", flexDirection:"column", position: "relative"}}>
                     <svg
                         className={`${styles["chart-svg"]} ${styles["fill-container"]}`}        
                         viewBox={`0 0 ${width} ${height}`}

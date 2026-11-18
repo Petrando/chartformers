@@ -5,11 +5,16 @@ import styles from "./tooltip.module.css"
 type ITooltip = {
     pCount?:number;
     children?: ReactNode;
+    asAbsolute?: boolean;
 }
 
-export const Tooltip:FunctionComponent<ITooltip> = ({pCount, children}) => {
+export const Tooltip:FunctionComponent<ITooltip> = ({pCount, children, asAbsolute = false}) => {
+    //
     return (
-        <div id="tooltip" className={`${styles.tooltip}`} style={{opacity: 0}}>
+        <div 
+            id="tooltip" 
+            className={`${styles.tooltip}`} 
+            style={{opacity: 0, position: !asAbsolute?"fixed":"absolute"}}>
             { children }
             {
                 !pCount && !children &&

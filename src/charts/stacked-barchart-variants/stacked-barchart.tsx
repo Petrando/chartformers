@@ -1,18 +1,19 @@
 import React, {useState, useEffect} from 'react';
 import { 
     axisBottom, axisLeft, min, max, type ScaleBand, scaleBand, scaleLinear, type ScaleLinear, Series, 
-    SeriesPoint, stack, stackOffsetDiverging
+    SeriesPoint, stack, stackOffsetDiverging, type Selection
 } from 'd3';
 import { useD3 } from '../../hooks/useD3';
 import { useParentSize } from '../../hooks/useParentSize';
 import { useContainerSize } from '../../hooks/useContainerSize';
 import { useLayerIndex } from '../../hooks/useLayerIndex';
-import { Tooltip } from './tooltip';
+import { positionTooltip, Tooltip } from './tooltip';
 import { moveTooltip } from '../../components/tooltip';
 import { cloneObj, indexColor, basicFormat, formatTooltipNum } from '../../utils';
 import { inactiveColor } from '../../../dev/data/constants';
 import styles from '../global.module.css';
 import stackedBarStyles from './stacked-barchart.module.css';
+import tooltipStyles from './tooltip.module.css'
 import { defaultMargin, defaultLabelAxis, defaultValueAxis } from './constants';
 import { 
     type LayeredData, type ExtendedSeries, type ExtendedSeriesPoint, type StackedBarChartProps, 
@@ -737,23 +738,33 @@ export function StackedBarChart({
             .selectAll<SVGRectElement, ExtendedSeriesPoint>("rect")
                 .on("mouseover touchstart", pointerenter)                
                 .on("mousemove", (e, d)=>{                                                                               
-                    moveTooltip(tooltip, {e, svg:svgNode as SVGSVGElement, yScale: valueScale})
+                    //moveTooltip(tooltip, {e, svg:svgNode as SVGSVGElement, yScale: valueScale})
                 })
                 .on("mouseleave", function(e, d){
                     canvas.select(orientation === 'vertical'?".x-axis":".y-axis").selectAll("text")
                         .filter(dText=>dText === d.data.label)
                         .attr("class", orientation==='vertical'?xAxisTextClass:"")
 
-                    tooltip.style("opacity", 0);
+                    tooltip
+                        //.style("display", "none")
+                        .style("opacity", 0);
                 })
 
         function pointerenter(e: MouseEvent | TouchEvent, d: ExtendedSeriesPoint){
-            canvas.select(orientation === "vertical"?".x-axis":".y-axis").selectAll("text")
-                .filter(dText=>dText === d.data.label)
-                .attr("class", (orientation === "vertical"?xAxisTextClass:"") + " " + stackedBarStyles.hoveredAxisText)
-
-            tooltip.style("opacity", 1)
-                                                                            
+            positionTooltip(
+                tooltip as unknown as Selection<SVGAElement | HTMLDivElement, any, any, any>, 
+                orientation, "stacked",
+                { left: marginLeft, right: marginRight, top: marginTop, bottom: marginBottom },
+                {
+                    x: labelScalePos(d), y: valueScalePos(d),
+                    width: labelScaleBandWidth, height: valueScaleDimension(d)
+                },
+                {
+                    x: valueScalePos(d), y: labelScalePos(d), 
+                    width: valueScaleDimension(d), height: labelScale.bandwidth() 
+                }
+            )
+                       
             const value = d.data[d.barKey] as number
             const {total} = d.data
             const percentage = (value/total!) * 100
@@ -763,8 +774,6 @@ export function StackedBarChart({
             tooltip.select("p.layer span.label span.label").text(d.barKey)
             tooltip.select("p.layer span.value").text(formatTooltipNum(value, tooltipFormat))                    
             tooltip.select("p.total span.value").text(formatTooltipNum(total ?? 0, tooltipFormat))
-
-            moveTooltip(tooltip, {e, svg:svgNode as SVGSVGElement, yScale: valueScale})
         }
 
     }, [ ...renderDeps, isSorted, chartData, keys, justPlotted, orientation, 
@@ -804,7 +813,7 @@ export function StackedBarChart({
                 <div 
                     ref={chartContainerRef}
                     className={`${styles["fill-container"]}`}
-                    style={{ display:"flex", flexDirection:"column" }}>                                                
+                    style={{ display:"flex", flexDirection:"column", position: "relative" }}>                                                
                     <svg                              
                         className={`${styles["chart-svg"]} ${styles["fill-container"]}`}        
                         viewBox={`0 0 ${width} ${height}`}
@@ -827,7 +836,27 @@ export function StackedBarChart({
                             </g>
                         }                                                        
                     </svg>                    
-                    <Tooltip />                    
+                    <Tooltip />
+                    {/*
+                    <div 
+                        id="tooltip"
+                        style={{
+                            position: "absolute",
+                            display: "none",
+                            pointerEvents: "none",
+                            padding: "6px 10",
+                            fontSize: "12px",
+                            lineHeight: 1.4,
+                            whiteSpace: "nowrap",
+                            color: "white",
+                            background: "grey",
+                            borderRadius: "6px",
+                            zIndex: 10
+                        }}
+                    >
+                        <p>This is tooltip</p>    
+                    </div> 
+                    */}                   
                 </div>
             </div>
             

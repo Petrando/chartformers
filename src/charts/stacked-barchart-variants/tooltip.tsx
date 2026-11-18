@@ -1,11 +1,15 @@
 import React from "react";
+import { type Selection } from "d3";
 import { Tooltip as GlobalTooltip } from "../../components/tooltip";
+import styles from "../../components/tooltip.module.css"
+import { type marginType } from "../../types";
 
 type tooltipProps = {
     totalLabel?: string;
 }
+
 export const Tooltip = ({ totalLabel = "of total"}: tooltipProps) =>(
-    <GlobalTooltip>
+    <GlobalTooltip asAbsolute>
         <p className='label' 
             style={{
                 fontWeight: 700, margin: "3px", fontSize: "14px", color: "wheat", 
@@ -49,3 +53,107 @@ export const Tooltip = ({ totalLabel = "of total"}: tooltipProps) =>(
         </p>
     </GlobalTooltip>
 )
+
+type dimensions = {
+    x: number, y: number, width: number, height: number            
+}
+
+export const positionTooltip = (
+    tooltip: Selection<(SVGAElement | HTMLDivElement), any, any, any>,
+    orientation: "vertical" | "horizontal",
+    mode: "stacked" | "grouped",
+    margin: marginType,
+    verticalDimensions: dimensions,
+    horizontalDimensions: dimensions
+) => {
+    tooltip.style("opacity", 1)//.style("display", "block")
+    const tooltipNode = tooltip?.node();
+    if (!tooltipNode) return;
+
+    const tipW = (tooltipNode as HTMLElement).offsetWidth;
+    const tipH = (tooltipNode as HTMLElement).offsetHeight;
+
+    const gap = 12
+    let left, top;
+
+    if(mode === "stacked"){
+        if(orientation === "horizontal") {                
+            const topY = (margin.top ?? 0) + horizontalDimensions.y//labelScalePos(d);
+            const barwidth = horizontalDimensions.width//valueScaleDimension(d)
+            
+            const endX = (margin.left ?? 0) + horizontalDimensions.x//valueScalePos(d);
+            left = endX + (barwidth - tipW) / 2// + gap;
+            
+            top = topY - tipH - gap;
+            const onTop = top < 0                
+            if (top < 0) top = topY + horizontalDimensions.height//labelScale.bandwidth() 
+                + gap
+            
+            tooltip
+                .classed(`${styles["tooltip--arrow-up"]}`, onTop)
+                .classed(`${styles["tooltip--arrow-down"]}`, !onTop)
+                    .transition().duration(250)
+                .style("left", left + "px").style("top", top + "px")
+        } else {
+                    
+            // Anchor at the bar's top border: above it, centered horizontally.
+            // If there is no room above, go just below the top border.        
+            const barCenterX = (margin.left ?? 0) + verticalDimensions.x + verticalDimensions.width / 2 
+                //labelScalePos(d) + labelScaleBandWidth / 2;
+            const barTopY = margin.top ?? 0 + verticalDimensions.y//valueScalePos(d);
+                            
+            left = (margin.left ?? 0 )+ verticalDimensions.x + (verticalDimensions.width - tipW) / 2 
+                //labelScalePos(d) + (labelScaleBandWidth - tipW)/2//Math.max(0, Math.min(baseLeft, width - tipW));
+            
+            let top = barTopY - tipH - gap;
+            const barheight = verticalDimensions.height//valueScaleDimension(d)
+            const onTop = top < 0
+            if (onTop) top = barTopY + barheight + gap;
+
+            tooltip
+                .classed(`${styles["tooltip--arrow-up"]}`, onTop)
+                .classed(`${styles["tooltip--arrow-down"]}`, !onTop)
+                    .transition().duration(250)
+                .style("left", left + "px").style("top", top + "px")
+        }
+    }else {
+        if(orientation === "horizontal") {                
+            const topY = (margin.top ?? 0) + horizontalDimensions.y//labelScalePos(d);
+            const barwidth = horizontalDimensions.width//valueScaleDimension(d)
+            
+            const endX = (margin.left ?? 0) + horizontalDimensions.x//valueScalePos(d);
+            left = endX + (barwidth - tipW) / 2// + gap;
+            
+            top = topY - tipH - gap;
+            const barheight = horizontalDimensions.height//labelScale.bandwidth()/selectedKeys.length                
+            const onTop = top < 0
+            if (onTop) top = topY + barheight + gap
+            
+            tooltip
+                .classed(`${styles["tooltip--arrow-up"]}`, onTop)
+                .classed(`${styles["tooltip--arrow-down"]}`, !onTop)
+                    .transition().duration(250)
+                .style("left", left + "px").style("top", top + "px")
+        }else {
+            // Anchor at the bar's top border: above it, centered horizontally.
+            // If there is no room above, go just below the top border.
+            const barwidth = verticalDimensions.width//labelScale.bandwidth()/selectedKeys.length
+            const barCenterX = (margin.left ?? 0) + verticalDimensions.x + barwidth / 2
+                //labelScalePos(d) + barwidth / 2;
+            const barTopY = (margin.top ?? 0) + verticalDimensions.y//valueScalePos(d);
+                            
+            left = (margin.left ?? 0) + verticalDimensions.x + (barwidth - tipW) / 2
+                //labelScalePos(d) + (barwidth - tipW)/2//Math.max(0, Math.min(baseLeft, width - tipW));
+            
+            let top = barTopY - tipH - gap;
+            const barheight = verticalDimensions.height//valueScaleDimension(d)
+            const onTop = top < 0
+            if (onTop) top = barTopY  + gap;
+            tooltip
+                .classed(`${styles["tooltip--arrow-up"]}`, onTop)
+                .classed(`${styles["tooltip--arrow-down"]}`, !onTop)
+                    .transition().duration(250)
+                .style("left", left + "px").style("top", top + "px")
+        }
+    }
+}

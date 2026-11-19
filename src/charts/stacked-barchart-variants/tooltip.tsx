@@ -61,10 +61,10 @@ type dimensions = {
 export const positionTooltip = (
     tooltip: Selection<(SVGAElement | HTMLDivElement), any, any, any>,
     orientation: "vertical" | "horizontal",
-    mode: "stacked" | "grouped",
+    mode: "stacked" | "grouped" | "percentage",
     margin: marginType,
     verticalDimensions: dimensions,
-    horizontalDimensions: dimensions
+    horizontalDimensions: dimensions,     
 ) => {
     tooltip.style("opacity", 1)//.style("display", "block")
     const tooltipNode = tooltip?.node();
@@ -76,7 +76,7 @@ export const positionTooltip = (
     const gap = 12
     let left, top;
 
-    if(mode === "stacked"){
+   if(mode === "stacked"){
         if(orientation === "horizontal") {                
             const topY = (margin.top ?? 0) + horizontalDimensions.y//labelScalePos(d);
             const barwidth = horizontalDimensions.width//valueScaleDimension(d)
@@ -93,30 +93,32 @@ export const positionTooltip = (
                 .classed(`${styles["tooltip--arrow-up"]}`, onTop)
                 .classed(`${styles["tooltip--arrow-down"]}`, !onTop)
                     .transition().duration(250)
-                .style("left", left + "px").style("top", top + "px")
+                .style("left", left + "px").style("top", top + "px")                    
         } else {
                     
             // Anchor at the bar's top border: above it, centered horizontally.
             // If there is no room above, go just below the top border.        
             const barCenterX = (margin.left ?? 0) + verticalDimensions.x + verticalDimensions.width / 2 
                 //labelScalePos(d) + labelScaleBandWidth / 2;
-            const barTopY = margin.top ?? 0 + verticalDimensions.y//valueScalePos(d);
-                            
-            left = (margin.left ?? 0 )+ verticalDimensions.x + (verticalDimensions.width - tipW) / 2 
-                //labelScalePos(d) + (labelScaleBandWidth - tipW)/2//Math.max(0, Math.min(baseLeft, width - tipW));
             
-            let top = barTopY - tipH - gap;
-            const barheight = verticalDimensions.height//valueScaleDimension(d)
+            
+            left = (margin.left ?? 0 ) + verticalDimensions.x + (verticalDimensions.width - tipW) / 2 
+                //labelScalePos(d) + (labelScaleBandWidth - tipW)/2
+            //top = (margin.top ?? 0) + verticalDimensions.y
+            const barTopY = (margin.top ?? 0) + verticalDimensions.y//valueScalePos(d);
+            top = barTopY - tipH - gap;
+
             const onTop = top < 0
-            if (onTop) top = barTopY + barheight + gap;
+            const barheight = verticalDimensions.height//valueScaleDimension(d)
+            if (onTop) top = barTopY + barheight + gap;            
 
             tooltip
                 .classed(`${styles["tooltip--arrow-up"]}`, onTop)
                 .classed(`${styles["tooltip--arrow-down"]}`, !onTop)
                     .transition().duration(250)
-                .style("left", left + "px").style("top", top + "px")
+                .style("left", left + "px").style("top", top + "px")                    
         }
-    }else {
+    }else if(mode === "grouped") {
         if(orientation === "horizontal") {                
             const topY = (margin.top ?? 0) + horizontalDimensions.y//labelScalePos(d);
             const barwidth = horizontalDimensions.width//valueScaleDimension(d)
@@ -134,6 +136,7 @@ export const positionTooltip = (
                 .classed(`${styles["tooltip--arrow-down"]}`, !onTop)
                     .transition().duration(250)
                 .style("left", left + "px").style("top", top + "px")
+                    
         }else {
             // Anchor at the bar's top border: above it, centered horizontally.
             // If there is no room above, go just below the top border.
@@ -153,7 +156,7 @@ export const positionTooltip = (
                 .classed(`${styles["tooltip--arrow-up"]}`, onTop)
                 .classed(`${styles["tooltip--arrow-down"]}`, !onTop)
                     .transition().duration(250)
-                .style("left", left + "px").style("top", top + "px")
+                .style("left", left + "px").style("top", top + "px")                    
         }
-    }
+    }            
 }

@@ -1,13 +1,13 @@
 import React, {useState, useEffect, useDeferredValue, useRef} from 'react';
-import { axisBottom, axisLeft, min, max, ScaleBand, scaleBand, ScaleLinear, scaleLinear, 
-    select, Series, stack,  stackOffsetDiverging, stackOffsetExpand, 
+import { 
+    axisBottom, axisLeft, min, max, type ScaleBand, scaleBand, type ScaleLinear, scaleLinear, 
+    type Selection, type Series, stack,  stackOffsetDiverging, stackOffsetExpand, 
     format} from 'd3';
 import { useD3 } from '../../hooks/useD3';
 import { useParentSize } from '../../hooks/useParentSize';
 import { useContainerSize } from '../../hooks/useContainerSize';
 import { useLayerIndex } from '../../hooks/useLayerIndex';
-import { Tooltip } from './tooltip';
-import { moveTooltip } from '../../components/tooltip';
+import { positionTooltip, Tooltip } from './tooltip';
 import { cloneObj, indexColor, basicFormat, formatTooltipNum } from '../../utils';
 import { inactiveColor } from '../../../dev/data/constants';
 import { defaultMargin, defaultLabelAxis, defaultValueAxis } from './constants';
@@ -362,21 +362,21 @@ export function MorphStackedBarChart({
             .align(labelAxisAlign)                    
 
         const baseValueMax = mode === "stacked"?
-                    focusOnPlot?(
-                        plotted[0] === "all"?
-                            max(chartData, (d: LayeredData) => d.totalPos):
-                                max(chartData, (d: LayeredData) => (d[plotted[0]] as number))):
-                            max(chartData, (d: LayeredData) => d.totalPos):
-                    mode === "grouped"?(plotted[0] === "all"
-                        ? max(chartData, d =>
-                            max(
-                                Object.entries(d)
-                                    .filter(([key]) => key !== "total" && key !== "label" && key !== "totalPos" && key !== "totalMin")
-                                    .map(([, value]) => value as number)     
-                            )
-                        )
-                        : max(chartData, d => d[plotted[0]] as number)):
-                        1
+            focusOnPlot?(
+                plotted[0] === "all"?
+                    max(chartData, (d: LayeredData) => d.totalPos):
+                        max(chartData, (d: LayeredData) => (d[plotted[0]] as number))):
+                    max(chartData, (d: LayeredData) => d.totalPos):
+            mode === "grouped"?(plotted[0] === "all"
+                ? max(chartData, d =>
+                    max(
+                        Object.entries(d)
+                            .filter(([key]) => key !== "total" && key !== "label" && key !== "totalPos" && key !== "totalMin")
+                            .map(([, value]) => value as number)     
+                    )
+                )
+                : max(chartData, d => d[plotted[0]] as number)):
+                1
         
         const valueMax = Math.max(0, baseValueMax ?? 0)
 
@@ -855,7 +855,7 @@ export function MorphStackedBarChart({
             )
             .on("mouseover touchstart", pointerenter)
             .on("mousemove", (e, d)=>{                                                                               
-                moveTooltip(tooltip, {e, svg:svgNode as SVGSVGElement, yScale: valueScale})
+                positionChartTooltip(d)
             })
             .on("mouseleave", function(e, d){
                 if(mode === "grouped" && isSorted){
@@ -871,6 +871,24 @@ export function MorphStackedBarChart({
                 tooltip.style("opacity", 0);
             })
 
+        function positionChartTooltip(d: ExtendedSeriesPointWithSorted){
+            const verticalBbox = {
+                x: labelScalePos(d), y: valueScalePos(d),
+                width: labelScaleBandwidth(d), height: valueScaleDimension(d)
+            }                                        
+            positionTooltip(
+                tooltip as unknown as Selection<SVGAElement | HTMLDivElement, any, any, any>, 
+                orientation, isStacked?"stacked":"grouped",
+                { left: marginLeft, right: marginRight, top: marginTop, bottom: marginBottom },
+                verticalBbox,
+                {
+                    x: valueScalePos(d), y: labelScalePos(d), 
+                    width: valueScaleDimension(d), 
+                    height: labelScaleBandwidth(d)
+                }
+            ) 
+        }
+
         function pointerenter(e: MouseEvent | TouchEvent, d: ExtendedSeriesPointWithSorted){
             if(mode === "grouped" && isSorted){
                 serie.selectAll<SVGRectElement, ExtendedSeriesPointWithSorted>("rect")
@@ -882,7 +900,7 @@ export function MorphStackedBarChart({
                 .filter(dText=>dText === d.data.label)
                 .attr("class", (orientation === "vertical"?xAxisTextClass:"") + " " + stackedBarStyles.hoveredAxisText)
             
-            tooltip.style("opacity", 1)                    
+            positionChartTooltip(d)                  
             
             const value = d.data[d.barKey] as number
             const total = d.data.total ?? 0
@@ -899,9 +917,7 @@ export function MorphStackedBarChart({
                     mode === "percentage"?
                     `(${basicFormat(value, tooltipFormat)} of ${basicFormat(total, tooltipFormat)})`:
                     formatTooltipNum(total, tooltipFormat)
-                )
-
-            moveTooltip(tooltip, {e, svg:svgNode as SVGSVGElement, yScale: valueScale})
+                )            
         }
 
         function transitionNormal(){

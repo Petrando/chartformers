@@ -616,7 +616,7 @@ export function GroupedBarChart({
             .selectAll<SVGRectElement, ExtendedSeriesPointWithSorted>("rect")
                 .on("mouseover touchstart", pointerEnter)                
                 .on("mousemove touchmove", (e, d)=>{
-                    //moveTooltip(tooltip, {e, svg:svgNode as SVGSVGElement, yScale: valueScale})
+                    positionChartTooltip(d)
                 })
                 .on("mouseleave", function(e, d){
                     if(isSorted){
@@ -629,25 +629,9 @@ export function GroupedBarChart({
                         .attr("class", orientation === "vertical"?xAxisTextClass:"")
 
                     tooltip.style("opacity", 0);
-                }) 
-        function pointerEnter(e: MouseEvent | TouchEvent, d: ExtendedSeriesPointWithSorted){
-            if(isSorted){
-                serie.selectAll<SVGRectElement, ExtendedSeriesPointWithSorted>("rect")
-                    .filter(dRect => dRect.barKey !== d.barKey)
-                    .style("opacity", 0.25)    
-            }
-            
-            canvas.select(orientation === "vertical"?".x-axis":".y-axis").selectAll("text")
-                .filter(dText=>dText === d.data.label).attr("class", (orientation === "vertical"?xAxisTextClass:"") + " " + stackedBarStyles.hoveredAxisText)
-
-            tooltip.style("opacity", 1)
-            
-            const tooltipNode = tooltip?.node();
-            if (!tooltipNode) return;
-
-            const tipW = (tooltipNode as HTMLElement).offsetWidth;
-            const tipH = (tooltipNode as HTMLElement).offsetHeight;
-
+                })
+                
+        function positionChartTooltip(d: ExtendedSeriesPointWithSorted){
             positionTooltip(
                 tooltip as unknown as Selection<SVGAElement | HTMLDivElement, any, any, any>, 
                 orientation, "grouped",
@@ -662,48 +646,18 @@ export function GroupedBarChart({
                     width: valueScaleDimension(d), height: labelScale.bandwidth()/selectedKeys.length 
                 }
             )
-
-            /*
-            const gap = 8
-            let left, top;
-            if(orientation === "horizontal") {                
-                const topY = marginTop + labelScalePos(d);
-                const barwidth = valueScaleDimension(d)
-                
-                const endX = marginLeft + valueScalePos(d);
-                left = endX + (barwidth - tipW) / 2// + gap;
-                
-                top = topY - tipH - gap;
-                const barheight = labelScale.bandwidth()/selectedKeys.length                
-                const onTop = top < 0
-                if (onTop) top = topY + barheight + gap
-                
-                tooltip
-                    .classed(`${tooltipStyles["tooltip--arrow-up"]}`, onTop)
-                    .classed(`${tooltipStyles["tooltip--arrow-down"]}`, !onTop)
-                        .transition().duration(250)
-                    .style("left", left + "px").style("top", top + "px")
-            } else {
-                
-                // Anchor at the bar's top border: above it, centered horizontally.
-                // If there is no room above, go just below the top border.
-                const barwidth = labelScale.bandwidth()/selectedKeys.length
-                const barCenterX = marginLeft + labelScalePos(d) + barwidth / 2;
-                const barTopY = marginTop + valueScalePos(d);
-                                
-                left = marginLeft + labelScalePos(d) + (barwidth - tipW)/2//Math.max(0, Math.min(baseLeft, width - tipW));
-                
-                let top = barTopY - tipH - gap;
-                const barheight = valueScaleDimension(d)
-                const onTop = top < 0
-                if (onTop) top = barTopY  + gap;
-                tooltip
-                    .classed(`${tooltipStyles["tooltip--arrow-up"]}`, onTop)
-                    .classed(`${tooltipStyles["tooltip--arrow-down"]}`, !onTop)
-                        .transition().duration(250)
-                    .style("left", left + "px").style("top", top + "px")
-            }*/
+        }
+        function pointerEnter(e: MouseEvent | TouchEvent, d: ExtendedSeriesPointWithSorted){
+            if(isSorted){
+                serie.selectAll<SVGRectElement, ExtendedSeriesPointWithSorted>("rect")
+                    .filter(dRect => dRect.barKey !== d.barKey)
+                    .style("opacity", 0.25)    
+            }
             
+            canvas.select(orientation === "vertical"?".x-axis":".y-axis").selectAll("text")
+                .filter(dText=>dText === d.data.label).attr("class", (orientation === "vertical"?xAxisTextClass:"") + " " + stackedBarStyles.hoveredAxisText)                        
+            
+            positionChartTooltip(d)
             const value = d.data[d.barKey] as number
             const {total} = d.data
             const percentage = (value as number/total!) * 100

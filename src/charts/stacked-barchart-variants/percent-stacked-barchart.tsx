@@ -1,13 +1,15 @@
 import React, {useState, useEffect } from 'react';
-import { type Selection, axisBottom, axisLeft, format, max, scaleBand, scaleLinear, type Series, 
-    stack, stackOffsetExpand, stackOffsetNone, stackOrderNone } from 'd3';
+import { 
+    type Selection, type Series, 
+    axisBottom, axisLeft, format, max, scaleBand, scaleLinear, stack, stackOffsetExpand, 
+    stackOffsetNone, stackOrderNone, 
+} from 'd3';
 import { useD3 } from '../../hooks/useD3';
 import { useParentSize } from '../../hooks/useParentSize';
 import { useContainerSize } from '../../hooks/useContainerSize';
 import { useLayerIndex } from '../../hooks/useLayerIndex';
 import { useUIControls } from '../../hooks/useUIControls';
-import { Tooltip } from './tooltip';
-import { moveTooltip } from '../../components/tooltip';
+import { positionTooltip, Tooltip } from './tooltip';
 import { cloneObj, indexColor, basicFormat } from '../../utils';
 import { inactiveColor } from '../../../dev/data/constants';
 import { defaultMargin, defaultLabelAxis, defaultValueAxis } from './constants';
@@ -516,7 +518,7 @@ export function PercentStackedBarChart({
             .selectAll<SVGRectElement, ExtendedSeriesPoint>("rect")
                 .on("mouseover touchstart", pointerenter)
                 .on("mousemove", (e, d)=>{
-                    moveTooltip(tooltip, {e, svg:svgNode as SVGSVGElement, yScale: y})
+                    positionChartTooltip(d)
                 })
                 .on("mouseleave", function(e, d){
                     canvas.select(".x-axis").selectAll("text")
@@ -525,14 +527,29 @@ export function PercentStackedBarChart({
                     tooltip.style("opacity", 0);
                 })
 
-        function pointerenter(e: MouseEvent | TouchEvent, d: ExtendedSeriesPoint){
-            //unhoverLegend()
-                    
-            canvas.select(".x-axis").selectAll("text")
-                .filter(dText=>dText === d.data.name).attr("class", xAxisTextClass + " " + styles.hoveredAxisText)
+        function positionChartTooltip(d: ExtendedSeriesPoint){
+            const verticalBbox = {
+                x: labelScalePos(d), y: valueScalePos(d),
+                width: labelScaleBandWidth, height: valueScaleDimension(d)
+            }                                        
+            positionTooltip(
+                tooltip as unknown as Selection<SVGAElement | HTMLDivElement, any, any, any>, 
+                orientation, "stacked",
+                { left: marginLeft, right: marginRight, top: marginTop, bottom: marginBottom },
+                verticalBbox,
+                {
+                    x: valueScalePos(d), y: labelScalePos(d), 
+                    width: valueScaleDimension(d), height: labelScale.bandwidth() 
+                }
+            )
+        }
 
-            tooltip.style("opacity", 1)
-                
+        function pointerenter(e: MouseEvent | TouchEvent, d: ExtendedSeriesPoint){
+                                
+            canvas.select(".x-axis").selectAll("text")
+                .filter(dText=>dText === d.data.name).attr("class", xAxisTextClass + " " + styles.hoveredAxisText)            
+
+            positionChartTooltip(d)
             
             const value:number = d.data[d.barKey] as number || 0
             const total = d.data.total || 0
@@ -545,8 +562,7 @@ export function PercentStackedBarChart({
             tooltip.select("p.layer span.value").text(percentText)                    
             tooltip.select("p.total span.value")
                 .text(`(${basicFormat(value, tooltipFormat)} of ${basicFormat(total, tooltipFormat)})`)
-
-            moveTooltip(tooltip, {e, svg:svgNode as SVGSVGElement, yScale: y})
+            
         }
 
     }, [ ...renderDeps, chartData, isPercentage, orientation, tooltipFormat ]);
@@ -583,7 +599,7 @@ export function PercentStackedBarChart({
                 <div
                     ref={chartContainerRef} 
                     className={`${styles["fill-container"]}`}
-                    style={{flex: 1, position: "relative", border: "3px solid none"                         
+                    style={{ display:"flex", flexDirection:"column", position: "relative", 
                     }}>
                     <svg
                         className={`${styles["chart-svg"]} ${styles["fill-container"]}`}        

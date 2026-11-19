@@ -738,19 +738,18 @@ export function StackedBarChart({
             .selectAll<SVGRectElement, ExtendedSeriesPoint>("rect")
                 .on("mouseover touchstart", pointerenter)                
                 .on("mousemove", (e, d)=>{                                                                               
-                    //moveTooltip(tooltip, {e, svg:svgNode as SVGSVGElement, yScale: valueScale})
+                    positionChartTooltip(d)
                 })
                 .on("mouseleave", function(e, d){
                     canvas.select(orientation === 'vertical'?".x-axis":".y-axis").selectAll("text")
                         .filter(dText=>dText === d.data.label)
                         .attr("class", orientation==='vertical'?xAxisTextClass:"")
 
-                    tooltip
-                        //.style("display", "none")
+                    tooltip                        
                         .style("opacity", 0);
                 })
 
-        function pointerenter(e: MouseEvent | TouchEvent, d: ExtendedSeriesPoint){
+        function positionChartTooltip(d: ExtendedSeriesPoint, animate: boolean = true){
             positionTooltip(
                 tooltip as unknown as Selection<SVGAElement | HTMLDivElement, any, any, any>, 
                 orientation, "stacked",
@@ -762,9 +761,11 @@ export function StackedBarChart({
                 {
                     x: valueScalePos(d), y: labelScalePos(d), 
                     width: valueScaleDimension(d), height: labelScale.bandwidth() 
-                }
+                },
             )
-                       
+        }
+
+        function pointerenter(e: MouseEvent | TouchEvent, d: ExtendedSeriesPoint){                                   
             const value = d.data[d.barKey] as number
             const {total} = d.data
             const percentage = (value/total!) * 100

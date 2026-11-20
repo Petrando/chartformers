@@ -638,12 +638,13 @@ export function GroupedBarChart({
                 { left: marginLeft, right: marginRight, top: marginTop, bottom: marginBottom },
                 {
                     x: labelScalePos(d), y: valueScalePos(d),
-                    width: labelScale.bandwidth()/selectedKeys.length, 
+                    width: labelScaleBandWidth(), 
                     height: valueScaleDimension(d)
                 },
                 {
                     x: valueScalePos(d), y: labelScalePos(d), 
-                    width: valueScaleDimension(d), height: labelScale.bandwidth()/selectedKeys.length 
+                    width: valueScaleDimension(d), 
+                    height: labelScaleBandWidth() 
                 }
             )
         }

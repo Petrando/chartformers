@@ -64,7 +64,8 @@ export const positionTooltip = (
     mode: "stacked" | "grouped",
     margin: marginType,
     verticalDimensions: dimensions,
-    horizontalDimensions: dimensions,     
+    horizontalDimensions: dimensions,
+    containerHeight:number = 0     
 ) => {
     tooltip.style("opacity", 1)//.style("display", "block")
     const tooltipNode = tooltip?.node();
@@ -94,11 +95,7 @@ export const positionTooltip = (
                 .transition().duration(250)
             .style("left", left + "px").style("top", top + "px")                    
     } else {
-                        
-        const barCenterX = (margin.left ?? 0) + verticalDimensions.x + verticalDimensions.width / 2 
-            //labelScalePos(d) + labelScaleBandWidth / 2;
-        
-        
+                                                
         left = (margin.left ?? 0 ) + verticalDimensions.x + (verticalDimensions.width - tipW) / 2 
             //labelScalePos(d) + (labelScaleBandWidth - tipW)/2
         //top = (margin.top ?? 0) + verticalDimensions.y
@@ -107,7 +104,11 @@ export const positionTooltip = (
 
         const onTop = top < 0
         const barheight = verticalDimensions.height//valueScaleDimension(d)
-        if (onTop) top = barTopY + (mode === "stacked"?barheight:0) + gap;            
+        if (onTop) {
+            const rawTop = barTopY + (mode === "stacked"?barheight:0) + gap;
+            top = rawTop + tipH > containerHeight?
+                rawTop - barheight:rawTop
+        }            
 
         tooltip
             .classed(`${styles["tooltip--arrow-up"]}`, onTop)

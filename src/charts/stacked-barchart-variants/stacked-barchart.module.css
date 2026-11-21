@@ -138,12 +138,7 @@
 
 .rect, .rectCard {
     stroke-width: 1;
-    stroke: #0d9488;
-    
-}
-
-.rect {
-    stroke-width: 1.5;
+    stroke: #0d9488;    
 }
 
 .rectLegendNotHovered {
@@ -155,18 +150,8 @@
     transition-duration: 0.25s;
 }
 
-.rect:hover{
-    stroke-width: 1.5;
-    
-}
-
 .rectCard:hover, .legend:hover {
     stroke-width: 1;
-}
-
-.rect:hover, .rectCard:hover, .legend:hover, .rectHoveredLegend {
-    stroke: #3f3f46;
-    stroke-dasharray: none;
 }
 
 .rectCardLegendHovered {

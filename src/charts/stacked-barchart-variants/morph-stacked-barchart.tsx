@@ -2,7 +2,8 @@ import React, {useState, useEffect, useDeferredValue, useRef} from 'react';
 import { 
     axisBottom, axisLeft, min, max, type ScaleBand, scaleBand, type ScaleLinear, scaleLinear, 
     type Selection, type Series, stack,  stackOffsetDiverging, stackOffsetExpand, 
-    format} from 'd3';
+    format,
+    select} from 'd3';
 import { useD3 } from '../../hooks/useD3';
 import { useParentSize } from '../../hooks/useParentSize';
 import { useContainerSize } from '../../hooks/useContainerSize';
@@ -18,6 +19,8 @@ import {
     type StackedBarChartProps, type stackOrderByCategory
  } from './types';
 import { WarningModal } from './negative-data-warning';
+import { HoverShade, positionHoverShade } from './hover-shade';
+import { obscureOpacity } from './constants';
 
 type modeType =  'stacked' | 'grouped' | 'percentage';
 
@@ -260,7 +263,7 @@ export function MorphStackedBarChart({
                             .attr("fill", layerFill)
                             .filter(dSerie => dSerie.key !== d)                            
                                 .transition().duration(250)
-                            .style("opacity", 0.25)
+                            .style("opacity", obscureOpacity)
 
                         const rects = serie
                             .selectAll<SVGRectElement, ExtendedSeriesPointWithSorted>("rect")
@@ -271,7 +274,7 @@ export function MorphStackedBarChart({
                             .attr("fill", layerFill)
                             .filter(dSerie => dSerie.key === d)                            
                                 .transition().duration(250)
-                            .style("opacity", 0.25)
+                            .style("opacity", obscureOpacity)
                     }   
                 }                             
 
@@ -746,6 +749,8 @@ export function MorphStackedBarChart({
             return 0
         }
         
+        const hoverShade = canvasSvg.select("rect#hoverShade")            
+            .style("opacity", 0)
         serie.selectAll<SVGRectElement, ExtendedSeriesPointWithSorted>("rect")
             .data((d) => d, (d) => d.data.label)
             .join(
@@ -853,8 +858,14 @@ export function MorphStackedBarChart({
                 undefined,
                 exit=>exit.attr("opacity", 0).style("fill", "grey").remove()
             )
-            .on("mouseover touchstart", pointerenter)
-            .on("mousemove", (e, d)=>{                                                                               
+            .on("mouseover touchstart", function(e, d){
+                const bBox = select(this).node()?.getBBox()                
+                positionHoverShade(hoverShade, bBox, marginLeft, marginTop)                    
+                pointerenter(e, d)
+            })
+            .on("mousemove", function(e, d){                                                                               
+                const bBox = select(this).node()?.getBBox()
+                positionHoverShade(hoverShade, bBox, marginLeft, marginTop)
                 positionChartTooltip(d)
             })
             .on("mouseleave", function(e, d){
@@ -868,7 +879,13 @@ export function MorphStackedBarChart({
                     .filter(dText=>dText === d.data.label)
                     .attr("class", orientation==='vertical'?xAxisTextClass:"")
 
+                if(isStacked){
+                    serie.selectAll<SVGRectElement, ExtendedSeriesPointWithSorted>("rect")
+                        .filter(dRect => dRect.data.label === d.data.label)
+                        .style("stroke-width", 1)
+                }
                 tooltip.style("opacity", 0);
+                hoverShade.style("opacity", 0);
             })
 
         function positionChartTooltip(d: ExtendedSeriesPointWithSorted){
@@ -893,13 +910,18 @@ export function MorphStackedBarChart({
             if(mode === "grouped" && isSorted){
                 serie.selectAll<SVGRectElement, ExtendedSeriesPointWithSorted>("rect")
                     .filter(dRect => dRect.barKey !== d.barKey)
-                    .style("opacity", 0.25)    
+                    .style("opacity", obscureOpacity)    
             }
 
             canvas.select(orientation === "vertical"?".x-axis":".y-axis").selectAll("text")
                 .filter(dText=>dText === d.data.label)
                 .attr("class", (orientation === "vertical"?xAxisTextClass:"") + " " + stackedBarStyles.hoveredAxisText)
             
+            if(isStacked){
+                serie.selectAll<SVGRectElement, ExtendedSeriesPointWithSorted>("rect")
+                    .filter(dRect => dRect.data.label === d.data.label)
+                    .style("stroke-width", 2)
+            }
             positionChartTooltip(d)                  
             
             const value = d.data[d.barKey] as number
@@ -1033,7 +1055,8 @@ export function MorphStackedBarChart({
                                     x-axis`} />  
                                 <line className='zero-line' stroke="currentColor" strokeWidth={1} />
                             </g>        
-                        }                                        
+                        }
+                        <HoverShade />                                        
                     </svg>
                     <Tooltip  
                         totalLabel={mode === "percentage"?"":"of total"}

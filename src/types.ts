@@ -5,6 +5,10 @@ export type pointData = {
     value: number;
 }
 
+export type bBox = {
+    x: number; y: number; width: number; height: number;
+}
+
 export type formatType = "long" | "short";
 export type tooltipFormat = {
     formatType?: formatType;

@@ -1,7 +1,8 @@
 import React, {useState, useEffect, useDeferredValue, useRef } from 'react';
 import { axisBottom, axisLeft, format, min, max, type ScaleBand, scaleBand, scaleLinear, 
     type Series, type Selection,
-    stack, stackOffsetDiverging } from 'd3';
+    stack, stackOffsetDiverging, 
+    select} from 'd3';
 import { useD3 } from '../../hooks/useD3';
 import { useParentSize } from '../../hooks/useParentSize';
 import { useContainerSize } from '../../hooks/useContainerSize';
@@ -11,7 +12,7 @@ import { moveTooltip } from '../../components/tooltip';
 import { formatTooltipNum } from '../../utils';
 import { cloneObj, indexColor, rotateLabels } from '../../utils';
 import { inactiveColor } from '../../../dev/data/constants';
-import { defaultMargin, defaultLabelAxis, defaultValueAxis } from './constants';
+import { defaultMargin, defaultLabelAxis, defaultValueAxis, obscureOpacity } from './constants';
 import styles from '../global.module.css';
 import stackedBarStyles from './stacked-barchart.module.css';
 import tooltipStyles from './tooltip.module.css'
@@ -20,6 +21,7 @@ import {
     type StackedBarChartProps 
 } from './types';
 import { useUIControls } from '../../hooks/useUIControls';
+import { HoverShade, positionHoverShade } from './hover-shade';
 
 type GroupedBarChartProps =  StackedBarChartProps & {
     focusOnPlot?: boolean;
@@ -256,14 +258,14 @@ export function GroupedBarChart({
                         .attr("fill", layerFill)
                         .filter(dSerie => dSerie.key !== d)                            
                             .transition().duration(250)
-                        .style("opacity", 0.25)
+                        .style("opacity", obscureOpacity)
                     
                 }else{
                     serie
                         .attr("fill", layerFill)
                         .filter(dSerie => dSerie.key === d)                            
                             .transition().duration(250)
-                        .style("opacity", 0.25)
+                        .style("opacity", obscureOpacity)
                 }   
             }
         }
@@ -612,10 +614,18 @@ export function GroupedBarChart({
                 .attr("height", rectHeight)
                 .attr("y", rectYPos);
 
+        const hoverShade = canvasSvg.select("rect#hoverShade")            
+            .style("opacity", 0)
         serie
             .selectAll<SVGRectElement, ExtendedSeriesPointWithSorted>("rect")
-                .on("mouseover touchstart", pointerEnter)                
-                .on("mousemove touchmove", (e, d)=>{
+                .on("mouseover touchstart", function(e, d){
+                    const bBox = select(this).node()?.getBBox()
+                    positionHoverShade(hoverShade, bBox, marginLeft, marginTop)                     
+                    pointerenter(e, d)
+                })                
+                .on("mousemove touchmove", function(e, d){
+                    const bBox = select(this).node()?.getBBox()
+                    positionHoverShade(hoverShade, bBox, marginLeft, marginTop)                     
                     positionChartTooltip(d)
                 })
                 .on("mouseleave", function(e, d){
@@ -629,6 +639,7 @@ export function GroupedBarChart({
                         .attr("class", orientation === "vertical"?xAxisTextClass:"")
 
                     tooltip.style("opacity", 0);
+                    hoverShade.style("opacity", 0)
                 })
                 
         function positionChartTooltip(d: ExtendedSeriesPointWithSorted){
@@ -648,11 +659,11 @@ export function GroupedBarChart({
                 }
             )
         }
-        function pointerEnter(e: MouseEvent | TouchEvent, d: ExtendedSeriesPointWithSorted){
+        function pointerenter(e: MouseEvent | TouchEvent, d: ExtendedSeriesPointWithSorted){
             if(isSorted){
                 serie.selectAll<SVGRectElement, ExtendedSeriesPointWithSorted>("rect")
                     .filter(dRect => dRect.barKey !== d.barKey)
-                    .style("opacity", 0.25)    
+                    .style("opacity", obscureOpacity)    
             }
             
             canvas.select(orientation === "vertical"?".x-axis":".y-axis").selectAll("text")
@@ -668,9 +679,7 @@ export function GroupedBarChart({
             tooltip.select("p.layer span.label span.label").text(d.barKey)
             tooltip.select("p.layer span.value").text(formatTooltipNum(value, tooltipFormat))                    
             
-            tooltip.select("p.total span.value").text(formatTooltipNum(total ?? 0, tooltipFormat))
-
-            //moveTooltip(tooltip, {e, svg:svgNode as SVGSVGElement, yScale: valueScale})
+            tooltip.select("p.total span.value").text(formatTooltipNum(total ?? 0, tooltipFormat))            
         }                                    
 
     }, [ ...renderDeps, isSorted, chartData, orientation, tooltipFormat, margin, labelAxis, valueAxis ]);
@@ -719,7 +728,8 @@ export function GroupedBarChart({
                                     stackedBarStyles["value-axis"]:stackedBarStyles["label-axis"]} x-axis`} />  
                                 <line className='zero-line' stroke="currentColor" strokeWidth={1} />     
                             </g>        
-                        }                                        
+                        }
+                        <HoverShade />                                        
                     </svg>
                     <Tooltip />
                 </div>

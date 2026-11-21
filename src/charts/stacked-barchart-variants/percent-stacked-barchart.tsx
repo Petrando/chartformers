@@ -1,7 +1,7 @@
 import React, {useState, useEffect } from 'react';
 import { 
     type Selection, type Series, 
-    axisBottom, axisLeft, format, max, scaleBand, scaleLinear, stack, stackOffsetExpand, 
+    axisBottom, axisLeft, format, max, scaleBand, scaleLinear, select, stack, stackOffsetExpand, 
     stackOffsetNone, stackOrderNone, 
 } from 'd3';
 import { useD3 } from '../../hooks/useD3';
@@ -12,7 +12,7 @@ import { useUIControls } from '../../hooks/useUIControls';
 import { positionTooltip, Tooltip } from './tooltip';
 import { cloneObj, indexColor, basicFormat } from '../../utils';
 import { inactiveColor } from '../../../dev/data/constants';
-import { defaultMargin, defaultLabelAxis, defaultValueAxis } from './constants';
+import { defaultMargin, defaultLabelAxis, defaultValueAxis, obscureOpacity } from './constants';
 import { WarningModal } from './negative-data-warning';
 import styles from '../global.module.css';
 import stackedBarStyles from './stacked-barchart.module.css';
@@ -20,6 +20,7 @@ import {
     type LayeredData, type ExtendedSeries, type ExtendedSeriesPoint, 
     type StackedBarChartProps 
 } from './types';
+import { HoverShade, positionHoverShade } from './hover-shade';
 
 export function PercentStackedBarChart({ 
     data, colorIdx = 0, orientation = 'vertical', 
@@ -191,7 +192,7 @@ export function PercentStackedBarChart({
                 canvas.selectAll<SVGGElement, ExtendedSeries>(".serie")
                     .attr("fill", layerFill)
                     .filter(dSerie => dSerie.key === d)                                                            
-                    .style("opacity", 0.25)
+                    .style("opacity", obscureOpacity)
                 
             })
             .on("pointerleave", function(e, d){                
@@ -513,18 +514,30 @@ export function PercentStackedBarChart({
             .attr("width", rectWidth)
             .attr("height", rectHeight)
             .attr("y", rectYPos); 
-                
+        
+        const hoverShade = canvasSvg.select("rect#hoverShade")            
+            .style("opacity", 0)
         serie
             .selectAll<SVGRectElement, ExtendedSeriesPoint>("rect")
-                .on("mouseover touchstart", pointerenter)
-                .on("mousemove", (e, d)=>{
+                .on("mouseover touchstart", function(e, d){
+                    const bBox = select(this).node()?.getBBox()
+                    positionHoverShade(hoverShade, bBox, marginLeft, marginTop)
+                    pointerenter(e, d)
+                })
+                .on("mousemove", function(e, d){
+                    const bBox = select(this).node()?.getBBox()
+                    positionHoverShade(hoverShade, bBox, marginLeft, marginTop)
                     positionChartTooltip(d)
                 })
                 .on("mouseleave", function(e, d){
                     canvas.select(".x-axis").selectAll("text")
                         .filter(dText=>dText === d.data.name).attr("class", xAxisTextClass)
 
+                    serie.selectAll<SVGRectElement, ExtendedSeriesPoint>("rect")
+                        .filter(dRect => dRect.data.label === d.data.label)
+                        .style("stroke-width", 1)
                     tooltip.style("opacity", 0);
+                    hoverShade.style("opacity", 0)
                 })
 
         function positionChartTooltip(d: ExtendedSeriesPoint){
@@ -548,6 +561,10 @@ export function PercentStackedBarChart({
                                 
             canvas.select(".x-axis").selectAll("text")
                 .filter(dText=>dText === d.data.name).attr("class", xAxisTextClass + " " + styles.hoveredAxisText)            
+
+            serie.selectAll<SVGRectElement, ExtendedSeriesPoint>("rect")
+                .filter(dRect => dRect.data.label === d.data.label)
+                .style("stroke-width", 2)
 
             positionChartTooltip(d)
             
@@ -617,7 +634,8 @@ export function PercentStackedBarChart({
                                 stackedBarStyles["value-axis"]:
                                 stackedBarStyles["label-axis"]} x-axis`
                             } />    
-                        </g>                        
+                        </g>
+                        <HoverShade />                        
                     </svg>
                     <Tooltip totalLabel='' />                    
                 </div>

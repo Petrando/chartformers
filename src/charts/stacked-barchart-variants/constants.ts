@@ -14,3 +14,5 @@ export const defaultValueAxis = {
     tickSizeInner: 6,
     tickPadding: 3,
 }
+
+export const obscureOpacity = 0.4

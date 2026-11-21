@@ -656,7 +656,8 @@ export function GroupedBarChart({
                     x: valueScalePos(d), y: labelScalePos(d), 
                     width: valueScaleDimension(d), 
                     height: labelScaleBandWidth() 
-                }
+                },
+                graphHeight
             )
         }
         function pointerenter(e: MouseEvent | TouchEvent, d: ExtendedSeriesPointWithSorted){

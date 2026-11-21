@@ -777,6 +777,7 @@ export function StackedBarChart({
                     x: valueScalePos(d), y: labelScalePos(d), 
                     width: valueScaleDimension(d), height: labelScale.bandwidth() 
                 },
+                graphHeight
             )
         }
 

@@ -902,7 +902,8 @@ export function MorphStackedBarChart({
                     x: valueScalePos(d), y: labelScalePos(d), 
                     width: valueScaleDimension(d), 
                     height: labelScaleBandwidth(d)
-                }
+                },
+                graphHeight
             ) 
         }
 

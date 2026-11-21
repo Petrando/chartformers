@@ -49,7 +49,7 @@ export interface StackedBarChartProps {
     orientation?: 'vertical' | 'horizontal';
     margin?: marginType;
     labelAxis?: labelAxisType;
-    valueAxis?: valueAxisType;
+    valueAxis?: valueAxisType;    
     tooltipFormat?: tooltipFormat;
 }
 

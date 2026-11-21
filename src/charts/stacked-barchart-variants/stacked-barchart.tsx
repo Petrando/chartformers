@@ -10,7 +10,7 @@ import { useParentSize } from '../../hooks/useParentSize';
 import { useContainerSize } from '../../hooks/useContainerSize';
 import { useLayerIndex } from '../../hooks/useLayerIndex';
 import { positionTooltip, Tooltip } from './tooltip';
-import { cloneObj, indexColor, formatTooltipNum } from '../../utils';
+import { cloneObj, indexColor, formatTooltipNum, rotateLabels } from '../../utils';
 import { inactiveColor } from '../../../dev/data/constants';
 import styles from '../global.module.css';
 import stackedBarStyles from './stacked-barchart.module.css';
@@ -32,7 +32,7 @@ export function StackedBarChart({
         tooltipFormat: {
             prefix = "", suffix = "", formatType = "long"
         } = { prefix: "", suffix: "", formatType: "long"},
-        margin, labelAxis, valueAxis
+        margin, labelAxis, valueAxis,
     }
     : StackedBarChartPropsExtended
 ) {
@@ -326,7 +326,9 @@ export function StackedBarChart({
             .range(orientation === 'vertical'?[graphHeight, 0]:[0, graphWidth])
             .nice();
             
-        const xAxisTextClass = (!isMediumScreen && orientation === 'vertical')?stackedBarStyles.rotatedAxisText:
+        const rotateXLabels = rotateLabels(graphWidth, labels)
+        const xAxisTextClass = (rotateXLabels && orientation === 'vertical')?
+            stackedBarStyles.rotatedAxisText:
             stackedBarStyles.axisText;
                                             
         const prevXLabels: string[] = [];

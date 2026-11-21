@@ -112,12 +112,12 @@ export function isISODateString(str: string | Date) {
          !Number.isNaN(new Date(str).getTime());
 }
 
-export const rotateLabels = (width: number, labels: string[]) => {
-    const rotate = (width < 640 && labels.length > 3) ||
-        (width < 768 && labels.length > 4) ||
-        (width < 1024 && labels.length > 7) ||
-        (width < 1280 && labels.length > 9)
-
+export const rotateLabels = (width: number, labels: string[]) => {    
+    const rotate = (width < 640 && labels.length > 4) ||
+        (width < 768 && labels.length > 6) ||
+        (width < 1024 && labels.length > 8) ||
+        (width < 1280 && labels.length > 12)
+    
     return rotate;
 }
 

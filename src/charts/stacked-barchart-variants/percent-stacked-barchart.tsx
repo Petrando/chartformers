@@ -10,7 +10,7 @@ import { useContainerSize } from '../../hooks/useContainerSize';
 import { useLayerIndex } from '../../hooks/useLayerIndex';
 import { useUIControls } from '../../hooks/useUIControls';
 import { positionTooltip, Tooltip } from './tooltip';
-import { cloneObj, indexColor, basicFormat } from '../../utils';
+import { cloneObj, indexColor, basicFormat, rotateLabels } from '../../utils';
 import { inactiveColor } from '../../../dev/data/constants';
 import { defaultMargin, defaultLabelAxis, defaultValueAxis, obscureOpacity } from './constants';
 import { WarningModal } from './negative-data-warning';
@@ -214,10 +214,7 @@ export function PercentStackedBarChart({
             })
 
         const tooltip = container.select("div#tooltip")
-            .style("opacity", 0);        
-
-        const xAxisTextClass = (!isMediumScreen && orientation === 'vertical')?stackedBarStyles.rotatedAxisText:
-            stackedBarStyles.axisText;
+            .style("opacity", 0);                
 
         const paddingInner = labelAxis?.paddingInner ?? (isMediumScreen?0.3:0.2)
         const paddingOuter = labelAxis?.paddingOuter ?? defaultLabelAxis.paddingOuter
@@ -258,6 +255,10 @@ export function PercentStackedBarChart({
                 .tickSizeInner(displayValueAxisGrid?-graphHeight:valueAxisTickSizeInner)
                 .tickPadding(valueAxisTickPadding);
 
+        const rotateXLabels = rotateLabels(graphWidth, labels)
+        const xAxisTextClass = (rotateXLabels && orientation === 'vertical')?
+            stackedBarStyles.rotatedAxisText:
+            stackedBarStyles.axisText;
         canvas.select<SVGGElement>(".x-axis")
             .attr("transform", `translate(0,${graphHeight})`)
             .transition().duration(animDuration)

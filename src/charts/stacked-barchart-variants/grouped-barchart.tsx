@@ -32,7 +32,7 @@ export function GroupedBarChart({
     tooltipFormat: {
         prefix = "", suffix = "", formatType = "long"
     } = { prefix: "", suffix: "", formatType: "long"},
-    margin, labelAxis, valueAxis 
+    margin, labelAxis, valueAxis,
 }: GroupedBarChartProps) {
     const [ref, parentSize] = useParentSize<HTMLDivElement>();
     const { width: parentWidth, height: parentHeight } = parentSize;
@@ -59,8 +59,6 @@ export function GroupedBarChart({
     
     const animDuration = 750;    
         
-    const renderDeps = [ width, height, plotted, colorIdx ]
-
     const chartData:LayeredData[] = cloneObj(stackData);                        
     const keys = chartData.length === 0 ? [] :
         (Object.keys(chartData[0]) as (keyof LayeredData)[])
@@ -70,6 +68,11 @@ export function GroupedBarChart({
     const isMediumScreen = width > 576;   
 
     const tooltipFormat = { prefix, suffix, formatType}
+
+    const renderDeps = [ width, height, plotted, colorIdx,
+        isSorted, chartData, orientation, tooltipFormat, margin, labelAxis, valueAxis
+     ]
+
     const chartRef = useD3<HTMLDivElement>((container) => {
         if (width === 0 || height === 0) return;
                          
@@ -288,8 +291,9 @@ export function GroupedBarChart({
         const labelAxisTickPadding = labelAxis?.tickPadding ?? defaultLabelAxis.tickPadding
 
         const labels = sortedData.map(function(d: LayeredData) { return d.label; });
-        const rotateXLabels = rotateLabels(width, labels)
-        const xAxisTextClass = (rotateXLabels && orientation === 'vertical')?stackedBarStyles.rotatedAxisText:
+        const rotateXLabels = rotateLabels(graphWidth, labels)        
+        const xAxisTextClass = (rotateXLabels && orientation === 'vertical')?
+            stackedBarStyles.rotatedAxisText:
             stackedBarStyles.axisText;                
                         
         const labelScale: ScaleBand<string> = scaleBand<string>()
@@ -682,7 +686,7 @@ export function GroupedBarChart({
             tooltip.select("p.total span.value").text(formatTooltipNum(total ?? 0, tooltipFormat))            
         }                                    
 
-    }, [ ...renderDeps, isSorted, chartData, orientation, tooltipFormat, margin, labelAxis, valueAxis ]);
+    }, [ ...renderDeps ]);
     
     return (
         <div 

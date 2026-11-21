@@ -9,7 +9,7 @@ import { useParentSize } from '../../hooks/useParentSize';
 import { useContainerSize } from '../../hooks/useContainerSize';
 import { useLayerIndex } from '../../hooks/useLayerIndex';
 import { positionTooltip, Tooltip } from './tooltip';
-import { cloneObj, indexColor, basicFormat, formatTooltipNum } from '../../utils';
+import { cloneObj, indexColor, basicFormat, formatTooltipNum, rotateLabels } from '../../utils';
 import { inactiveColor } from '../../../dev/data/constants';
 import { defaultMargin, defaultLabelAxis, defaultValueAxis } from './constants';
 import styles from '../global.module.css';
@@ -393,10 +393,7 @@ export function MorphStackedBarChart({
             .domain([valueMin, valueMax])
             .range(orientation === 'vertical'?[graphHeight, 0]:[0, graphWidth])
             .nice();        
-
-        const xAxisTextClass = (!isMediumScreen && orientation === 'vertical')?stackedBarStyles.rotatedAxisText:
-            stackedBarStyles.axisText;
-
+        
         const valueAxisTicks = valueAxis?.ticks ?? defaultValueAxis.ticks
         const valueAxisTickSizeInner = valueAxis?.tickSizeInner ?? defaultValueAxis.tickSizeInner
         const displayValueAxisGrid = valueAxis?.displayGrid ?? defaultValueAxis.displayGrid
@@ -414,6 +411,11 @@ export function MorphStackedBarChart({
                 .tickSizeOuter(0)
                 .tickSizeInner(displayValueAxisGrid?-graphHeight:valueAxisTickSizeInner)
                 .tickPadding(valueAxisTickPadding);
+
+        const rotateXLabels = rotateLabels(graphWidth, xLabels)
+        const xAxisTextClass = (rotateXLabels && orientation === 'vertical')?
+            stackedBarStyles.rotatedAxisText:
+            stackedBarStyles.axisText;
             
         canvas.select<SVGGElement>(".x-axis")                        
             .attr("transform", `translate(0,${graphHeight})`)

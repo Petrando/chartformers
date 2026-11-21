@@ -278,10 +278,9 @@ export function GroupedBarChart({
             isFirstRender = true;
             setPrevData(cloneObj(chartData));
         }
-
-        const noPlot = plotted[0] === "all"
-
-        const paddingInner = labelAxis?.paddingInner ?? (noPlot?0.15:isMediumScreen?0.4:0.25)
+                
+        const paddingInner = labelAxis?.paddingInner ?? 
+            (selectedKeys.length > 1?0.15:isMediumScreen?0.3:0.2)        
         const paddingOuter = labelAxis?.paddingOuter ?? defaultLabelAxis.paddingOuter
         const labelAxisAlign = labelAxis?.align ?? defaultLabelAxis.align
         const labelAxisTickSizeInner = labelAxis?.tickSizeInner ?? defaultLabelAxis.tickSizeInner

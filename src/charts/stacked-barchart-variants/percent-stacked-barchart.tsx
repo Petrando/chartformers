@@ -219,7 +219,7 @@ export function PercentStackedBarChart({
         const xAxisTextClass = (!isMediumScreen && orientation === 'vertical')?stackedBarStyles.rotatedAxisText:
             stackedBarStyles.axisText;
 
-        const paddingInner = labelAxis?.paddingInner ?? (isMediumScreen?0.4:0.25)
+        const paddingInner = labelAxis?.paddingInner ?? (isMediumScreen?0.3:0.2)
         const paddingOuter = labelAxis?.paddingOuter ?? defaultLabelAxis.paddingOuter
         const labelAxisAlign = labelAxis?.align ?? defaultLabelAxis.align
         const labelAxisTickSizeInner = labelAxis?.tickSizeInner ?? defaultLabelAxis.tickSizeInner

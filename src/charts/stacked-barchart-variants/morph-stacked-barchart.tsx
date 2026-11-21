@@ -334,23 +334,12 @@ export function MorphStackedBarChart({
             isFirstRender = true;
             setPrevData(cloneObj(chartData));
         }
-                                        
-        /*
-            //paddingInner previously at 13/11/2026
-            (mode !== "grouped" || 
-                (mode === "grouped" && (
-                    (focusOnPlot && plotted[0] !== "all") ||
-                    (!focusOnPlot && selectedKeys.length === 1)
-                ))                    
-            )?(isMediumScreen?0.4:0.25):0.1
-        */
+        
         const singleLayerActive = (focusOnPlot && plotted[0] !== "all") || selectedKeys.length === 1
         const isStacked = mode === "stacked" || mode === "percentage"
 
         const paddingInner = labelAxis?.paddingInner ?? 
-                (isStacked || 
-                (!isStacked && singleLayerActive)                    
-            )?(isMediumScreen?0.4:0.25):0.1
+                (!isStacked && !singleLayerActive? 0.15 : isMediumScreen ? 0.3 : 0.2)
         const paddingOuter = labelAxis?.paddingOuter ?? defaultLabelAxis.paddingOuter
         const labelAxisAlign = labelAxis?.align ?? defaultLabelAxis.align
         const labelAxisTickSizeInner = labelAxis?.tickSizeInner ?? defaultLabelAxis.tickSizeInner

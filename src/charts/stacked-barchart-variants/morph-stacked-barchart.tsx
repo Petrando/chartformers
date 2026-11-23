@@ -3,7 +3,8 @@ import {
     axisBottom, axisLeft, min, max, type ScaleBand, scaleBand, type ScaleLinear, scaleLinear, 
     type Selection, type Series, stack,  stackOffsetDiverging, stackOffsetExpand, 
     format,
-    select} from 'd3';
+    select,
+    stackOrderNone} from 'd3';
 import { useD3 } from '../../hooks/useD3';
 import { useParentSize } from '../../hooks/useParentSize';
 import { useContainerSize } from '../../hooks/useContainerSize';
@@ -69,9 +70,7 @@ export function MorphStackedBarChart({
 
     useEffect(()=>{        
         setIsSorted(false)
-        /*if(mode === "percentage"){
-            setPlotted(["all"])
-        }*/
+        setPlotted(["all"])        
     }, [ mode ])
 
     useEffect(()=>{
@@ -388,7 +387,7 @@ export function MorphStackedBarChart({
                         : min(chartData, d => d[plotted[0]] as number)):
                         1
         const valueMin = Math.min(0, baseValueMin ?? 0)
-
+        
         const valueScale: ScaleLinear<number, number> = scaleLinear()
             .domain([valueMin, valueMax])
             .range(orientation === 'vertical'?[graphHeight, 0]:[0, graphWidth])
@@ -478,6 +477,7 @@ export function MorphStackedBarChart({
         const dataLayers: Series<LayeredData, string | string[]>[] =
             stack<LayeredData>()
             .keys(selectedKeys)
+            .order(stackOrderNone)
             .offset(mode !== "percentage"?stackOffsetDiverging:stackOffsetExpand)(sortedData);                
         
         const processedDataLayers:ExtendedSeriesWithSorted[] = dataLayers.map((series) => {
@@ -507,7 +507,7 @@ export function MorphStackedBarChart({
             newSeries.key = seriesKey as string
             return newSeries
         });  
-        
+                
         const serie = canvas.selectAll<SVGGElement, ExtendedSeriesWithSorted>(".serie")
             .data(processedDataLayers, function(d){return d.key})
             .join(
@@ -609,7 +609,10 @@ export function MorphStackedBarChart({
         }
 
         function valueScalePos(d: ExtendedSeriesPointWithSorted){
-            if(isStacked){
+            if( mode === "percentage"){
+                return valueScale(orientation === 'vertical'?d[1]:d[0])
+            }
+            else if(mode === "stacked"){
                 if(!singleLayerActive){
                     const orientationDimension = orientation === 'vertical'?graphHeight:graphWidth
                     //if(isFirstRender) return 0
@@ -619,12 +622,12 @@ export function MorphStackedBarChart({
                         :  (focusOnPlot && orientation !== 'vertical')?
                             valueScale(0):
                             (orientationDimension - (valueScale(d[0]) - valueScale(d[1])))
-                } else {
+                } else {                    
                     const value = Number(d.data[d.barKey])
-                
+            
                     return orientation === 'vertical'?
                         value >= 0 ? valueScale(value) : valueScale(0):
-                            value >= 0 ? valueScale(0) : valueScale(value)
+                            value >= 0 ? valueScale(0) : valueScale(value)                                        
                 }
             }else {
                 const value = Number(d.data[d.barKey])
@@ -633,18 +636,17 @@ export function MorphStackedBarChart({
                     value >= 0 ? valueScale(value) : valueScale(0):
                         value >= 0 ? valueScale(0) : valueScale(value)
 
-            }
-            /*
-            if(mode === "grouped"){
-                return graphHeight - (y(d[0]) - y(d[1]))
-            }                                                               
-            return plotted[0]==="all"?y(d[1]):
-                d.key.startsWith(plotted[0])?graphHeight - (y(d[0]) - y(d[1])):y(d[1]);
-            */
+            }           
         }
 
         function valueScaleDimension(d:ExtendedSeriesPointWithSorted){
-            if(isStacked){
+            if(mode === "percentage"){
+                const dimension = orientation === 'vertical'?
+                    valueScale(d[0]) - valueScale(d[1]):
+                    valueScale(d[1]) - valueScale(d[0]);
+                return isNaN(dimension)?0:dimension<0?0:dimension;
+            }
+            else if(mode === "stacked"){
                 if(!singleLayerActive){
                     const dimension = orientation === 'vertical'?
                     valueScale(d[0]) - valueScale(d[1]):

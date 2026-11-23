@@ -289,7 +289,8 @@ export function StackedBarChart({
             setPrevData(cloneObj(chartData));
         }                       
 
-        const paddingInner = labelAxis?.paddingInner ?? (isMediumScreen?0.3:0.2)
+        const paddingInnerDimension = orientation === "vertical"?width:height
+        const paddingInner = labelAxis?.paddingInner ?? (paddingInnerDimension > 576?0.35:0.225)
         const paddingOuter = labelAxis?.paddingOuter ?? defaultLabelAxis.paddingOuter
         const labelAxisAlign = labelAxis?.align ?? defaultLabelAxis.align        
         const displayLabelAxisGrid = labelAxis?.displayGrid ?? defaultLabelAxis.displayGrid

@@ -334,8 +334,9 @@ export function MorphStackedBarChart({
         const singleLayerActive = (focusOnPlot && plotted[0] !== "all") || selectedKeys.length === 1
         const isStacked = mode === "stacked" || mode === "percentage"
 
+        const paddingInnerDimension = orientation === "vertical"?width:height
         const paddingInner = labelAxis?.paddingInner ?? 
-                (!isStacked && !singleLayerActive? 0.15 : isMediumScreen ? 0.3 : 0.2)
+                (!isStacked && !singleLayerActive? 0.15 : paddingInnerDimension > 576 ? 0.35 : 0.225)
         const paddingOuter = labelAxis?.paddingOuter ?? defaultLabelAxis.paddingOuter
         const labelAxisAlign = labelAxis?.align ?? defaultLabelAxis.align
         const labelAxisTickSizeInner = labelAxis?.tickSizeInner ?? defaultLabelAxis.tickSizeInner

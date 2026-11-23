@@ -283,8 +283,9 @@ export function GroupedBarChart({
             setPrevData(cloneObj(chartData));
         }
                 
+        const paddingInnerDimension = orientation === "vertical"?width:height
         const paddingInner = labelAxis?.paddingInner ?? 
-            (selectedKeys.length > 1?0.15:isMediumScreen?0.3:0.2)        
+            (selectedKeys.length > 1?0.15:paddingInnerDimension > 576?0.35:0.225)        
         const paddingOuter = labelAxis?.paddingOuter ?? defaultLabelAxis.paddingOuter
         const labelAxisAlign = labelAxis?.align ?? defaultLabelAxis.align
         const labelAxisTickSizeInner = labelAxis?.tickSizeInner ?? defaultLabelAxis.tickSizeInner

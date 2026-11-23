@@ -222,7 +222,8 @@ export function PercentStackedBarChart({
         const tooltip = container.select("div#tooltip")
             .style("opacity", 0);                
 
-        const paddingInner = labelAxis?.paddingInner ?? (isMediumScreen?0.3:0.2)
+        const paddingInnerDimension = orientation === "vertical"?width:height
+        const paddingInner = labelAxis?.paddingInner ?? (paddingInnerDimension > 576?0.35:0.225)
         const paddingOuter = labelAxis?.paddingOuter ?? defaultLabelAxis.paddingOuter
         const labelAxisAlign = labelAxis?.align ?? defaultLabelAxis.align
         const labelAxisTickSizeInner = labelAxis?.tickSizeInner ?? defaultLabelAxis.tickSizeInner

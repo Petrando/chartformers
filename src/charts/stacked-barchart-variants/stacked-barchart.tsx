@@ -1,4 +1,4 @@
-import React, {useState, useEffect} from 'react';
+import React, {useState, useEffect, useRef} from 'react';
 import { 
     axisBottom, axisLeft, min, max, scaleBand, scaleLinear, stack, stackOffsetDiverging, 
     color as D3Color,
@@ -44,9 +44,10 @@ export function StackedBarChart({
     const { width, height } = chartSize    
     const [prevData, setPrevData] = useState<LayeredData[] | null>(null);
             
-    const [plotted, setPlotted] = useState<string[]>(["all"]);
-    const [justPlotted, setJustPlotted] = useState<boolean>(false)    
+    const [plotted, setPlotted] = useState<string[]>(["all"]);    
     const [isSorted, setIsSorted] = useState<boolean>(false);
+
+    const isAnimating = useRef(false)
     
     const uiControls = useUIControls(); 
     
@@ -223,7 +224,8 @@ export function StackedBarChart({
                     .style("top", "53px")
                     .remove()
             )
-            .on("pointerenter", function(e, d){                
+            .on("pointerenter", function(e, d){
+                if(isAnimating.current) return                
                 if(plotted[0] === "all"){
                     const serie = canvas.selectAll<SVGGElement, ExtendedSeries>(".serie")
                     if(focusOnPlot){
@@ -245,22 +247,18 @@ export function StackedBarChart({
                 }                       
             })
             .on("pointerleave", function(e, d){
-                const serie = canvas.selectAll<SVGGElement, ExtendedSeries>(".serie")
+                if(isAnimating.current) return
+                const serie = canvas.selectAll<SVGGElement, ExtendedSeries>(".serie")                
                 if(plotted[0] === "all"){
                     serie
                         .attr("fill", layerFill)                                                
-                    .style("opacity", 1)
-                    
-                    
+                    .style("opacity", 1)                                        
                 }
 
                 const rects = serie
                     .selectAll<SVGRectElement, ExtendedSeriesPoint>("rect")
                     .attr("stroke-dasharray", strokeDasharray)
-                                                    
-                if(justPlotted){
-                    setJustPlotted(false)
-                }
+                                                                    
             })
             .on("click", (e, d)=>{
                 setPlotted(prev=>{
@@ -279,8 +277,7 @@ export function StackedBarChart({
                         }
                     }
                     return newPlot
-                })
-                setJustPlotted(true)
+                })                
             })         
 
         const tooltip = container.select("div#tooltip")
@@ -714,7 +711,7 @@ export function StackedBarChart({
                         .attr("x", rectXPos)
                         .attr("width", rectWidth)
                         .attr("height", rectHeight)
-                        .attr("y", rectYPos);
+                        .attr("y", rectYPos)                        
 
                     return theBars;
                 },
@@ -727,14 +724,24 @@ export function StackedBarChart({
                         .attr("height", 0)
                         .remove()
             )
-            .attr("class", updateRectClass)
-            .attr("stroke-dasharray", strokeDasharray)
-            .attr("stroke-dashoffset", strokeDashoffset)
+                .attr("class", updateRectClass)
+                .attr("stroke-dasharray", strokeDasharray)
+                .attr("stroke-dashoffset", strokeDashoffset)
             .transition().duration(animDuration)                
                 .attr("x", rectXPos)
                 .attr("width", rectWidth)
                 .attr("height", rectHeight)
-                .attr("y", rectYPos);
+                .attr("y", rectYPos)
+                .on("start", function(){
+                    if(!isAnimating.current){
+                        isAnimating.current = true
+                    }
+                })
+                .on("end", function(){
+                    if(isAnimating.current){
+                        isAnimating.current = false
+                    }
+                });
 
         const tooltipFormat = {prefix, suffix, formatType}
         const hoverShade = canvasSvg.select("rect#hoverShade")            
@@ -744,13 +751,13 @@ export function StackedBarChart({
             .selectAll<SVGRectElement, ExtendedSeriesPoint>("rect")
                 .on("mouseover touchstart", function(e, d){
                     const bBox = select(this).node()?.getBBox()
-                    positionHoverShade(hoverShade, bBox, marginLeft, marginTop)                                       
+                    positionHoverShade(hoverShade, bBox, marginLeft, marginTop, isAnimating.current)                                       
                     pointerenter(e, d)
                 })                
                 .on("mousemove", function(e, d){                                                                               
                     positionChartTooltip(d)
                     const bBox = select(this).node()?.getBBox()
-                    positionHoverShade(hoverShade, bBox, marginLeft, marginTop)
+                    positionHoverShade(hoverShade, bBox, marginLeft, marginTop, isAnimating.current)
                 })
                 .on("mouseleave", function(e, d){
                     canvas.select(orientation === 'vertical'?".x-axis":".y-axis").selectAll("text")
@@ -800,7 +807,7 @@ export function StackedBarChart({
 
         hoverShade.raise()
 
-    }, [ ...renderDeps, isSorted, chartData, keys, justPlotted, orientation, 
+    }, [ ...renderDeps, isSorted, chartData, keys, orientation, 
         margin, labelAxis, valueAxis, {prefix, suffix, formatType} ]);
             
     return (

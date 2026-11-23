@@ -16,12 +16,15 @@ export const HoverShade = () => (
 export const positionHoverShade  = ( 
     hoverShade: Selection<BaseType, unknown, null, undefined>,
     bBox: DOMRect | undefined,
-    marginLeft: number, marginTop: number
+    marginLeft: number, marginTop: number,
+    isAnimating:boolean = false
 ) => {
-    hoverShade
+    if(!isAnimating){
+        hoverShade
         .style("opacity", 1)
         .attr("x", (bBox?.x ?? 0) + marginLeft)
         .attr("y", (bBox?.y ?? 0) + marginTop)
         .attr("width", bBox?.width ?? 0)
         .attr("height", bBox?.height ?? 0)  
+    }    
 }

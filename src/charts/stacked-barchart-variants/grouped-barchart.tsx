@@ -47,7 +47,7 @@ export function GroupedBarChart({
     const previousPlotted = useDeferredValue(plotted)            
     const [isSorted, setIsSorted] = useState<boolean>(false);
     
-    const lastTouchLegendRef = useRef(Date.now())
+    const isAnimating = useRef(false)
     
     const uiControls = useUIControls();     
     
@@ -215,7 +215,7 @@ export function GroupedBarChart({
             .on("click", legendClick)            
             .on("pointerenter", legendPointerEnter)
             .on("pointerleave", (e, d)=>{
-                const serie = canvas.selectAll<SVGGElement, ExtendedSeriesWithSorted>(".serie")
+                if(isAnimating.current) return                
                 if(plotted[0] === "all"){
                     canvas.selectAll<SVGGElement, ExtendedSeriesWithSorted>(".serie")
                         .attr("fill", layerFill)                        
@@ -254,6 +254,7 @@ export function GroupedBarChart({
         }
 
         function legendPointerEnter(e: MouseEvent | TouchEvent, d: string){
+            if(isAnimating.current) return 
             const serie = canvas.selectAll<SVGGElement, ExtendedSeriesWithSorted>(".serie")
             if(plotted[0] === "all"){
                 if(focusOnPlot){
@@ -609,13 +610,23 @@ export function GroupedBarChart({
                     .attr("height", 0)                        
                     .attr("y", graphHeight + marginBottom).remove()
             )
-            .attr("class", updateRectClass)
+                .attr("class", updateRectClass)
             .transition().duration(animDuration)//.delay(isFirstRender?animDuration:0)
                 .style("opacity", 1)
                 .attr("x", rectXPos)
                 .attr("width", rectWidth)                        
                 .attr("height", rectHeight)
-                .attr("y", rectYPos);
+                .attr("y", rectYPos)
+                .on("start", function(){
+                    if(!isAnimating.current){
+                        isAnimating.current = true
+                    }
+                })
+                .on("end", function(){
+                    if(isAnimating.current){
+                        isAnimating.current = false
+                    }
+                });
 
         const hoverShade = canvasSvg.select("rect#hoverShade")            
             .style("opacity", 0)
@@ -623,12 +634,12 @@ export function GroupedBarChart({
             .selectAll<SVGRectElement, ExtendedSeriesPointWithSorted>("rect")
                 .on("mouseover touchstart", function(e, d){
                     const bBox = select(this).node()?.getBBox()
-                    positionHoverShade(hoverShade, bBox, marginLeft, marginTop)                     
+                    positionHoverShade(hoverShade, bBox, marginLeft, marginTop, isAnimating.current)                     
                     pointerenter(e, d)
                 })                
                 .on("mousemove touchmove", function(e, d){
                     const bBox = select(this).node()?.getBBox()
-                    positionHoverShade(hoverShade, bBox, marginLeft, marginTop)                     
+                    positionHoverShade(hoverShade, bBox, marginLeft, marginTop, isAnimating.current)                     
                     positionChartTooltip(d)
                 })
                 .on("mouseleave", function(e, d){

@@ -1,4 +1,4 @@
-import React, {useState, useEffect } from 'react';
+import React, {useState, useEffect, useRef } from 'react';
 import { 
     type Selection, type Series, 
     axisBottom, axisLeft, format, max, scaleBand, scaleLinear, select, stack, stackOffsetExpand, 
@@ -30,16 +30,18 @@ export function PercentStackedBarChart({
     margin, labelAxis, valueAxis
 }: StackedBarChartProps
 ) {
-    const [ref, parentSize] = useParentSize<HTMLDivElement>();
+    const [ ref, parentSize ] = useParentSize<HTMLDivElement>();
     const { width: parentWidth, height: parentHeight } = parentSize;    
     
-    const [controlsRef, controlsSize] = useContainerSize<HTMLDivElement>();
+    const [ controlsRef, controlsSize ] = useContainerSize<HTMLDivElement>();
     const { height: controlsHeight } = controlsSize;        
-    const [chartContainerRef, chartSize] = useContainerSize<HTMLDivElement>()
+    const [ chartContainerRef, chartSize ] = useContainerSize<HTMLDivElement>()
     const { width, height } = chartSize    
      
     const [ isPercentage, setIsPercentage ] = useState<boolean>(true);    
-    const [plotted, setPlotted] = useState<string[]>(["all"]);
+    const [ plotted, setPlotted ] = useState<string[]>(["all"]);
+
+    const isAnimating = useRef(false)
     
     const uiControls = useUIControls();
     
@@ -48,6 +50,8 @@ export function PercentStackedBarChart({
         setPlotted(["all"])
         setIsPercentage(true)        
     }, [stackData])
+
+    useEffect(() => { setIsPercentage(true) }, [ plotted ])
         
     const animDuration = 750;    
 
@@ -189,13 +193,15 @@ export function PercentStackedBarChart({
 
         legends
             .on("pointerenter", (e, d)=>{
+                if(isAnimating.current) return
                 canvas.selectAll<SVGGElement, ExtendedSeries>(".serie")
                     .attr("fill", layerFill)
                     .filter(dSerie => dSerie.key === d)                                                            
                     .style("opacity", obscureOpacity)
                 
             })
-            .on("pointerleave", function(e, d){                
+            .on("pointerleave", function(e, d){
+                if(isAnimating.current) return                
                 canvas.selectAll<SVGGElement, ExtendedSeries>(".serie")
                     .attr("fill", layerFill)
                     .filter(dSerie => dSerie.key === d)                                                            
@@ -514,7 +520,17 @@ export function PercentStackedBarChart({
             .attr("x", rectXPos)                    
             .attr("width", rectWidth)
             .attr("height", rectHeight)
-            .attr("y", rectYPos); 
+            .attr("y", rectYPos)
+            .on("start", function(){
+                if(!isAnimating.current){
+                    isAnimating.current = true
+                }
+            })
+            .on("end", function(){
+                if(isAnimating.current){
+                    isAnimating.current = false
+                }
+            }); 
         
         const hoverShade = canvasSvg.select("rect#hoverShade")            
             .style("opacity", 0)
@@ -522,12 +538,12 @@ export function PercentStackedBarChart({
             .selectAll<SVGRectElement, ExtendedSeriesPoint>("rect")
                 .on("mouseover touchstart", function(e, d){
                     const bBox = select(this).node()?.getBBox()
-                    positionHoverShade(hoverShade, bBox, marginLeft, marginTop)
+                    positionHoverShade(hoverShade, bBox, marginLeft, marginTop, isAnimating.current)
                     pointerenter(e, d)
                 })
                 .on("mousemove", function(e, d){
                     const bBox = select(this).node()?.getBBox()
-                    positionHoverShade(hoverShade, bBox, marginLeft, marginTop)
+                    positionHoverShade(hoverShade, bBox, marginLeft, marginTop, isAnimating.current)
                     positionChartTooltip(d)
                 })
                 .on("mouseleave", function(e, d){

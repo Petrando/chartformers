@@ -38,23 +38,25 @@ export function MorphStackedBarChart({
     } = { prefix: "", suffix: "", formatType: "long"},
     margin, labelAxis, valueAxis
 }: MorphStackedBarChartProps) {
-    const [ref, parentSize] = useParentSize<HTMLDivElement>();
+    const [ ref, parentSize ] = useParentSize<HTMLDivElement>();
     const prevModeRef = useRef<modeType>(mode);
     const defferedMode = useDeferredValue(mode)
   
     const { width: parentWidth, height: parentHeight } = parentSize;
-    const [controlsRef, controlsSize] = useContainerSize<HTMLDivElement>();
+    const [ controlsRef, controlsSize ] = useContainerSize<HTMLDivElement>();
     const { height: controlsHeight } = controlsSize;    
     const [ chartContainerRef, chartSize] = useContainerSize<HTMLDivElement>()
     const { width, height } = chartSize
 
     const [prevData, setPrevData] = useState<LayeredData[] | null>(null);
         
-    const [plotted, setPlotted] = useState<string[]>(["all"]);
+    const [ plotted, setPlotted ] = useState<string[]>(["all"]);
     const previousPlotted = useDeferredValue(plotted)        
-    const [isSorted, setIsSorted] = useState<boolean>(false);        
+    const [ isSorted, setIsSorted ] = useState<boolean>(false);
     
-    const stackData = data
+    const isAnimating = useRef(false)        
+    
+    const stackData = data 
     useEffect(() => {
         setPlotted(["all"])                
     }, [stackData])    
@@ -71,13 +73,7 @@ export function MorphStackedBarChart({
     useEffect(()=>{        
         setIsSorted(false)
         setPlotted(["all"])        
-    }, [ mode ])
-
-    useEffect(()=>{
-        if(focusOnPlot){
-            setPlotted(["all"])
-        }
-    }, [ mode, focusOnPlot ])
+    }, [ mode ])    
 
     useEffect(()=>{
         if(isSorted && prevModeRef.current !== mode){
@@ -253,7 +249,7 @@ export function MorphStackedBarChart({
                     .remove().remove()
             )
             .on("pointerenter", function(e, d){
-                if(mode === "percentage" && focusOnPlot) return;
+                if(isAnimating.current) return;                
 
                 const serie = canvas.selectAll<SVGGElement, ExtendedSeriesWithSorted>(".serie")
                 if(plotted[0] === "all"){
@@ -279,7 +275,8 @@ export function MorphStackedBarChart({
 
             })
             .on("pointerleave", function(e, d){
-                if(mode === "percentage" && focusOnPlot) return;
+                if( isAnimating.current ) return
+                
                 const serie = canvas.selectAll<SVGGElement, ExtendedSeriesWithSorted>(".serie")
                 if(plotted[0] === "all"){
                     canvas.selectAll<SVGGElement, ExtendedSeriesWithSorted>(".serie")
@@ -853,12 +850,12 @@ export function MorphStackedBarChart({
             )
             .on("mouseover touchstart", function(e, d){
                 const bBox = select(this).node()?.getBBox()                
-                positionHoverShade(hoverShade, bBox, marginLeft, marginTop)                    
+                positionHoverShade(hoverShade, bBox, marginLeft, marginTop, isAnimating.current)                    
                 pointerenter(e, d)
             })
             .on("mousemove", function(e, d){                                                                               
                 const bBox = select(this).node()?.getBBox()
-                positionHoverShade(hoverShade, bBox, marginLeft, marginTop)
+                positionHoverShade(hoverShade, bBox, marginLeft, marginTop, isAnimating.current)
                 positionChartTooltip(d)
             })
             .on("mouseleave", function(e, d){
@@ -947,6 +944,17 @@ export function MorphStackedBarChart({
                 .attr("height", rectHeight)
                 .attr("y", rectYPos)
                 .style("opacity", 1)
+                .on("start", function(){
+                    hoverShade.style("opacity", 0)
+                    if(!isAnimating.current){
+                        isAnimating.current = true
+                    }
+                })
+                .on("end", function(){
+                    if(isAnimating.current){
+                        isAnimating.current = false
+                    }
+                })
         }
 
         function transitionXWidth_then_YHeight(){
@@ -955,12 +963,23 @@ export function MorphStackedBarChart({
                     .transition().duration(animDuration)                    
                 .attr("x", rectXPos)                    
                 .attr("width", rectWidth)
-                .style("opacity", 1)                    
+                .style("opacity", 1)
+                .on("start", function(){
+                    hoverShade.style("opacity", 0)
+                    if(!isAnimating.current){
+                        isAnimating.current = true                        
+                    }
+                })                    
                     .transition().duration(animDuration)
                 .attr("stroke-dasharray", strokeDasharray)
                 .attr("stroke-dashoffset", strokeDashoffset)
                 .attr("height", rectHeight)
-                .attr("y", rectYPos)
+                .attr("y", rectYPos)                
+                .on("end", function(){
+                    if(isAnimating.current){
+                        isAnimating.current = false
+                    }
+                })
         }
 
         function transitionYHeight_then_XWidth(){
@@ -970,11 +989,28 @@ export function MorphStackedBarChart({
                 .attr("y", rectYPos)
                 .attr("height", rectHeight)
                 .style("opacity", 1)
+                .on("start", function(){
+                    hoverShade.style("opacity", 0)
+                    if(!isAnimating.current){
+                        isAnimating.current = true                        
+                    }
+                })
                     .transition().duration(animDuration)
                 .attr("stroke-dasharray", strokeDasharray)
                 .attr("stroke-dashoffset", strokeDashoffset)                    
                 .attr("x", rectXPos)                    
                 .attr("width", rectWidth)
+                .on("start", function(){
+                    hoverShade.style("opacity", 0)
+                    if(!isAnimating.current){
+                        isAnimating.current = true
+                    }
+                })
+                .on("end", function(){
+                    if(isAnimating.current){
+                        isAnimating.current = false
+                    }
+                })
         }
 
         if(mode === prevMode){            

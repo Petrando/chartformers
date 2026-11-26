@@ -1,0 +1,755 @@
+import React, {useState, useEffect, useDeferredValue, useRef } from 'react';
+import { axisBottom, axisLeft, format, min, max, type ScaleBand, scaleBand, scaleLinear, 
+    type Series, type Selection,
+    stack, stackOffsetDiverging, 
+    select} from 'd3';
+import { useD3 } from '../../hooks/useD3';
+import { useParentSize } from '../../hooks/useParentSize';
+import { useContainerSize } from '../../hooks/useContainerSize';
+import { useLayerIndex } from '../../hooks/useLayerIndex';
+import { positionTooltip, Tooltip } from './tooltip';
+import { moveTooltip } from '../../components/tooltip';
+import { formatTooltipNum } from '../../utils';
+import { cloneObj, indexColor, rotateLabels } from '../../utils';
+import { inactiveColor } from '../../../dev/data/constants';
+import { defaultMargin, defaultLabelAxis, defaultValueAxis, obscureOpacity } from './constants';
+import styles from '../global.module.css';
+import stackedBarStyles from './stacked-barchart.module.css';
+import tooltipStyles from './tooltip.module.css'
+import { 
+    type LayeredData, type ExtendedSeriesPointWithSorted, type ExtendedSeriesWithSorted, 
+    type StackedBarChartProps 
+} from './types';
+import { useUIControls } from '../../hooks/useUIControls';
+import { HoverShade, positionHoverShade } from './hover-shade';
+
+type GroupedBarChartProps =  StackedBarChartProps & {
+    focusOnPlot?: boolean;
+}
+
+export function GroupedBarChart({ 
+    data, colorIdx = 0, orientation = 'vertical', focusOnPlot = true, 
+    tooltipFormat: {
+        prefix = "", suffix = "", formatType = "long"
+    } = { prefix: "", suffix: "", formatType: "long"},
+    margin, labelAxis, valueAxis,
+}: GroupedBarChartProps) {
+    const [ref, parentSize] = useParentSize<HTMLDivElement>();
+    const { width: parentWidth, height: parentHeight } = parentSize;
+    const [controlsRef, controlsSize] = useContainerSize<HTMLDivElement>();
+    const { height: controlsHeight } = controlsSize;
+    const [ chartContainerRef, chartSize] = useContainerSize<HTMLDivElement>()
+    const { width, height } = chartSize
+
+    const [prevData, setPrevData] = useState<LayeredData[] | null>(null);
+        
+    const [plotted, setPlotted] = useState<string[]>(["all"]);
+    const previousPlotted = useDeferredValue(plotted)            
+    const [isSorted, setIsSorted] = useState<boolean>(false);
+    
+    const isAnimating = useRef(false)
+    
+    const uiControls = useUIControls();     
+    
+    const stackData = data
+    useEffect(() => {
+        setPlotted(["all"])        
+        setIsSorted(false)
+    }, [stackData])    
+    
+    const animDuration = 750;    
+        
+    const chartData:LayeredData[] = cloneObj(stackData);                        
+    const keys = chartData.length === 0 ? [] :
+        (Object.keys(chartData[0]) as (keyof LayeredData)[])
+            .filter((key) => key !== "label" && key !== "total") as string[];
+
+    const layers = useLayerIndex(keys)
+    const isMediumScreen = width > 576;   
+
+    const tooltipFormat = { prefix, suffix, formatType}
+
+    const renderDeps = [ width, height, plotted, colorIdx,
+        isSorted, chartData, orientation, tooltipFormat, margin, labelAxis, valueAxis
+     ]
+
+    const chartRef = useD3<HTMLDivElement>((container) => {
+        if (width === 0 || height === 0) return;
+                         
+        const keys = chartData.length === 0 ? [] :
+            (Object.keys(chartData[0]) as (keyof LayeredData)[])
+                .filter((key) => key !== "label" && key !== "total") as string[];
+
+        const selectedKeys = focusOnPlot?keys:keys.filter(k => !plotted.includes(k))
+                    
+        chartData.forEach(function(d: LayeredData) {
+            d.total = selectedKeys.reduce((acc, curr) => {
+                if(!(curr in d)){
+                    d[curr] = 0
+                }
+                const value = d[curr];
+                return acc + (typeof value === 'number' ? value : Number(value));
+            }, 0);
+        });  
+                        
+        const filteredData = chartData/*.filter((d: LayeredData) => {
+            return plotted === "all" ? (d?.total && d.total > 0) : (d[plotted as keyof LayeredData] as number) > 0;                
+        });*/
+
+        const sortedData = (isSorted && (
+            (focusOnPlot && plotted[0]!=="all") || (!focusOnPlot && selectedKeys.length === 1)))?
+            cloneObj(filteredData).sort(function(a:LayeredData, b:LayeredData){
+                if(!focusOnPlot){
+                    return a.total! - b.total!
+                }else{
+                    if(plotted[0] === "all"){
+                        return a.total! - b.total!
+                    }
+
+                    return Number(a[plotted[0]]!) - Number(b[plotted[0]]!)
+                }
+                
+            }):filteredData
+
+        const marginLeft = margin?.left??defaultMargin.left 
+        const marginRight = margin?.right ?? defaultMargin.right
+        const marginTop = margin?.top ?? defaultMargin.top
+        const marginBottom = margin?.bottom ?? defaultMargin.bottom
+
+        const graphWidth = width - marginLeft - marginRight,
+            graphHeight = height - marginTop - marginBottom;
+
+        const canvasSvg = container.select<SVGSVGElement>("svg")
+        const svgNode = canvasSvg.node()
+        const canvas = canvasSvg.select<SVGGElement>('.plot-area')
+            .attr("transform", "translate(" + marginLeft + "," + marginTop + ")");
+
+        const controls = container.select<HTMLDivElement>(".controls")
+        const legendsContainer = controls.select<HTMLDivElement>(".legends-container")
+
+        const legendWidth = isMediumScreen?80:50
+
+        const legendClass = function(d:string){
+            const containerClass = stackedBarStyles[isMediumScreen?"legend-container":"legend-container-sm"]
+            const containerActiveClass = stackedBarStyles[isMediumScreen?"legend-container-active":"legend-container-active-sm"]
+            const containerInactiveClass = stackedBarStyles[isMediumScreen?"legend-container-inactive":"legend-container-inactive-sm"]
+            return  `
+                ${plotted.includes(d)?
+                    focusOnPlot?containerActiveClass:containerInactiveClass:
+                        containerClass}
+                legend-item
+            `            
+        }
+
+        const fillByKey = (key: string) => {
+            const layerIndex = layers.current.findIndex(l => l === key) + colorIdx
+            const color = indexColor(layerIndex)
+            
+            return color
+        }
+        function layerFill(d:ExtendedSeriesWithSorted){                        
+            return fillByKey(d.key)
+        }
+
+        const legends = legendsContainer.selectAll<HTMLDivElement, string>(".legend-item")
+            .data([...keys], d=>d)
+            .join(
+                enter => {
+                    const divs = enter
+                        .append("div")
+                        .attr("class", legendClass)
+                        .style("left", (_, i)=> `${i * legendWidth}px`)
+                        .style("top", "-53px")
+                        .style("opacity", 0);
+
+                    divs.append("div")
+                        .attr("class", stackedBarStyles["legend-rect"])
+                        .style("background", (d) => {
+                            if(!focusOnPlot && plotted.includes(d)){
+                                return inactiveColor
+                            }
+                            const layerIndex = layers.current.findIndex(l => l === d) + colorIdx
+                            return indexColor(layerIndex);
+                        })
+                    divs.append("span")
+                        .attr("class", stackedBarStyles["legend-label"])
+                        .text(d=>d)
+
+                    divs.transition().duration(animDuration)                                                        
+                        .style("top", "0px")                              
+                        .style("opacity", 1)
+                        
+                    return divs;
+                },
+                update => {
+                    update
+                        .attr("class", legendClass)
+                        .transition().duration(animDuration)
+                            .style("top", "0px")
+                            .style("left", (_, i)=> `${i * legendWidth}px`) 
+                            .style("opacity", 1)
+                        .select(`.${stackedBarStyles["legend-rect"]}`)
+                        .style("background", (d) => {
+                            if(!focusOnPlot && plotted.includes(d)){
+                                return inactiveColor
+                            }
+                            const layerIndex = layers.current.findIndex(l => l === d) + colorIdx
+                            return indexColor(layerIndex);
+                        });
+
+                    // also update label text in case of rename or dynamic change
+                    update
+                        .select(`.${stackedBarStyles["legend-label"]}`)
+                        .text(d => d);
+
+                    return update;
+                },
+                exit => exit
+                    .transition().duration(animDuration)
+                    .style("opacity", 0)
+                    .style("top", "53px")
+                    .remove().remove()
+            )
+
+        legends
+            .on("click", legendClick)            
+            .on("pointerenter", legendPointerEnter)
+            .on("pointerleave", (e, d)=>{
+                if(isAnimating.current) return                
+                if(plotted[0] === "all"){
+                    canvas.selectAll<SVGGElement, ExtendedSeriesWithSorted>(".serie")
+                        .attr("fill", layerFill)                        
+                        .transition().duration(250)
+                    .style("opacity", 1)
+                }                
+            })
+        
+        function legendClick(e: MouseEvent | TouchEvent, d: string){
+            setPlotted(prev=>{
+                let newPlot:string[] = []
+                if(focusOnPlot){
+                    /*
+                    If there is a previous plot and no current plot
+                    or vice versa, no current plot but there is previous plot
+                    then don't sort.
+                    */
+                    if(prev[0] === d){
+                        newPlot = ["all"]
+                        setIsSorted(false)
+                    }else{
+                        newPlot = [d]
+                        if(previousPlotted[0] === "all"){
+                            setIsSorted(false)
+                        }
+                    }
+                }else{
+                    if(prev.includes(d)){
+                        newPlot = prev.filter(p => p !== d)                           
+                    }else{
+                        newPlot = [...prev, d]                           
+                    }
+                }
+                return newPlot
+            })
+        }
+
+        function legendPointerEnter(e: MouseEvent | TouchEvent, d: string){
+            if(isAnimating.current) return 
+            const serie = canvas.selectAll<SVGGElement, ExtendedSeriesWithSorted>(".serie")
+            if(plotted[0] === "all"){
+                if(focusOnPlot){
+                    serie
+                        .attr("fill", layerFill)
+                        .filter(dSerie => dSerie.key !== d)                            
+                            .transition().duration(250)
+                        .style("opacity", obscureOpacity)
+                    
+                }else{
+                    serie
+                        .attr("fill", layerFill)
+                        .filter(dSerie => dSerie.key === d)                            
+                            .transition().duration(250)
+                        .style("opacity", obscureOpacity)
+                }   
+            }
+        }
+
+        const tooltip = container.select("div#tooltip")
+            .style("opacity", 0);
+
+        let isFirstRender = false;
+        if(prevData === null){
+            isFirstRender = true;
+            setPrevData(cloneObj(chartData));
+        }
+                
+        const paddingInnerDimension = orientation === "vertical"?width:height
+        const paddingInner = labelAxis?.paddingInner ?? 
+            (selectedKeys.length > 1?0.15:paddingInnerDimension > 576?0.35:0.225)        
+        const paddingOuter = labelAxis?.paddingOuter ?? defaultLabelAxis.paddingOuter
+        const labelAxisAlign = labelAxis?.align ?? defaultLabelAxis.align
+        const labelAxisTickSizeInner = labelAxis?.tickSizeInner ?? defaultLabelAxis.tickSizeInner
+        const displayLabelAxisGrid = labelAxis?.displayGrid ?? defaultLabelAxis.displayGrid
+        const labelAxisTickPadding = labelAxis?.tickPadding ?? defaultLabelAxis.tickPadding
+
+        const labels = sortedData.map(function(d: LayeredData) { return d.label; });
+        const rotateXLabels = rotateLabels(graphWidth, labels)        
+        const xAxisTextClass = (rotateXLabels && orientation === 'vertical')?
+            stackedBarStyles.rotatedAxisText:
+            stackedBarStyles.axisText;                
+                        
+        const labelScale: ScaleBand<string> = scaleBand<string>()
+            .domain(labels)
+            .rangeRound(orientation === 'vertical'?[0, graphWidth]:[graphHeight, 0])
+            .paddingInner(paddingInner)
+            .paddingOuter(paddingOuter)            
+            .align(labelAxisAlign) 
+        
+        const valueMax =
+            plotted[0] === "all"
+                ? max(chartData, d =>
+                    max(
+                    Object.entries(d)
+                        .filter(([key]) => key !== "total" && key !== "label")
+                        .map(([, value]) => value as number)     // value is number | string | undefined
+                    )
+                )
+                : max(chartData, d => d[plotted[0]] as number);
+
+        const baseValueMin =
+            plotted[0] === "all"
+                ? min(chartData, d =>
+                    min(
+                    Object.entries(d)
+                        .filter(([key]) => key !== "total" && key !== "label")
+                        .map(([, value]) => value as number)     // value is number | string | undefined
+                    )
+                )
+                : min(chartData, d => d[plotted[0]] as number);
+        const valueMin = Math.min(0, baseValueMin ?? 0)
+        const valueScale = scaleLinear()
+            .domain([valueMin, valueMax ?? 0])
+            .range(orientation === 'vertical'?[graphHeight, 0]:[0, graphWidth]);
+
+        const valueAxisTicks = valueAxis?.ticks ?? defaultValueAxis.ticks
+        const valueAxisTickSizeInner = valueAxis?.tickSizeInner ?? defaultValueAxis.tickSizeInner
+        const displayValueAxisGrid = valueAxis?.displayGrid ?? defaultValueAxis.displayGrid
+        const valueAxisTickPadding = valueAxis?.tickPadding ?? defaultValueAxis.tickPadding
+        
+        const xAxis = orientation === 'vertical' 
+            ?axisBottom(labelScale)
+                .tickValues(labelScale.domain())
+                .tickSizeOuter(0)
+                .tickSizeInner(displayLabelAxisGrid?-graphHeight:labelAxisTickSizeInner)                                
+                .tickPadding(labelAxisTickPadding):
+            axisBottom(valueScale)                
+                .ticks(valueAxisTicks, "s")
+                .tickSizeOuter(0)
+                .tickSizeInner(displayValueAxisGrid?-graphHeight:valueAxisTickSizeInner)
+                .tickPadding(valueAxisTickPadding);        
+
+        canvas.select<SVGGElement>(".x-axis")
+            .attr("transform", `translate(0,${graphHeight})`)
+            .transition().duration(animDuration)
+            .call(xAxis)
+            .selectAll("text")            
+            .attr("dy", !isMediumScreen?"1em":".6em")
+            .attr("dx", !isMediumScreen ? "-.8em" : "0em")
+            .attr("class", xAxisTextClass)
+            /*.selectAll(".tick")
+            .filter(d => d === 0)
+            .select("line")
+            .remove();*/
+
+        canvas.select<SVGGElement>(".x-axis") 
+            .selectAll("path")
+            .style("display", "none")
+                                                                                                                    
+        const yAxis = orientation === 'vertical'
+            ? axisLeft(valueScale).ticks(10, "s")
+                .tickSizeOuter(0)
+                .tickSizeInner(displayValueAxisGrid?-graphWidth:valueAxisTickSizeInner)
+                .tickPadding(valueAxisTickPadding)
+            : axisLeft(labelScale).tickSizeOuter(0).tickSize(0)
+                .tickSizeInner(displayLabelAxisGrid?-graphWidth:labelAxisTickSizeInner)
+                .tickPadding(labelAxisTickPadding);            
+                                
+        canvas.select<SVGGElement>(".y-axis")  
+            .attr("transform", `translate(0,0)`)                     
+                .transition().duration(animDuration)
+            .call(yAxis)            
+            /*.selectAll(".tick")
+            .filter(d => d === 0)
+            .select("path")
+            .remove()*/
+            
+        canvas.select<SVGGElement>(".y-axis") 
+            .selectAll("path")
+            .style("display", "none")
+
+        const zeroLine = canvas.select("line.zero-line")
+            .attr("x1", 0)
+            .attr("y1", orientation === "vertical"?graphHeight:0)
+            .attr("x2", orientation === "vertical"?graphWidth:0)
+            .attr("y2", graphHeight)
+                .transition().duration(animDuration)
+            .style("opacity", valueMin === 0?0:1)
+            .attr("transform", 
+                orientation === "vertical"?
+                `translate(0, ${(valueScale(0) || 0) - graphHeight})`:
+                `translate(${valueScale(0) || 0}, 0)`
+            )
+
+        const dataLayers: Series<LayeredData, string | string[]>[] =
+            stack<LayeredData>()
+                .keys(selectedKeys)
+                .offset(stackOffsetDiverging)(sortedData);        
+        
+        const processedDataLayers:ExtendedSeriesWithSorted[] = dataLayers.map((series) => {
+            const seriesKey = series.key
+            const newSeries = series.map((point) => {
+                const sortedLayers = Object.keys(point.data)
+                    .filter((prop) => prop !== "label" && prop !== "total" && (!focusOnPlot?!plotted.includes(prop):true))
+                    .map((prop) => ({
+                        label: prop,
+                        value: point.data[prop],
+                    }))
+                    .sort((a, b) => Number(a.value!) - Number(b.value!));
+
+                return {
+                    ...point,
+                    key: `${seriesKey} - ${point.data.label}`,
+                    barKey: seriesKey as string,
+                    data: {
+                        ...point.data,
+                        sortedLayers: sortedLayers.map((d) => d.label),
+                    },
+                };
+            }) as ExtendedSeriesWithSorted
+
+            newSeries.key = seriesKey as string
+            return newSeries
+        });        
+
+        const updateRectClass = (d:ExtendedSeriesPointWithSorted) => {                
+                return `rect ${stackedBarStyles.rect}`
+        }  
+
+        let serie = canvas.selectAll<SVGGElement, ExtendedSeriesWithSorted>(".serie")
+            .data(processedDataLayers, function(d){return d.key})
+            .join(
+                enter=>{
+                    let g = enter.append("g")
+                        .attr("class", "serie")
+                        .attr("fill", layerFill)
+                        .style("opacity", d=>{
+                            if(plotted[0] === "all"){
+                                return 1;
+                            }else {                                
+                                return d.key === plotted[0]?1:0;
+                            }
+                        })
+                        .style("pointer-events", d=>{
+                            if(plotted[0] === "all"){
+                                return "auto";
+                            }else {
+                                return d.key === plotted[0]?"auto":"none";
+                            }
+                        });
+                    return g;
+                },
+                update=>{
+                    let g = update
+                    /*
+                        .attr("class", function(d){                                
+                            if(legendHover !== "" && legendHover === d.key){
+                                return "serie " + styles.rectLegendHovered
+                            }
+                            return "serie"
+                        })*/
+                        .transition().duration(animDuration)
+                        .attr("fill", layerFill)
+                        .style("opacity", d=>{
+                            if(plotted[0] === "all"){
+                                return 1;
+                            }else {
+                                return d.key === plotted[0]?1:0;
+                            }
+                        })
+                        .style("pointer-events", d=>{
+                            if(plotted[0] === "all"){
+                                return "auto";
+                            }else {
+                                return d.key === plotted[0]?"auto":"none";
+                            }
+                        });
+                    return g;
+                },
+                exit=>exit
+                    .transition().duration(animDuration)
+                    .style("opacity", 0).attr("fill", "grey")
+                    .selectAll<SVGRectElement, ExtendedSeriesPointWithSorted>("rect")
+                    .attr("y", graphHeight)
+                    .attr("height", 0)
+                    .remove()
+            )
+            
+        const labelScalePos = (d: ExtendedSeriesPointWithSorted) => {
+            const labelPos = labelScale(d.data.label as string) ?? 0;
+            if(!focusOnPlot || (focusOnPlot && plotted[0] === "all")){                                    
+                const sortReference = !isSorted?selectedKeys:d.data.sortedLayers
+                const idx = (Array.isArray(sortReference) && sortReference.indexOf(d.barKey)) || 0
+                return labelPos + (idx * (labelScale.bandwidth()/selectedKeys.length))
+            }                            
+            return labelPos
+        }
+
+        const labelScaleBandWidth = () => {
+            return (!focusOnPlot || (focusOnPlot && plotted[0] === "all"))?
+                labelScale.bandwidth()/selectedKeys.length:labelScale.bandwidth()
+        }
+
+        const valueScalePos = (d: ExtendedSeriesPointWithSorted) => {
+            /*Before, no negative value support:
+                return orientation === 'vertical'?
+                    graphHeight - (valueScale(d[0]) - valueScale(d[1])):
+                        valueScale(0)
+            */
+            const value = Number(d.data[d.barKey])
+            
+            return orientation === 'vertical'?
+                value >= 0 ? valueScale(value) : valueScale(0):
+                    value >= 0 ? valueScale(0) : valueScale(value)
+        }
+
+        const valueScaleDimension = (d: ExtendedSeriesPointWithSorted) => {
+            /*Before, no negative value support:
+            const rectDimension = orientation === 'vertical'?
+                valueScale(d[0]) - valueScale(d[1]):
+                    valueScale(d[1]) - valueScale(d[0]);
+            */
+            const value = Number(d.data[d.barKey])
+            const rectDimension = Math.abs(valueScale(value) - valueScale(0));
+            return isNaN(rectDimension)?0:rectDimension<0?0:rectDimension;
+        }
+
+        const rectXPos = (d: ExtendedSeriesPointWithSorted) => {            
+            return orientation === 'vertical' ? labelScalePos(d) : valueScalePos(d)
+        }
+
+        const rectWidth = (d: ExtendedSeriesPointWithSorted) => {            
+            return orientation === 'vertical' ? labelScaleBandWidth() : valueScaleDimension(d)
+        }
+
+        const rectYPos = (d: ExtendedSeriesPointWithSorted) => {            
+            return orientation === 'vertical' ? valueScalePos(d) : labelScalePos(d)
+        }
+
+        const rectHeight = (d: ExtendedSeriesPointWithSorted) => {            
+            return orientation === 'vertical' ? valueScaleDimension(d) : labelScaleBandWidth()
+        }
+        
+        serie.selectAll<SVGRectElement, ExtendedSeriesPointWithSorted>("rect")
+            .data(
+                (d) => d,
+                (d) => d.data.label
+            )
+            .join(
+                enter=>{
+                    let theBars
+                    
+                    theBars = enter
+                        .append("rect")
+                        .attr("class", updateRectClass)
+                        .attr("x", function(d){
+                            if(orientation === 'vertical'){
+                                return rectXPos(d)
+                            }else{
+                                //if(isFirstRender)return graphWidth - (margin.left + margin.right);
+                                return 0//graphWidth;
+                            }
+                        })
+                        .attr("width", function(d){
+                            if(orientation === 'vertical'){
+                                return plotted[0] === "all"?
+                                labelScale.bandwidth()/selectedKeys.length:labelScale.bandwidth()
+                            }else{
+                                return 0
+                            }
+                            
+                        }) 
+                        .attr("y", function(d){
+                            if(orientation === 'vertical'){                                
+                                return graphHeight;
+                            }else{
+                                return rectYPos(d)
+                            }
+                            
+                        })
+                        .attr("height", function(d){
+                            if(orientation === 'vertical'){
+                                return 0
+                            }else{
+                                return plotted[0] === "all"?
+                                labelScale.bandwidth()/selectedKeys.length:labelScale.bandwidth()
+                            }
+                        })
+                            .transition().duration(animDuration)//.delay(animDuration)
+                            .style("opacity", 1)
+                            .attr("x", rectXPos)
+                            .attr("width", rectWidth)                        
+                            .attr("height", rectHeight)
+                            .attr("y", rectYPos)
+                                            
+                    return theBars
+                },
+                undefined,                
+                exit=>exit
+                    .attr("fill", inactiveColor)
+                    .transition().duration(animDuration)
+                    .attr("opacity", 0)
+                    .attr("height", 0)                        
+                    .attr("y", graphHeight + marginBottom).remove()
+            )
+                .attr("class", updateRectClass)
+            .transition().duration(animDuration)//.delay(isFirstRender?animDuration:0)
+                .style("opacity", 1)
+                .attr("x", rectXPos)
+                .attr("width", rectWidth)                        
+                .attr("height", rectHeight)
+                .attr("y", rectYPos)
+                .on("start", function(){
+                    if(!isAnimating.current){
+                        isAnimating.current = true
+                    }
+                })
+                .on("end", function(){
+                    if(isAnimating.current){
+                        isAnimating.current = false
+                    }
+                });
+
+        const hoverShade = canvasSvg.select("rect#hoverShade")            
+            .style("opacity", 0)
+        serie
+            .selectAll<SVGRectElement, ExtendedSeriesPointWithSorted>("rect")
+                .on("mouseover touchstart", function(e, d){
+                    const bBox = select(this).node()?.getBBox()
+                    positionHoverShade(hoverShade, bBox, marginLeft, marginTop, isAnimating.current)                     
+                    pointerenter(e, d)
+                })                
+                .on("mousemove touchmove", function(e, d){
+                    const bBox = select(this).node()?.getBBox()
+                    positionHoverShade(hoverShade, bBox, marginLeft, marginTop, isAnimating.current)                     
+                    positionChartTooltip(d)
+                })
+                .on("mouseleave", function(e, d){
+                    if(isSorted){
+                        serie.selectAll<SVGRectElement, ExtendedSeriesPointWithSorted>("rect")
+                            .filter(dRect => dRect.barKey !== d.barKey)
+                            .style("opacity", 1)    
+                    }
+                    canvas.select(orientation === "vertical"?".x-axis":".y-axis").selectAll("text")
+                        .filter(dText=>dText === d.data.label)
+                        .attr("class", orientation === "vertical"?xAxisTextClass:"")
+
+                    tooltip.style("opacity", 0);
+                    hoverShade.style("opacity", 0)
+                })
+                
+        function positionChartTooltip(d: ExtendedSeriesPointWithSorted){
+            positionTooltip(
+                tooltip as unknown as Selection<SVGAElement | HTMLDivElement, any, any, any>, 
+                orientation, "grouped",
+                { left: marginLeft, right: marginRight, top: marginTop, bottom: marginBottom },
+                {
+                    x: labelScalePos(d), y: valueScalePos(d),
+                    width: labelScaleBandWidth(), 
+                    height: valueScaleDimension(d)
+                },
+                {
+                    x: valueScalePos(d), y: labelScalePos(d), 
+                    width: valueScaleDimension(d), 
+                    height: labelScaleBandWidth() 
+                },
+                graphHeight
+            )
+        }
+        function pointerenter(e: MouseEvent | TouchEvent, d: ExtendedSeriesPointWithSorted){
+            if(isSorted){
+                serie.selectAll<SVGRectElement, ExtendedSeriesPointWithSorted>("rect")
+                    .filter(dRect => dRect.barKey !== d.barKey)
+                    .style("opacity", obscureOpacity)    
+            }
+            
+            canvas.select(orientation === "vertical"?".x-axis":".y-axis").selectAll("text")
+                .filter(dText=>dText === d.data.label).attr("class", (orientation === "vertical"?xAxisTextClass:"") + " " + stackedBarStyles.hoveredAxisText)                        
+            
+            positionChartTooltip(d)
+            const value = d.data[d.barKey] as number
+            const {total} = d.data
+            const percentage = (value as number/total!) * 100
+            const percentText = format(".1f")(percentage) + "%"
+            tooltip.select("p.label").text(d.data.label)
+            tooltip.select("p.layer span.label span.chev").style("background", fillByKey(d.barKey))
+            tooltip.select("p.layer span.label span.label").text(d.barKey)
+            tooltip.select("p.layer span.value").text(formatTooltipNum(value, tooltipFormat))                    
+            
+            tooltip.select("p.total span.value").text(formatTooltipNum(total ?? 0, tooltipFormat))            
+        }                                    
+
+    }, [ ...renderDeps ]);
+    
+    return (
+        <div 
+            ref={ref} 
+            style={{ width: parentWidth, height: parentHeight, display:'flex', flexDirection:'column' }}
+        >            
+            <div
+                ref={chartRef} 
+                className={`${styles["fill-container"]}`}
+                style={{ display:"flex", flexDirection:"column"}}>
+                <div 
+                    ref={controlsRef}
+                    className={`controls ${styles[isMediumScreen?"controls-container":"controls-container-sm"]}`}
+                >
+                    <label className={styles["controls-label"]} style={{paddingRight: '12px'}}>
+                        <input 
+                            type="checkbox" 
+                            className={styles["controls-checkbox"]} 
+                            checked={isSorted}
+                            onChange={(e) => setIsSorted(e.target.checked)}
+                        />
+                            Sort
+                    </label>
+                    <div                         
+                        className={`legends-container ${stackedBarStyles["legends-container"]}`}
+                    />
+                </div>
+                <div
+                    ref={chartContainerRef} 
+                    className={`${styles["fill-container"]}`}
+                    style={{ display:"flex", flexDirection:"column", position: "relative"}}>
+                    <svg
+                        className={`${styles["chart-svg"]} ${styles["fill-container"]}`}        
+                        viewBox={`0 0 ${width} ${height}`}
+                    >
+                        {
+                            width > 0 &&
+                            <g className="plot-area">
+                                <g className="plot-rects" />
+                                <g className={`${orientation === 'vertical'?
+                                    stackedBarStyles["value-axis"]:stackedBarStyles["label-axis"]} y-axis`} />
+                                <g className={`${orientation === 'horizontal'?
+                                    stackedBarStyles["value-axis"]:stackedBarStyles["label-axis"]} x-axis`} />  
+                                <line className='zero-line' stroke="currentColor" strokeWidth={1} />     
+                            </g>        
+                        }
+                        <HoverShade />                                        
+                    </svg>
+                    <Tooltip />
+                </div>
+            </div>
+        </div>
+    );
+}

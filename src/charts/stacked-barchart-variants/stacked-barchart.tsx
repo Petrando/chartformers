@@ -41,8 +41,7 @@ export function StackedBarChart({
     const [controlsRef, controlsSize] = useContainerSize<HTMLDivElement>();        
     const { height: controlsHeight } = controlsSize;
     const [chartContainerRef, chartSize] = useContainerSize<HTMLDivElement>()
-    const { width, height } = chartSize    
-    const [prevData, setPrevData] = useState<LayeredData[] | null>(null);
+    const { width, height } = chartSize        
             
     const [plotted, setPlotted] = useState<string[]>(["all"]);    
     const [isSorted, setIsSorted] = useState<boolean>(false);
@@ -56,7 +55,10 @@ export function StackedBarChart({
         setPlotted(["all"])                
     }, [stackData])    
 
-    useEffect(() => {setPlotted(["all"])}, [focusOnPlot])
+    useEffect(() => {
+        setPlotted(["all"])
+        setIsSorted(false)
+    }, [focusOnPlot])
 
     const animDuration = 750;          
 
@@ -71,7 +73,9 @@ export function StackedBarChart({
     const isMediumScreen = width > 576;
     
     const chartRef = useD3<HTMLDivElement>((container) => {
-        if (width === 0 || height === 0) return;        
+        if (width === 0 || height === 0) return;
+        if(focusOnPlot && plotted.length !== 1) return
+        if(!focusOnPlot && plotted[0] !== "all") return        
                                 
         const keys = chartData.length === 0 ? [] :
         (Object.keys(chartData[0]) as (keyof LayeredData)[])
@@ -281,13 +285,7 @@ export function StackedBarChart({
             })         
 
         const tooltip = container.select("div#tooltip")
-            .style("opacity", 0);
-
-        let isFirstRender = false;
-        if(prevData === null){
-            isFirstRender = true;
-            setPrevData(cloneObj(chartData));
-        }                       
+            .style("opacity", 0);                                       
 
         const paddingInnerDimension = orientation === "vertical"?width:height
         const paddingInner = labelAxis?.paddingInner ?? (paddingInnerDimension > 576?0.35:0.225)
@@ -316,7 +314,6 @@ export function StackedBarChart({
                 min(chartData, (d: LayeredData) => d.totalMin):
                     min(chartData, (d: LayeredData) => (d[plotted[0]] as number))):
                 min(chartData, (d: LayeredData) => d.totalMin);
-
         const valueMin = Math.min(0, baseValueMin ?? 0)        
         
         const valueScale: ScaleLinear<number, number> = scaleLinear()
@@ -454,33 +451,7 @@ export function StackedBarChart({
 
                     return g;
                 },
-                update => {
-                    const g = update
-                        .transition()
-                        .duration(animDuration)
-                        .attr("fill", (d) => {
-                            const layerIndex = layersRef.current.findIndex(l => l === d.key) + colorIdx
-                            const color = indexColor(layerIndex)
-                            
-                            return color
-                        })
-                        .style("opacity", (d) => {
-                            if(focusOnPlot){
-                                if (plotted[0] === "all") return 1;
-                                return d.key === plotted[0] ? 1 : 0;
-                            }
-                            return 1
-                        })                                            
-                        .style("pointer-events", (d) => {
-                            if(focusOnPlot){
-                                if (plotted[0] === "all") return "auto";
-                                return d.key === plotted[0] ? "auto" : "none";
-                            }
-                            return "auto"
-                        });
-
-                    return g;
-                },
+                update => update,
                 exit => exit                                        
                     .transition().duration(animDuration)
                     .attr("fill", inactiveColor)
@@ -490,6 +461,29 @@ export function StackedBarChart({
                     .attr("height", 0)
                     .remove()
             );
+
+        serie
+                .transition().duration(animDuration)
+            .attr("fill", (d) => {
+                const layerIndex = layersRef.current.findIndex(l => l === d.key) + colorIdx
+                const color = indexColor(layerIndex)
+                
+                return color
+            })
+            .style("opacity", (d) => {
+                if(focusOnPlot){
+                    if (plotted[0] === "all") return 1;
+                    return d.key === plotted[0] ? 1 : 0;
+                }
+                return 1
+            })                                            
+            .style("pointer-events", (d) => {
+                if(focusOnPlot){
+                    if (plotted[0] === "all") return "auto";
+                    return d.key === plotted[0] ? "auto" : "none";
+                }
+                return "auto"
+            })
         
         const labelScalePos = (d: ExtendedSeriesPoint) => {             
             return labelScale(d.data.label + "") ?? 0
@@ -646,7 +640,7 @@ export function StackedBarChart({
             return `rect ${stackedBarStyles.rect}`
         }       
         
-        serie
+        const rects = serie
             .selectAll<SVGRectElement, ExtendedSeriesPoint>("rect")
             .data(
                 (d) => d, // each group binds its stacked points
@@ -707,16 +701,16 @@ export function StackedBarChart({
                         .attr("stroke-dasharray", strokeDasharray)
                         .attr("stroke-dashoffset", strokeDashoffset)
                             
-                    theBars.transition()
+                    /*theBars.transition()
                             .duration(animDuration)
                         .attr("x", rectXPos)
                         .attr("width", rectWidth)
                         .attr("height", rectHeight)
-                        .attr("y", rectYPos)                        
+                        .attr("y", rectYPos)*/                        
 
                     return theBars;
                 },
-                undefined, // no custom update handler
+                update=>update, // no custom update handler
                 exit =>
                     exit
                         .transition().duration(animDuration)
@@ -725,24 +719,25 @@ export function StackedBarChart({
                         .attr("height", 0)
                         .remove()
             )
-                .attr("class", updateRectClass)
-                .attr("stroke-dasharray", strokeDasharray)
-                .attr("stroke-dashoffset", strokeDashoffset)
-            .transition().duration(animDuration)                
-                .attr("x", rectXPos)
-                .attr("width", rectWidth)
-                .attr("height", rectHeight)
-                .attr("y", rectYPos)
-                .on("start", function(){
-                    if(!isAnimating.current){
-                        isAnimating.current = true
-                    }
-                })
-                .on("end", function(){
-                    if(isAnimating.current){
-                        isAnimating.current = false
-                    }
-                });
+                
+        rects.attr("class", updateRectClass)
+            .attr("stroke-dasharray", strokeDasharray)
+            .attr("stroke-dashoffset", strokeDashoffset)
+                .transition().duration(animDuration)                
+            .attr("x", rectXPos)
+            .attr("width", rectWidth)
+            .attr("height", rectHeight)
+            .attr("y", rectYPos)
+            .on("start", function(){
+                if(!isAnimating.current){
+                    isAnimating.current = true
+                }
+            })
+            .on("end", function(){
+                if(isAnimating.current){
+                    isAnimating.current = false
+                }
+            });
 
         const tooltipFormat = {prefix, suffix, formatType}
         const hoverShade = canvasSvg.select("rect#hoverShade")            

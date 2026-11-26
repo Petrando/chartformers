@@ -343,21 +343,7 @@ export function PercentStackedBarChart({
                         .style("pointer-events", "auto");
                     return g;
                 },
-                update=>{
-                    let g = update
-                    /*
-                        .attr("class", function(d){                                
-                            if(legendHover !== "" && legendHover === d.key){
-                                return "serie " + styles.rectLegendHovered
-                            }
-                            return "serie"
-                        })*/
-                        .transition().duration(animDuration)
-                        .attr("fill", layerFill)
-                        .style("opacity", 1)
-                        .style("pointer-events", "auto");
-                    return g;
-                },
+                update=>update,
                 exit=>exit.transition().duration(animDuration)
                     .style("opacity", 0).attr("fill", inactiveColor)
                     .selectAll<SVGRectElement, ExtendedSeriesPoint>("rect")
@@ -365,6 +351,12 @@ export function PercentStackedBarChart({
                     .attr("height", 0)
                     .remove()                    
             )
+
+        serie
+                .transition().duration(animDuration)
+            .attr("fill", layerFill)
+            .style("opacity", 1)
+            .style("pointer-events", "auto")
 
         const labelScalePos = (d: ExtendedSeriesPoint) => {             
             return labelScale(d.data.label + "") ?? 0
@@ -446,7 +438,7 @@ export function PercentStackedBarChart({
             return `rect ${stackedBarStyles.rect}`
         }
             
-        serie.selectAll<SVGRectElement, ExtendedSeriesPoint>("rect")
+        const rects = serie.selectAll<SVGRectElement, ExtendedSeriesPoint>("rect")
             .data(
                 (d) => d,
                 (d) => d.data.label
@@ -507,14 +499,15 @@ export function PercentStackedBarChart({
                                             
                     return theBars
                 },
-                undefined,                
+                update=>update,                
                 exit=>exit
                     .transition().duration(animDuration)
                     .attr("opacity", 0) 
                     .attr("height", 0)                       
                     .attr("y", graphHeight).remove()
             )
-            .attr("class", updateRectClass)
+            
+        rects.attr("class", updateRectClass)
             .attr("stroke-dasharray", strokeDasharray)
             .attr("stroke-dashoffset", strokeDashoffset)
                 .transition().duration(animDuration)//.delay(animDelay) 

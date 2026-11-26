@@ -8,14 +8,12 @@ import { useParentSize } from '../../hooks/useParentSize';
 import { useContainerSize } from '../../hooks/useContainerSize';
 import { useLayerIndex } from '../../hooks/useLayerIndex';
 import { positionTooltip, Tooltip } from './tooltip';
-import { moveTooltip } from '../../components/tooltip';
 import { formatTooltipNum } from '../../utils';
 import { cloneObj, indexColor, rotateLabels } from '../../utils';
 import { inactiveColor } from '../../../dev/data/constants';
 import { defaultMargin, defaultLabelAxis, defaultValueAxis, obscureOpacity } from './constants';
 import styles from '../global.module.css';
 import stackedBarStyles from './stacked-barchart.module.css';
-import tooltipStyles from './tooltip.module.css'
 import { 
     type LayeredData, type ExtendedSeriesPointWithSorted, type ExtendedSeriesWithSorted, 
     type StackedBarChartProps 
@@ -39,9 +37,7 @@ export function GroupedBarChart({
     const [controlsRef, controlsSize] = useContainerSize<HTMLDivElement>();
     const { height: controlsHeight } = controlsSize;
     const [ chartContainerRef, chartSize] = useContainerSize<HTMLDivElement>()
-    const { width, height } = chartSize
-
-    const [prevData, setPrevData] = useState<LayeredData[] | null>(null);
+    const { width, height } = chartSize    
         
     const [plotted, setPlotted] = useState<string[]>(["all"]);
     const previousPlotted = useDeferredValue(plotted)            
@@ -55,7 +51,7 @@ export function GroupedBarChart({
     useEffect(() => {
         setPlotted(["all"])        
         setIsSorted(false)
-    }, [stackData])    
+    }, [stackData, focusOnPlot])    
     
     const animDuration = 750;    
         
@@ -75,14 +71,17 @@ export function GroupedBarChart({
 
     const chartRef = useD3<HTMLDivElement>((container) => {
         if (width === 0 || height === 0) return;
-                         
+        if(focusOnPlot && plotted.length !== 1) return
+        if(!focusOnPlot && plotted[0] !== "all") return
+                                 
         const keys = chartData.length === 0 ? [] :
             (Object.keys(chartData[0]) as (keyof LayeredData)[])
                 .filter((key) => key !== "label" && key !== "total") as string[];
 
-        const selectedKeys = focusOnPlot?keys:keys.filter(k => !plotted.includes(k))
+        const selectedKeys = keys.filter(k => !focusOnPlot?!plotted.includes(k):
+            (plotted[0] === "all"?keys:plotted.includes(k)))
                     
-        chartData.forEach(function(d: LayeredData) {
+        chartData.forEach(function(d: LayeredData) {            
             d.total = selectedKeys.reduce((acc, curr) => {
                 if(!(curr in d)){
                     d[curr] = 0
@@ -92,12 +91,11 @@ export function GroupedBarChart({
             }, 0);
         });  
                         
-        const filteredData = chartData/*.filter((d: LayeredData) => {
+        const filteredData = cloneObj(chartData)/*.filter((d: LayeredData) => {
             return plotted === "all" ? (d?.total && d.total > 0) : (d[plotted as keyof LayeredData] as number) > 0;                
         });*/
-
-        const sortedData = (isSorted && (
-            (focusOnPlot && plotted[0]!=="all") || (!focusOnPlot && selectedKeys.length === 1)))?
+        
+        const sortedData = (isSorted && selectedKeys.length === 1)?
             cloneObj(filteredData).sort(function(a:LayeredData, b:LayeredData){
                 if(!focusOnPlot){
                     return a.total! - b.total!
@@ -276,13 +274,7 @@ export function GroupedBarChart({
 
         const tooltip = container.select("div#tooltip")
             .style("opacity", 0);
-
-        let isFirstRender = false;
-        if(prevData === null){
-            isFirstRender = true;
-            setPrevData(cloneObj(chartData));
-        }
-                
+                            
         const paddingInnerDimension = orientation === "vertical"?width:height
         const paddingInner = labelAxis?.paddingInner ?? 
             (selectedKeys.length > 1?0.15:paddingInnerDimension > 576?0.35:0.225)        
@@ -305,7 +297,7 @@ export function GroupedBarChart({
             .paddingOuter(paddingOuter)            
             .align(labelAxisAlign) 
         
-        const valueMax =
+        const baseValueMax =
             plotted[0] === "all"
                 ? max(chartData, d =>
                     max(
@@ -315,6 +307,7 @@ export function GroupedBarChart({
                     )
                 )
                 : max(chartData, d => d[plotted[0]] as number);
+        const valueMax = Math.max(0, baseValueMax ?? 0)
 
         const baseValueMin =
             plotted[0] === "all"
@@ -326,6 +319,7 @@ export function GroupedBarChart({
                     )
                 )
                 : min(chartData, d => d[plotted[0]] as number);
+
         const valueMin = Math.min(0, baseValueMin ?? 0)
         const valueScale = scaleLinear()
             .domain([valueMin, valueMax ?? 0])
@@ -403,8 +397,8 @@ export function GroupedBarChart({
         const dataLayers: Series<LayeredData, string | string[]>[] =
             stack<LayeredData>()
                 .keys(selectedKeys)
-                .offset(stackOffsetDiverging)(sortedData);        
-        
+                .offset(stackOffsetDiverging)(sortedData);                
+                
         const processedDataLayers:ExtendedSeriesWithSorted[] = dataLayers.map((series) => {
             const seriesKey = series.key
             const newSeries = series.map((point) => {
@@ -430,11 +424,7 @@ export function GroupedBarChart({
             newSeries.key = seriesKey as string
             return newSeries
         });        
-
-        const updateRectClass = (d:ExtendedSeriesPointWithSorted) => {                
-                return `rect ${stackedBarStyles.rect}`
-        }  
-
+                  
         let serie = canvas.selectAll<SVGGElement, ExtendedSeriesWithSorted>(".serie")
             .data(processedDataLayers, function(d){return d.key})
             .join(
@@ -442,6 +432,8 @@ export function GroupedBarChart({
                     let g = enter.append("g")
                         .attr("class", "serie")
                         .attr("fill", layerFill)
+                        .style("opacity", 0)
+                            .transition().duration(animDuration)
                         .style("opacity", d=>{
                             if(plotted[0] === "all"){
                                 return 1;
@@ -458,45 +450,38 @@ export function GroupedBarChart({
                         });
                     return g;
                 },
-                update=>{
-                    let g = update
-                    /*
-                        .attr("class", function(d){                                
-                            if(legendHover !== "" && legendHover === d.key){
-                                return "serie " + styles.rectLegendHovered
-                            }
-                            return "serie"
-                        })*/
-                        .transition().duration(animDuration)
-                        .attr("fill", layerFill)
-                        .style("opacity", d=>{
-                            if(plotted[0] === "all"){
-                                return 1;
-                            }else {
-                                return d.key === plotted[0]?1:0;
-                            }
-                        })
-                        .style("pointer-events", d=>{
-                            if(plotted[0] === "all"){
-                                return "auto";
-                            }else {
-                                return d.key === plotted[0]?"auto":"none";
-                            }
-                        });
-                    return g;
-                },
+                update=>update,
                 exit=>exit
                     .transition().duration(animDuration)
                     .style("opacity", 0).attr("fill", "grey")
-                    .selectAll<SVGRectElement, ExtendedSeriesPointWithSorted>("rect")
-                    .attr("y", graphHeight)
-                    .attr("height", 0)
+                    .selectAll<SVGRectElement, ExtendedSeriesPointWithSorted>("rect")                    
                     .remove()
             )
             
+        serie.transition().duration(animDuration)
+        .attr("fill", layerFill)
+        .style("opacity", d=>{
+            if(plotted[0] === "all"){
+                return 1;
+            }else {
+                return d.key === plotted[0]?1:0;
+            }
+        })
+        .style("pointer-events", d=>{
+            if(plotted[0] === "all"){
+                return "auto";
+            }else {
+                return d.key === plotted[0]?"auto":"none";
+            }
+        });
+        
+        const updateRectClass = (d:ExtendedSeriesPointWithSorted) => {                
+            return `rect ${stackedBarStyles.rect}`
+        }
+
         const labelScalePos = (d: ExtendedSeriesPointWithSorted) => {
             const labelPos = labelScale(d.data.label as string) ?? 0;
-            if(!focusOnPlot || (focusOnPlot && plotted[0] === "all")){                                    
+            if(selectedKeys.length > 1){                                    
                 const sortReference = !isSorted?selectedKeys:d.data.sortedLayers
                 const idx = (Array.isArray(sortReference) && sortReference.indexOf(d.barKey)) || 0
                 return labelPos + (idx * (labelScale.bandwidth()/selectedKeys.length))
@@ -549,7 +534,7 @@ export function GroupedBarChart({
             return orientation === 'vertical' ? valueScaleDimension(d) : labelScaleBandWidth()
         }
         
-        serie.selectAll<SVGRectElement, ExtendedSeriesPointWithSorted>("rect")
+        const rects = serie.selectAll<SVGRectElement, ExtendedSeriesPointWithSorted>("rect")
             .data(
                 (d) => d,
                 (d) => d.data.label
@@ -594,16 +579,16 @@ export function GroupedBarChart({
                                 labelScale.bandwidth()/selectedKeys.length:labelScale.bandwidth()
                             }
                         })
-                            .transition().duration(animDuration)//.delay(animDuration)
+                                /*.transition().duration(animDuration)//.delay(animDuration)
                             .style("opacity", 1)
                             .attr("x", rectXPos)
                             .attr("width", rectWidth)                        
                             .attr("height", rectHeight)
-                            .attr("y", rectYPos)
+                            .attr("y", rectYPos)*/
                                             
                     return theBars
                 },
-                undefined,                
+                update=>update,                
                 exit=>exit
                     .attr("fill", inactiveColor)
                     .transition().duration(animDuration)
@@ -611,7 +596,8 @@ export function GroupedBarChart({
                     .attr("height", 0)                        
                     .attr("y", graphHeight + marginBottom).remove()
             )
-                .attr("class", updateRectClass)
+                
+            rects.attr("class", updateRectClass)
             .transition().duration(animDuration)//.delay(isFirstRender?animDuration:0)
                 .style("opacity", 1)
                 .attr("x", rectXPos)
@@ -631,6 +617,7 @@ export function GroupedBarChart({
 
         const hoverShade = canvasSvg.select("rect#hoverShade")            
             .style("opacity", 0)
+
         serie
             .selectAll<SVGRectElement, ExtendedSeriesPointWithSorted>("rect")
                 .on("mouseover touchstart", function(e, d){

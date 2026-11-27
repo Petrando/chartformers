@@ -579,11 +579,9 @@ export function StackedBarChart({
             };
 
         });
-        
-        const strokeDasharray = (d: ExtendedSeriesPoint, i: number): string => {
-            /*if(d.barKey === hovered){
-                return "none"
-            }*/
+                
+        const strokeDasharray = (d: ExtendedSeriesPoint, i: number): string => {            
+           if(focusOnPlot && plotted[0] !== "all") return "none"
                                   
             const rectStrokeWidth = rectWidth(d);            
             const rectStrokeHeight = rectHeight(d);    

@@ -41,6 +41,26 @@ export const Tooltip = ({ totalLabel = "of total"}: tooltipProps) =>(
                 className='value'                                    
                 style={{textAlign:'right'}} />
         </p>
+         <p 
+            className='total-plus'
+            style={{
+                fontWeight: 600, margin: "3px", marginTop: 0, fontSize: "13px", color: "wheat", 
+                display: "none", justifyContent: "flex-end", alignItems: "center", gap: 2
+            }}
+        >
+            
+            <span className='value' style={{fontWeight: 700}}>Plus</span>
+        </p>
+        <p 
+            className='total-min'
+            style={{
+                fontWeight: 600, margin: "3px", marginTop: 0, fontSize: "13px", color: "wheat", 
+                display: "none", justifyContent: "flex-end", alignItems: "center", gap: 2
+            }}
+        >
+            
+            <span className='value' style={{fontWeight: 700}}>Min</span>
+        </p>
         <p 
             className='total'
             style={{

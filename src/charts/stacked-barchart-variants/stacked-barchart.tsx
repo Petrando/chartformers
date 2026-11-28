@@ -763,6 +763,9 @@ export function StackedBarChart({
                         .style("stroke-width", 1)
 
                     tooltip.style("opacity", 0);
+                    tooltip.select("p.total-plus").style("display", "none")
+                    tooltip.select("p.total-min").style("display", "none")
+                    
                     hoverShade.style("opacity", 0)
                 })
         
@@ -795,7 +798,19 @@ export function StackedBarChart({
             tooltip.select("p.label").text(d.data.label)
             tooltip.select("p.layer span.label span.chev").style("background", fillByKey(d.barKey))
             tooltip.select("p.layer span.label span.label").text(d.barKey)
-            tooltip.select("p.layer span.value").text(formatTooltipNum(value, tooltipFormat))                    
+            tooltip.select("p.layer span.value").text(formatTooltipNum(value, tooltipFormat))
+            
+            if((value > 0 && (d.data.totalMin ?? 0) < 0) || (value < 0 && (d.data.totalPos ?? 0) > 0)){                
+                tooltip.select("p.total-plus").style("display", "flex")    
+                tooltip.select("p.total-plus span.value").text(`Total positive: ${formatTooltipNum(d.data.totalPos ?? 0, tooltipFormat)}`)
+                tooltip.select("p.total-min").style("display", "flex")    
+                tooltip.select("p.total-min span.value").text(`Total negative: ${formatTooltipNum(d.data.totalMin ?? 0, tooltipFormat)}`)
+                
+            }else{
+                tooltip.select("p.total-plus").style("display", "none")
+                tooltip.select("p.total-min").style("display", "none")
+            }
+
             tooltip.select("p.total span.value").text(formatTooltipNum(total ?? 0, tooltipFormat))
         }
 
